@@ -1,0 +1,1390 @@
+import express, { type Express, Request, Response, NextFunction } from "express";
+import { createServer, type Server } from "http";
+import { storage as dbStorage } from "./multi-user-storage";
+import { z } from "zod";
+import { insertPlantSchema, insertLocationSchema, insertPlantSpeciesSchema, insertNotificationSettingsSchema, insertUserSchema, insertPlantHealthRecordSchema, insertCareActivitySchema } from "@shared/schema";
+import multer from "multer";
+import path from "path";
+import fs from "fs";
+import { sendPlantWateringNotification, sendWelcomeNotification, checkPlantsAndSendNotifications, sendPushoverNotification, sendTestNotification } from "./notifications";
+import { setupAuth, hashPassword } from "./auth";
+import passport from "passport";
+import { setUserContext, getCurrentUserId, userContextStorage } from "./user-context";
+// Object Storage integration for secure, persistent plant image uploads
+import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
+import { ObjectPermission } from "./objectAcl";
+import { ExportService } from "./export-service";
+import { ImportService } from "./import-service";
+
+// Middleware to check if user is authenticated
+function isAuthenticated(req: Request, res: Response, next: NextFunction) {
+  if (req.isAuthenticated()) {
+    return next();
+  }
+  res.status(401).json({ error: "You must be logged in to access this resource" });
+}
+
+export async function registerRoutes(app: Express): Promise<Server> {
+  // Set up authentication
+  setupAuth(app);
+  
+  // Configure multer for file uploads
+  const fileStorage = multer.diskStorage({
+    destination: function (req, file, cb) {
+      // Ensure uploads directory exists
+      const uploadDir = path.join(process.cwd(), 'uploads');
+      if (!fs.existsSync(uploadDir)) {
+        fs.mkdirSync(uploadDir, { recursive: true });
+      }
+      cb(null, uploadDir);
+    },
+    filename: function (req, file, cb) {
+      // Create unique filename with timestamp and original extension
+      const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+      const ext = path.extname(file.originalname);
+      cb(null, 'plant-' + uniqueSuffix + ext);
+    }
+  });
+  
+  const upload = multer({ 
+    storage: fileStorage,
+    limits: { fileSize: 5 * 1024 * 1024 }, // 5MB file size limit
+    fileFilter: function(req, file, cb) {
+      // Accept only image files
+      if (!file.mimetype.startsWith('image/')) {
+        return cb(new Error('Only image files are allowed'));
+      }
+      cb(null, true);
+    }
+  });
+
+  // Configure multer for ZIP file imports (in-memory storage)
+  const importUpload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 10 * 1024 * 1024 }, // 10MB file size limit for backup ZIPs (security hardened)
+    fileFilter: function(req, file, cb) {
+      // Accept ZIP files for backups
+      if (file.mimetype === 'application/zip' || file.mimetype === 'application/x-zip-compressed' || file.originalname.endsWith('.zip')) {
+        cb(null, true);
+      } else {
+        cb(new Error('Only ZIP files are allowed for imports'), false);
+      }
+    }
+  });
+
+  // Serve uploaded files statically
+  app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
+  
+  const apiRouter = express.Router();
+
+  // Authentication routes
+  apiRouter.post("/register", async (req: Request, res: Response) => {
+    try {
+      const userData = insertUserSchema.parse(req.body);
+      
+      // Check if user already exists
+      const existingUser = await dbStorage.getUserByUsername(userData.username);
+      if (existingUser) {
+        return res.status(400).json({ error: "Username already exists" });
+      }
+      
+      // Hash password
+      const hashedPassword = await hashPassword(userData.password);
+      
+      // Create new user
+      const user = await dbStorage.createUser({
+        ...userData,
+        password: hashedPassword
+      });
+      
+      // Log the user in
+      req.login(user, (loginErr) => {
+        if (loginErr) {
+          console.error("Post-registration login error:", loginErr);
+          return res.status(500).json({ 
+            error: "Failed to log in after registration",
+            details: loginErr.message
+          });
+        }
+        
+        // Return consistent user data format
+        return res.status(201).json({
+          id: user.id,
+          username: user.username,
+          // Add any other non-sensitive user data here
+        });
+      });
+    } catch (error) {
+      console.error("Registration error:", error);
+      
+      // Check for specific error types and provide more helpful messages
+      const errorMessage = error instanceof Error ? error.message : "Invalid registration data";
+      
+      if (errorMessage.includes("already exists")) {
+        return res.status(409).json({ error: "Username already exists" });
+      }
+      
+      // Generic error case
+      res.status(400).json({ 
+        error: "Registration failed",
+        details: errorMessage
+      });
+    }
+  });
+  
+  apiRouter.post("/login", (req: Request, res: Response, next: NextFunction) => {
+    passport.authenticate("local", (err, user, info) => {
+      if (err) {
+        console.error("Login error:", err);
+        return res.status(500).json({ error: "Internal server error" });
+      }
+      
+      if (!user) {
+        return res.status(401).json({ 
+          error: info?.message || "Invalid username or password" 
+        });
+      }
+      
+      req.login(user, (loginErr) => {
+        if (loginErr) {
+          console.error("Login session error:", loginErr);
+          return res.status(500).json({ error: "Failed to create session" });
+        }
+        
+        // Return consistent user data format
+        return res.status(200).json({
+          id: user.id,
+          username: user.username,
+          // Add any other non-sensitive user data here
+        });
+      });
+    })(req, res, next);
+  });
+  
+  apiRouter.post("/logout", (req: Request, res: Response) => {
+    // First check if user is logged in
+    if (!req.isAuthenticated()) {
+      // Still return a success response, just with a different message
+      return res.status(200).json({ 
+        success: true,
+        message: "Already logged out" 
+      });
+    }
+    
+    req.logout((err) => {
+      if (err) {
+        console.error("Logout error:", err);
+        return res.status(500).json({ 
+          error: "Failed to log out",
+          details: err.message
+        });
+      }
+      
+      // Return consistent response format
+      res.status(200).json({
+        success: true,
+        message: "Logged out successfully"
+      });
+    });
+  });
+  
+  apiRouter.get("/user", (req: Request, res: Response) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+    const user = req.user as Express.User;
+    return res.json({
+      id: user.id,
+      username: user.username
+    });
+  });
+
+  // Get all plants
+  apiRouter.get("/plants", async (req: Request, res: Response) => {
+    try {
+      const plants = await dbStorage.getAllPlants();
+      res.json(plants);
+    } catch (error) {
+      res.status(500).json({ success: false, message: "Failed to fetch plants" });
+    }
+  });
+
+  // Get a specific plant
+  apiRouter.get("/plants/:id", async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid plant ID" });
+      }
+
+      const plant = await dbStorage.getPlant(id);
+      if (!plant) {
+        return res.status(404).json({ message: "Plant not found" });
+      }
+
+      const wateringHistory = await dbStorage.getWateringHistory(id);
+      res.json({ ...plant, wateringHistory });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch plant details" });
+    }
+  });
+
+  // Create a new plant
+  apiRouter.post("/plants", async (req: Request, res: Response) => {
+    try {
+      console.log("Received plant creation request with data:", req.body);
+      
+      // Convert lastWatered string to Date if needed
+      let data = {...req.body};
+      
+      // Add userId from authenticated user session
+      if (req.isAuthenticated() && req.user) {
+        data.userId = req.user.id;
+        console.log("Adding authenticated userId to plant data:", req.user.id);
+      } else {
+        console.error("User not authenticated for plant creation");
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+      
+      // Handle date conversion issue for lastWatered
+      if (data.lastWatered) {
+        try {
+          // Handle different date formats safely
+          if (typeof data.lastWatered === 'string') {
+            data.lastWatered = new Date(data.lastWatered);
+          } else if (data.lastWatered instanceof Date) {
+            // Already a Date object, ensure it's valid
+            if (isNaN(data.lastWatered.getTime())) {
+              throw new Error('Invalid date object');
+            }
+          } else if (data.lastWatered && typeof data.lastWatered === 'object') {
+            // Handle potential serialized date objects
+            data.lastWatered = new Date(data.lastWatered);
+          }
+          
+          console.log("Converted lastWatered to:", data.lastWatered);
+        } catch (e) {
+          console.error("Date conversion error:", e, data.lastWatered);
+          return res.status(400).json({ 
+            message: "Invalid date format for lastWatered", 
+          });
+        }
+      } else {
+        // Default to current date if missing
+        data.lastWatered = new Date();
+        console.log("Using default lastWatered:", data.lastWatered);
+      }
+      
+      // Ensure we have an imageUrl if specified
+      if (data.imageUrl) {
+        console.log("Using image URL:", data.imageUrl);
+      }
+      
+      const parsedData = insertPlantSchema.safeParse(data);
+      
+      if (!parsedData.success) {
+        console.error("Validation errors:", parsedData.error.format());
+        return res.status(400).json({ 
+          message: "Invalid plant data", 
+          errors: parsedData.error.format()
+        });
+      }
+
+      const newPlant = await dbStorage.createPlant(parsedData.data);
+      console.log("Plant created successfully:", newPlant);
+      res.status(201).json(newPlant);
+    } catch (error) {
+      console.error("Server error creating plant:", error);
+      res.status(500).json({ message: "Failed to create plant" });
+    }
+  });
+
+  // Update a plant
+  apiRouter.patch("/plants/:id", async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid plant ID" });
+      }
+
+      console.log("Received plant update request for ID:", id, "with data:", req.body);
+      
+      // Convert lastWatered string to Date if needed
+      let data = {...req.body};
+      
+      // Add userId from authenticated user session if needed for validation
+      if (req.isAuthenticated() && req.user && !data.userId) {
+        data.userId = req.user.id;
+        console.log("Adding authenticated userId to plant update data:", req.user.id);
+      } else if (!req.isAuthenticated()) {
+        console.error("User not authenticated for plant update");
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+      
+      // Handle date conversion issue for lastWatered
+      if (data.lastWatered) {
+        try {
+          // Handle different date formats safely
+          if (typeof data.lastWatered === 'string') {
+            data.lastWatered = new Date(data.lastWatered);
+          } else if (data.lastWatered instanceof Date) {
+            // Already a Date object, ensure it's valid
+            if (isNaN(data.lastWatered.getTime())) {
+              throw new Error('Invalid date object');
+            }
+          } else if (data.lastWatered && typeof data.lastWatered === 'object') {
+            // Handle potential serialized date objects
+            data.lastWatered = new Date(data.lastWatered);
+          }
+          
+          console.log("Converted lastWatered to:", data.lastWatered);
+        } catch (e) {
+          console.error("Date conversion error:", e, data.lastWatered);
+          return res.status(400).json({ 
+            message: "Invalid date format for lastWatered", 
+          });
+        }
+      }
+
+      // Validate the update data
+      const updateSchema = insertPlantSchema.partial();
+      const parsedData = updateSchema.safeParse(data);
+      
+      if (!parsedData.success) {
+        console.error("Validation errors:", parsedData.error.format());
+        return res.status(400).json({ 
+          message: "Invalid plant data", 
+          errors: parsedData.error.format()
+        });
+      }
+
+      const updatedPlant = await dbStorage.updatePlant(id, parsedData.data);
+      if (!updatedPlant) {
+        return res.status(404).json({ message: "Plant not found" });
+      }
+
+      console.log("Plant updated successfully:", updatedPlant);
+      res.json(updatedPlant);
+    } catch (error) {
+      console.error("Server error updating plant:", error);
+      res.status(500).json({ message: "Failed to update plant" });
+    }
+  });
+
+  // Delete a plant
+  apiRouter.delete("/plants/:id", async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid plant ID" });
+      }
+
+      const deleted = await dbStorage.deletePlant(id);
+      if (!deleted) {
+        return res.status(404).json({ message: "Plant not found" });
+      }
+
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete plant" });
+    }
+  });
+
+  // Water a plant
+  apiRouter.post("/plants/:id/water", async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid plant ID" });
+      }
+
+      const wateringEntry = await dbStorage.waterPlant(id);
+      const updatedPlant = await dbStorage.getPlant(id);
+      
+      // Send a confirmation notification via Pushover
+      const notificationTitle = "🪴 PlantDaddy: Plant Watered";
+      const notificationMessage = `${updatedPlant?.name} has been watered successfully.`;
+      
+      // We don't need to await this, it can happen in the background
+      sendPushoverNotification(notificationTitle, notificationMessage, 0)
+        .catch((err: Error) => console.error("Failed to send watering confirmation notification:", err));
+
+      res.json({
+        success: true,
+        watering: wateringEntry,
+        plant: updatedPlant
+      });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to water plant" });
+    }
+  });
+
+  // Get watering history for a plant
+  apiRouter.get("/plants/:id/watering-history", async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid plant ID" });
+      }
+
+      const history = await dbStorage.getWateringHistory(id);
+      res.json(history);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch watering history" });
+    }
+  });
+
+  // Get all locations
+  apiRouter.get("/locations", async (req: Request, res: Response) => {
+    try {
+      const locations = await dbStorage.getAllLocations();
+      res.json(locations);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch locations" });
+    }
+  });
+
+  // Create a new location
+  apiRouter.post("/locations", async (req: Request, res: Response) => {
+    try {
+      // Get the current user ID from the session
+      const userId = getCurrentUserId();
+      if (!userId) {
+        return res.status(401).json({ error: "You must be logged in to create a location" });
+      }
+      
+      // Add the userId to the request body
+      const locationData = {
+        ...req.body,
+        userId
+      };
+      
+      const parsedData = insertLocationSchema.safeParse(locationData);
+      
+      if (!parsedData.success) {
+        return res.status(400).json({ 
+          message: "Invalid location data", 
+          errors: parsedData.error.format()
+        });
+      }
+
+      const newLocation = await dbStorage.createLocation(parsedData.data);
+      res.status(201).json(newLocation);
+    } catch (error: any) {
+      const errorMessage = error?.message || "Failed to create location";
+      res.status(400).json({ message: errorMessage });
+    }
+  });
+
+  // Update a location
+  apiRouter.patch("/locations/:id", async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid location ID" });
+      }
+
+      // Validate the update data
+      const updateSchema = insertLocationSchema.partial();
+      const parsedData = updateSchema.safeParse(req.body);
+      
+      if (!parsedData.success) {
+        return res.status(400).json({ 
+          message: "Invalid location data", 
+          errors: parsedData.error.format()
+        });
+      }
+
+      const updatedLocation = await dbStorage.updateLocation(id, parsedData.data);
+      if (!updatedLocation) {
+        return res.status(404).json({ message: "Location not found" });
+      }
+
+      res.json(updatedLocation);
+    } catch (error: any) {
+      const errorMessage = error?.message || "Failed to update location";
+      res.status(400).json({ message: errorMessage });
+    }
+  });
+
+  // Delete a location
+  apiRouter.delete("/locations/:id", async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid location ID" });
+      }
+
+      const deleted = await dbStorage.deleteLocation(id);
+      res.json({ success: true });
+    } catch (error: any) {
+      const errorMessage = error?.message || "Failed to delete location";
+      res.status(400).json({ message: errorMessage });
+    }
+  });
+
+  // Object Storage endpoints for plant images
+
+  // Get upload URL for plant image (Object Storage)
+  apiRouter.post("/plants/:id/upload-url", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid plant ID" });
+      }
+
+      const plant = await dbStorage.getPlant(id);
+      if (!plant) {
+        return res.status(404).json({ message: "Plant not found" });
+      }
+
+      // Get the authenticated user id for user-scoped upload path
+      const userId = getCurrentUserId();
+      if (!userId) {
+        return res.status(401).json({ message: "User not authenticated" });
+      }
+
+      const objectStorageService = new ObjectStorageService();
+      const uploadURL = await objectStorageService.getObjectEntityUploadURL(userId.toString(), id);
+      
+      res.json({ uploadURL });
+    } catch (error: any) {
+      const errorMessage = error?.message || "Failed to get upload URL";
+      res.status(400).json({ message: errorMessage });
+    }
+  });
+
+  // Complete plant image upload (set ACL and update plant record)
+  apiRouter.put("/plants/:id/image", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid plant ID" });
+      }
+
+      if (!req.body.imageURL) {
+        return res.status(400).json({ message: "imageURL is required" });
+      }
+
+      const plant = await dbStorage.getPlant(id);
+      if (!plant) {
+        return res.status(404).json({ message: "Plant not found" });
+      }
+
+      // Get the authenticated user id
+      const userId = getCurrentUserId();
+      if (!userId) {
+        return res.status(401).json({ message: "User not authenticated" });
+      }
+
+      const objectStorageService = new ObjectStorageService();
+      const objectPath = await objectStorageService.trySetObjectEntityAclPolicy(
+        req.body.imageURL,
+        {
+          owner: userId.toString(),
+          visibility: "public", // Plant images are public for sharing
+        },
+        userId.toString() // Verify ownership during completion
+      );
+
+      // Update plant with Object Storage URL
+      const updatedPlant = await dbStorage.updatePlant(id, { imageUrl: objectPath });
+      
+      res.json({ 
+        success: true, 
+        imageUrl: objectPath,
+        plant: updatedPlant
+      });
+    } catch (error: any) {
+      const errorMessage = error?.message || "Failed to complete image upload";
+      res.status(400).json({ message: errorMessage });
+    }
+  });
+
+  // Notification endpoints
+  apiRouter.post("/notifications/test", async (req: Request, res: Response) => {
+    try {
+      const sent = await sendWelcomeNotification();
+      
+      if (sent) {
+        res.json({ success: true, message: "Test notification sent successfully" });
+      } else {
+        res.status(500).json({ success: false, message: "Failed to send test notification" });
+      }
+    } catch (error: any) {
+      const errorMessage = error?.message || "Failed to send test notification";
+      res.status(500).json({ success: false, message: errorMessage });
+    }
+  });
+
+  apiRouter.post("/notifications/check-plants", async (req: Request, res: Response) => {
+    try {
+      const plants = await dbStorage.getAllPlants();
+      const notificationCount = await checkPlantsAndSendNotifications(plants);
+      
+      res.json({ 
+        success: true, 
+        notificationCount,
+        message: `Sent notifications for ${notificationCount} plants that need watering`
+      });
+    } catch (error: any) {
+      const errorMessage = error?.message || "Failed to check plants and send notifications";
+      res.status(500).json({ success: false, message: errorMessage });
+    }
+  });
+
+  // Send notification for a specific plant
+  apiRouter.post("/plants/:id/notify", async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid plant ID" });
+      }
+
+      const plant = await dbStorage.getPlant(id);
+      if (!plant) {
+        return res.status(404).json({ message: "Plant not found" });
+      }
+
+      const sent = await sendPlantWateringNotification(plant);
+      
+      if (sent) {
+        res.json({ success: true, message: `Sent watering notification for ${plant.name}` });
+      } else {
+        res.status(500).json({ success: false, message: "Failed to send notification" });
+      }
+    } catch (error: any) {
+      const errorMessage = error?.message || "Failed to send plant notification";
+      res.status(500).json({ success: false, message: errorMessage });
+    }
+  });
+
+  // Plant Species Catalog routes
+  
+  // Get all plant species
+  apiRouter.get("/plant-species", async (req: Request, res: Response) => {
+    try {
+      const query = req.query.q as string;
+      let species;
+      
+      if (query) {
+        species = await dbStorage.searchPlantSpecies(query);
+      } else {
+        species = await dbStorage.getAllPlantSpecies();
+      }
+      
+      res.json(species);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch plant species" });
+    }
+  });
+  
+  // Get a specific plant species
+  apiRouter.get("/plant-species/:id", async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid plant species ID" });
+      }
+      
+      const species = await dbStorage.getPlantSpecies(id);
+      if (!species) {
+        return res.status(404).json({ message: "Plant species not found" });
+      }
+      
+      res.json(species);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch plant species details" });
+    }
+  });
+  
+  // Create a new plant species
+  apiRouter.post("/plant-species", async (req: Request, res: Response) => {
+    try {
+      const parsedData = insertPlantSpeciesSchema.safeParse(req.body);
+      
+      if (!parsedData.success) {
+        return res.status(400).json({ 
+          message: "Invalid plant species data", 
+          errors: parsedData.error.format() 
+        });
+      }
+      
+      const newSpecies = await dbStorage.createPlantSpecies(parsedData.data);
+      res.status(201).json(newSpecies);
+    } catch (error: any) {
+      const errorMessage = error?.message || "Failed to create plant species";
+      res.status(400).json({ message: errorMessage });
+    }
+  });
+  
+  // Update a plant species
+  apiRouter.patch("/plant-species/:id", async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid plant species ID" });
+      }
+      
+      const updateSchema = insertPlantSpeciesSchema.partial();
+      const parsedData = updateSchema.safeParse(req.body);
+      
+      if (!parsedData.success) {
+        return res.status(400).json({ 
+          message: "Invalid plant species data", 
+          errors: parsedData.error.format() 
+        });
+      }
+      
+      const updatedSpecies = await dbStorage.updatePlantSpecies(id, parsedData.data);
+      if (!updatedSpecies) {
+        return res.status(404).json({ message: "Plant species not found" });
+      }
+      
+      res.json(updatedSpecies);
+    } catch (error: any) {
+      const errorMessage = error?.message || "Failed to update plant species";
+      res.status(400).json({ message: errorMessage });
+    }
+  });
+  
+  // Delete a plant species
+  apiRouter.delete("/plant-species/:id", async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid plant species ID" });
+      }
+      
+      const deleted = await dbStorage.deletePlantSpecies(id);
+      if (!deleted) {
+        return res.status(404).json({ message: "Plant species not found" });
+      }
+      
+      res.json({ success: true });
+    } catch (error: any) {
+      const errorMessage = error?.message || "Failed to delete plant species";
+      res.status(400).json({ message: errorMessage });
+    }
+  });
+
+  // Plant Health Records endpoints
+  
+  // Get health records for a specific plant
+  apiRouter.get("/plants/:id/health-records", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const plantId = parseInt(req.params.id);
+      if (isNaN(plantId)) {
+        return res.status(400).json({ message: "Invalid plant ID" });
+      }
+
+      // Get authenticated user ID
+      const userId = getCurrentUserId();
+      if (!userId) {
+        return res.status(401).json({ message: "User not authenticated" });
+      }
+
+      // Verify plant ownership first
+      const plant = await dbStorage.getPlant(plantId);
+      if (!plant) {
+        return res.status(404).json({ message: "Plant not found" });
+      }
+
+      if (plant.userId !== userId) {
+        return res.status(403).json({ message: "Access denied: Plant does not belong to you" });
+      }
+
+      const healthRecords = await dbStorage.getPlantHealthRecords(plantId);
+      res.json(healthRecords);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch health records" });
+    }
+  });
+
+  // Create a new health record
+  apiRouter.post("/plants/:id/health-records", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const plantId = parseInt(req.params.id);
+      if (isNaN(plantId)) {
+        return res.status(400).json({ message: "Invalid plant ID" });
+      }
+
+      // Get authenticated user ID from session
+      const userId = getCurrentUserId();
+      if (!userId) {
+        return res.status(401).json({ message: "User not authenticated" });
+      }
+
+      // Verify plant ownership first
+      const plant = await dbStorage.getPlant(plantId);
+      if (!plant) {
+        return res.status(404).json({ message: "Plant not found" });
+      }
+
+      if (plant.userId !== userId) {
+        return res.status(403).json({ message: "Access denied: Plant does not belong to you" });
+      }
+
+      // Validate the request data
+      const parsedData = insertPlantHealthRecordSchema.safeParse({
+        ...req.body,
+        plantId,
+        userId
+      });
+
+      if (!parsedData.success) {
+        return res.status(400).json({ 
+          message: "Invalid health record data", 
+          errors: parsedData.error.format()
+        });
+      }
+
+      const healthRecord = await dbStorage.createHealthRecord(parsedData.data);
+      res.status(201).json(healthRecord);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to create health record" });
+    }
+  });
+
+  // Update a health record
+  apiRouter.patch("/health-records/:id", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid health record ID" });
+      }
+
+      // Get authenticated user ID
+      const userId = getCurrentUserId();
+      if (!userId) {
+        return res.status(401).json({ message: "User not authenticated" });
+      }
+
+      // First, load the health record to verify ownership
+      const existingRecord = await dbStorage.getHealthRecord(id);
+      if (!existingRecord) {
+        return res.status(404).json({ message: "Health record not found" });
+      }
+
+      // Verify ownership - return 403 if record belongs to different user
+      if (existingRecord.userId !== userId) {
+        return res.status(403).json({ message: "Access denied: Health record does not belong to you" });
+      }
+
+      // Create safe update schema that excludes plantId and userId to prevent privilege escalation
+      const safeUpdateSchema = insertPlantHealthRecordSchema.omit({ plantId: true, userId: true }).partial();
+      const parsedData = safeUpdateSchema.safeParse(req.body);
+
+      if (!parsedData.success) {
+        return res.status(400).json({ 
+          message: "Invalid health record data", 
+          errors: parsedData.error.format()
+        });
+      }
+
+      // Now update the record (ownership already verified)
+      const updatedHealthRecord = await dbStorage.updateHealthRecord(id, parsedData.data);
+      if (!updatedHealthRecord) {
+        return res.status(500).json({ message: "Failed to update health record" });
+      }
+
+      res.json(updatedHealthRecord);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update health record" });
+    }
+  });
+
+  // Delete a health record
+  apiRouter.delete("/health-records/:id", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid health record ID" });
+      }
+
+      // Get authenticated user ID
+      const userId = getCurrentUserId();
+      if (!userId) {
+        return res.status(401).json({ message: "User not authenticated" });
+      }
+
+      // First, load the health record to verify ownership
+      const existingRecord = await dbStorage.getHealthRecord(id);
+      if (!existingRecord) {
+        return res.status(404).json({ message: "Health record not found" });
+      }
+
+      // Verify ownership - return 403 if record belongs to different user
+      if (existingRecord.userId !== userId) {
+        return res.status(403).json({ message: "Access denied: Health record does not belong to you" });
+      }
+
+      // Now delete the record (ownership already verified)
+      const deleted = await dbStorage.deleteHealthRecord(id);
+      if (!deleted) {
+        return res.status(500).json({ message: "Failed to delete health record" });
+      }
+
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete health record" });
+    }
+  });
+
+  // Care Activities endpoints
+  
+  // Get care activities for a specific plant
+  apiRouter.get("/plants/:id/care-activities", async (req: Request, res: Response) => {
+    try {
+      const plantId = parseInt(req.params.id);
+      if (isNaN(plantId)) {
+        return res.status(400).json({ message: "Invalid plant ID" });
+      }
+
+      const careActivities = await dbStorage.getPlantCareActivities(plantId);
+      res.json(careActivities);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch care activities" });
+    }
+  });
+
+  // Create a new care activity
+  apiRouter.post("/plants/:id/care-activities", async (req: Request, res: Response) => {
+    try {
+      const plantId = parseInt(req.params.id);
+      if (isNaN(plantId)) {
+        return res.status(400).json({ message: "Invalid plant ID" });
+      }
+
+      // Validate the request data
+      const parsedData = insertCareActivitySchema.safeParse({
+        ...req.body,
+        plantId,
+        userId: 0 // Will be set by storage layer
+      });
+
+      if (!parsedData.success) {
+        return res.status(400).json({ 
+          message: "Invalid care activity data", 
+          errors: parsedData.error.format()
+        });
+      }
+
+      const careActivity = await dbStorage.createCareActivity(parsedData.data);
+      res.status(201).json(careActivity);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to create care activity" });
+    }
+  });
+
+  // Update a care activity
+  apiRouter.patch("/care-activities/:id", async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid care activity ID" });
+      }
+
+      const updateSchema = insertCareActivitySchema.partial();
+      const parsedData = updateSchema.safeParse(req.body);
+
+      if (!parsedData.success) {
+        return res.status(400).json({ 
+          message: "Invalid care activity data", 
+          errors: parsedData.error.format()
+        });
+      }
+
+      const updatedActivity = await dbStorage.updateCareActivity(id, parsedData.data);
+      if (!updatedActivity) {
+        return res.status(404).json({ message: "Care activity not found" });
+      }
+
+      res.json(updatedActivity);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update care activity" });
+    }
+  });
+
+  // Delete a care activity
+  apiRouter.delete("/care-activities/:id", async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid care activity ID" });
+      }
+
+      const deleted = await dbStorage.deleteCareActivity(id);
+      if (!deleted) {
+        return res.status(404).json({ message: "Care activity not found" });
+      }
+
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete care activity" });
+    }
+  });
+
+  // Notification Settings endpoints
+  
+  // Get notification settings
+  apiRouter.get("/notification-settings", async (req: Request, res: Response) => {
+    try {
+      const settings = await dbStorage.getNotificationSettings();
+      // If no settings exist yet, return default values
+      if (!settings) {
+        return res.json({
+          id: null,
+          enabled: true,
+          pushoverEnabled: true,
+          pushoverAppToken: process.env.PUSHOVER_APP_TOKEN ? true : false, // Just return boolean indicating if token exists
+          pushoverUserKey: process.env.PUSHOVER_USER_KEY ? true : false, // Just return boolean indicating if key exists
+          emailEnabled: false,
+          emailAddress: null,
+          sendgridApiKey: false, // Just indicate token doesn't exist
+          lastUpdated: null
+        });
+      }
+      
+      // Don't expose actual tokens in the response for security reasons
+      // Just indicate whether they exist or not
+      res.json({
+        id: settings.id,
+        enabled: settings.enabled,
+        pushoverEnabled: settings.pushoverEnabled,
+        pushoverAppToken: !!settings.pushoverAppToken,
+        pushoverUserKey: !!settings.pushoverUserKey,
+        emailEnabled: settings.emailEnabled,
+        emailAddress: settings.emailAddress,
+        sendgridApiKey: !!settings.sendgridApiKey,
+        lastUpdated: settings.lastUpdated
+      });
+    } catch (error: any) {
+      const errorMessage = error?.message || "Failed to fetch notification settings";
+      res.status(500).json({ message: errorMessage });
+    }
+  });
+
+  // Export user data backup as ZIP with images
+  apiRouter.get("/export", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const exportService = new ExportService(dbStorage);
+      const { stream, filename } = await exportService.exportUserBackupArchive();
+      
+      // Set headers for ZIP file download
+      res.set({
+        'Content-Type': 'application/zip',
+        'Content-Disposition': `attachment; filename="${filename}"`,
+        'Access-Control-Expose-Headers': 'Content-Disposition'
+      });
+      
+      // Pipe the ZIP stream to the response
+      stream.pipe(res);
+      
+      // Handle stream errors
+      stream.on('error', (error) => {
+        console.error('Export stream error:', error);
+        if (!res.headersSent) {
+          res.status(500).json({ message: "Failed to export user data" });
+        }
+      });
+      
+    } catch (error: any) {
+      const errorMessage = error?.message || "Failed to export user data";
+      console.error('Export error:', error);
+      res.status(500).json({ message: errorMessage });
+    }
+  });
+
+  // Custom middleware to handle multer errors consistently
+  function handleImportUpload(req: Request, res: Response, next: NextFunction) {
+    importUpload.single('backup')(req, res, (err: any) => {
+      if (err) {
+        console.error('Import upload error:', err);
+        
+        // Handle multer errors consistently with JSON responses
+        if (err instanceof multer.MulterError) {
+          if (err.code === 'LIMIT_FILE_SIZE') {
+            return res.status(400).json({
+              success: false,
+              message: "File too large. Maximum file size is 50MB.",
+              details: err.message
+            });
+          } else if (err.code === 'LIMIT_UNEXPECTED_FILE') {
+            return res.status(400).json({
+              success: false,
+              message: "Unexpected file field. Please use 'backup' as the file field name.",
+              details: err.message
+            });
+          } else {
+            return res.status(400).json({
+              success: false,
+              message: "File upload error. Please check your file and try again.",
+              details: err.message
+            });
+          }
+        } else if (err.message === 'Only ZIP files are allowed for imports') {
+          return res.status(400).json({
+            success: false,
+            message: "Invalid file type. Please upload a ZIP file containing your backup data.",
+            details: err.message
+          });
+        } else {
+          return res.status(500).json({
+            success: false,
+            message: "Upload failed. Please try again or contact support if the problem persists.",
+            details: err.message
+          });
+        }
+      }
+      next();
+    });
+  }
+
+  // Import user data backup from ZIP file
+  apiRouter.post("/import", isAuthenticated, handleImportUpload, async (req: Request, res: Response) => {
+    // Ensure user context is available - verify user authentication
+    const currentUserId = getCurrentUserId();
+    if (!currentUserId) {
+      return res.status(401).json({
+        success: false,
+        message: "User authentication required for import operations."
+      });
+    }
+    
+    try {      
+      if (!req.file) {
+        return res.status(400).json({ 
+          success: false,
+          message: "No backup file provided. Please upload a ZIP file containing your backup data." 
+        });
+      }
+
+      if (!req.file.buffer) {
+        return res.status(400).json({ 
+          success: false,
+          message: "Invalid file upload. Please try again with a valid ZIP file." 
+        });
+      }
+
+      // Validate import mode parameter
+      const mode = req.body.mode || 'merge';
+      if (mode !== 'merge' && mode !== 'replace') {
+        return res.status(400).json({ 
+          success: false,
+          message: "Invalid import mode. Must be 'merge' or 'replace'." 
+        });
+      }
+
+      // Security: Require explicit confirmation for replace mode (destructive operation)
+      if (mode === 'replace') {
+        const confirmation = req.body.confirmation;
+        if (confirmation !== 'REPLACE') {
+          return res.status(400).json({ 
+            success: false,
+            message: "Replace mode requires explicit confirmation. You must confirm by typing 'REPLACE' to proceed with this destructive operation.",
+            confirmationRequired: true
+          });
+        }
+        
+        // Log audit event for destructive operation
+        console.log(`AUDIT: User ${currentUserId} confirmed REPLACE mode import operation at ${new Date().toISOString()}`);
+      }
+
+      // Wrap the import operation to preserve user context throughout async operations
+      const summary = await new Promise((resolve, reject) => {
+        userContextStorage.run({ userId: currentUserId }, async () => {
+          try {
+            const importService = new ImportService(dbStorage);
+            const result = await importService.importFromZipBuffer(req.file!.buffer, mode);
+            resolve(result);
+          } catch (error) {
+            reject(error);
+          }
+        });
+      });
+      
+      res.json({
+        success: true,
+        message: `Import completed successfully in ${mode} mode`,
+        summary
+      });
+
+    } catch (error: any) {
+      const errorMessage = error?.message || "Failed to import backup data";
+      console.error('Import error:', error);
+      
+      // Provide user-friendly error messages with consistent format
+      if (errorMessage.includes('backup.json not found')) {
+        return res.status(400).json({ 
+          success: false,
+          message: "Invalid backup file. The ZIP file must contain a backup.json file.",
+          details: errorMessage
+        });
+      }
+      
+      if (errorMessage.includes('validation')) {
+        return res.status(400).json({ 
+          success: false,
+          message: "Invalid backup data format. Please ensure you're uploading a valid PlantDaddy backup file.",
+          details: errorMessage
+        });
+      }
+      
+      if (errorMessage.includes('ZIP bomb') || errorMessage.includes('too large') || errorMessage.includes('too many entries')) {
+        return res.status(400).json({ 
+          success: false,
+          message: "ZIP file is too large or contains too many files. Please upload a smaller backup file.",
+          details: errorMessage
+        });
+      }
+      
+      if (errorMessage.includes('Authentication required')) {
+        return res.status(401).json({ 
+          success: false,
+          message: "User authentication lost during import. Please log in again and try again.",
+          details: errorMessage
+        });
+      }
+      
+      res.status(500).json({ 
+        success: false,
+        message: "Import failed. Please try again or contact support if the problem persists.",
+        details: errorMessage 
+      });
+    }
+  });
+
+  // Update notification settings
+  apiRouter.post("/notification-settings", async (req: Request, res: Response) => {
+    try {
+      // Use partial schema to validate the update data
+      const updateSchema = insertNotificationSettingsSchema.partial();
+      const parsedData = updateSchema.safeParse(req.body);
+      
+      if (!parsedData.success) {
+        return res.status(400).json({ 
+          message: "Invalid notification settings data", 
+          errors: parsedData.error.format()
+        });
+      }
+
+      const updatedSettings = await dbStorage.updateNotificationSettings(parsedData.data);
+      
+      // Don't expose actual tokens in the response for security reasons
+      res.json({
+        id: updatedSettings.id,
+        enabled: updatedSettings.enabled,
+        pushoverEnabled: updatedSettings.pushoverEnabled,
+        pushoverAppToken: !!updatedSettings.pushoverAppToken,
+        pushoverUserKey: !!updatedSettings.pushoverUserKey,
+        emailEnabled: updatedSettings.emailEnabled,
+        emailAddress: updatedSettings.emailAddress,
+        sendgridApiKey: !!updatedSettings.sendgridApiKey,
+        lastUpdated: updatedSettings.lastUpdated
+      });
+    } catch (error: any) {
+      const errorMessage = error?.message || "Failed to update notification settings";
+      res.status(500).json({ message: errorMessage });
+    }
+  });
+
+  // Test notification settings
+  apiRouter.post("/notification-settings/test", async (req: Request, res: Response) => {
+    try {
+      const results = await sendTestNotification();
+      
+      if (results.pushover || results.email) {
+        // Construct detailed message about which notifications were sent
+        let message = "Test notification ";
+        const successTypes = [];
+        if (results.pushover) successTypes.push("Pushover");
+        if (results.email) successTypes.push("Email");
+        
+        message += `sent successfully via ${successTypes.join(" and ")}.`;
+        
+        res.json({ 
+          success: true, 
+          message,
+          results
+        });
+      } else {
+        res.status(500).json({ 
+          success: false, 
+          message: "Failed to send test notifications. Ensure notification settings are properly configured.",
+          results
+        });
+      }
+    } catch (error: any) {
+      const errorMessage = error?.message || "Failed to send test notification";
+      res.status(500).json({ success: false, message: errorMessage });
+    }
+  });
+  
+  // Object Storage serving endpoints
+  
+  // Serve private objects (plant images) with proper ACL checks
+  app.get("/objects/:objectPath(*)", isAuthenticated, async (req, res) => {
+    const userId = getCurrentUserId();
+    const objectStorageService = new ObjectStorageService();
+    try {
+      const objectFile = await objectStorageService.getObjectEntityFile(req.path);
+      const canAccess = await objectStorageService.canAccessObjectEntity({
+        objectFile,
+        userId: userId?.toString(),
+        requestedPermission: ObjectPermission.READ,
+      });
+      if (!canAccess) {
+        return res.sendStatus(401);
+      }
+      objectStorageService.downloadObject(objectFile, res);
+    } catch (error) {
+      console.error("Error checking object access:", error);
+      if (error instanceof ObjectNotFoundError) {
+        return res.sendStatus(404);
+      }
+      return res.sendStatus(500);
+    }
+  });
+
+  // Serve public objects (fallback for assets)
+  app.get("/public-objects/:filePath(*)", async (req, res) => {
+    const filePath = req.params.filePath;
+    const objectStorageService = new ObjectStorageService();
+    try {
+      const file = await objectStorageService.searchPublicObject(filePath);
+      if (!file) {
+        return res.status(404).json({ error: "File not found" });
+      }
+      objectStorageService.downloadObject(file, res);
+    } catch (error) {
+      console.error("Error searching for public object:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Add API router to app
+  // Apply user context middleware before API routes to make user data available
+  app.use(setUserContext);
+  
+  // Health check endpoint for Railway/deployment monitoring
+  app.get("/api/health", (req: Request, res: Response) => {
+    res.status(200).json({ status: "ok", timestamp: new Date().toISOString() });
+  });
+  
+  // Mount API routes
+  app.use("/api", apiRouter);
+
+  const httpServer = createServer(app);
+  
+  // Send welcome notification on startup
+  sendWelcomeNotification().then(sent => {
+    if (sent) {
+      console.log("PlantDaddy welcome notification sent successfully");
+    } else {
+      console.warn("Failed to send PlantDaddy welcome notification");
+    }
+  });
+  
+  return httpServer;
+}

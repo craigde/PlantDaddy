@@ -1,0 +1,70 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply font-sans antialiased bg-background text-foreground;
+  }
+  
+  /* PlantDaddy custom styles */
+  .text-status-watered {
+    @apply text-emerald-600 dark:text-emerald-400;
+  }
+
+  .text-status-soon {
+    @apply text-amber-500 dark:text-amber-400;
+  }
+
+  .text-status-overdue {
+    @apply text-rose-600 dark:text-rose-400;
+  }
+  
+  .font-heading {
+    @apply tracking-tight;
+  }
+  
+  /* Larger emoji in header */
+  .emoji-xl {
+    font-size: 1.5em;
+    line-height: 0.7em;
+  }
+
+  /* Dark mode styles */
+  .dark {
+    /* Dark mode text and background colors */
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+    
+    /* Card colors */
+    --card: 222.2 84% 9.8%;
+    --card-foreground: 210 40% 98%;
+    
+    /* Popover colors */
+    --popover: 222.2 84% 9.8%;
+    --popover-foreground: 210 40% 98%;
+    
+    /* Primary and secondary colors */
+    --primary: 140 50% 42%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+    
+    /* Muted, accent, and destructive colors */
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    
+    /* Border, input, and ring colors */
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 142.1 76.2% 36.3%;
+  }
+}
