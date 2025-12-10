@@ -3,12 +3,116 @@ import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { startScheduler } from "./scheduler";
 import { setUserContext } from "./user-context";
+import { pool } from "./db";
 
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-// Apply user context middleware after routes are registered
+// Auto-create database tables on startup
+async function initializeDatabase() {
+  log("Checking database tables...");
+  
+  const createTablesSQL = `
+    CREATE TABLE IF NOT EXISTS users (
+      id SERIAL PRIMARY KEY,
+      username TEXT NOT NULL UNIQUE,
+      password TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS session (
+      sid VARCHAR NOT NULL PRIMARY KEY,
+      sess JSON NOT NULL,
+      expire TIMESTAMP(6) NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_session_expire ON session(expire);
+
+    CREATE TABLE IF NOT EXISTS locations (
+      id SERIAL PRIMARY KEY,
+      name TEXT NOT NULL,
+      is_default BOOLEAN DEFAULT false,
+      user_id INTEGER NOT NULL REFERENCES users(id)
+    );
+
+    CREATE TABLE IF NOT EXISTS plants (
+      id SERIAL PRIMARY KEY,
+      name TEXT NOT NULL,
+      species TEXT,
+      location TEXT NOT NULL,
+      watering_frequency INTEGER NOT NULL,
+      last_watered TIMESTAMP NOT NULL,
+      notes TEXT,
+      image_url TEXT,
+      user_id INTEGER NOT NULL REFERENCES users(id)
+    );
+
+    CREATE TABLE IF NOT EXISTS watering_history (
+      id SERIAL PRIMARY KEY,
+      plant_id INTEGER NOT NULL,
+      watered_at TIMESTAMP NOT NULL,
+      user_id INTEGER NOT NULL REFERENCES users(id)
+    );
+
+    CREATE TABLE IF NOT EXISTS plant_species (
+      id SERIAL PRIMARY KEY,
+      name TEXT NOT NULL,
+      scientific_name TEXT NOT NULL,
+      family TEXT,
+      origin TEXT,
+      description TEXT NOT NULL,
+      care_level TEXT NOT NULL,
+      light_requirements TEXT NOT NULL,
+      watering_frequency INTEGER NOT NULL,
+      humidity TEXT,
+      soil_type TEXT,
+      propagation TEXT,
+      toxicity TEXT,
+      common_issues TEXT,
+      image_url TEXT
+    );
+
+    CREATE TABLE IF NOT EXISTS notification_settings (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL UNIQUE REFERENCES users(id),
+      enabled BOOLEAN NOT NULL DEFAULT true,
+      pushover_app_token TEXT,
+      pushover_user_key TEXT,
+      pushover_enabled BOOLEAN NOT NULL DEFAULT true,
+      email_enabled BOOLEAN NOT NULL DEFAULT false,
+      email_address TEXT,
+      sendgrid_api_key TEXT,
+      last_updated TIMESTAMP DEFAULT NOW()
+    );
+
+    CREATE TABLE IF NOT EXISTS plant_health_records (
+      id SERIAL PRIMARY KEY,
+      plant_id INTEGER NOT NULL REFERENCES plants(id),
+      status TEXT NOT NULL,
+      notes TEXT,
+      image_url TEXT,
+      recorded_at TIMESTAMP NOT NULL DEFAULT NOW(),
+      user_id INTEGER NOT NULL REFERENCES users(id)
+    );
+
+    CREATE TABLE IF NOT EXISTS care_activities (
+      id SERIAL PRIMARY KEY,
+      plant_id INTEGER NOT NULL REFERENCES plants(id),
+      activity_type TEXT NOT NULL,
+      notes TEXT,
+      performed_at TIMESTAMP NOT NULL DEFAULT NOW(),
+      user_id INTEGER NOT NULL REFERENCES users(id),
+      original_watering_id INTEGER REFERENCES watering_history(id) ON DELETE SET NULL
+    );
+  `;
+
+  try {
+    await pool.query(createTablesSQL);
+    log("Database tables ready!");
+  } catch (error) {
+    log(`Database initialization error: ${error}`);
+    throw error;
+  }
+}
 
 app.use((req, res, next) => {
   const start = Date.now();
@@ -41,6 +145,9 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  // Initialize database tables before starting
+  await initializeDatabase();
+  
   const server = await registerRoutes(app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
