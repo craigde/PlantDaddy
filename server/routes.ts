@@ -7,18 +7,20 @@ import multer from "multer";
 import path from "path";
 import fs from "fs";
 import { sendPlantWateringNotification, sendWelcomeNotification, checkPlantsAndSendNotifications, sendPushoverNotification, sendTestNotification } from "./notifications";
-import { setupAuth, hashPassword } from "./auth";
+import { setupAuth, hashPassword, jwtAuthMiddleware, comparePasswords } from "./auth";
 import passport from "passport";
 import { setUserContext, getCurrentUserId, userContextStorage } from "./user-context";
+import { generateToken } from "./jwt";
 // Object Storage integration for secure, persistent plant image uploads
 import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
 import { ObjectPermission } from "./objectAcl";
 import { ExportService } from "./export-service";
 import { ImportService } from "./import-service";
 
-// Middleware to check if user is authenticated
+// Middleware to check if user is authenticated (via session or JWT)
 function isAuthenticated(req: Request, res: Response, next: NextFunction) {
-  if (req.isAuthenticated()) {
+  // Check session auth (passport) or JWT auth (req.user set by jwtAuthMiddleware)
+  if (req.isAuthenticated?.() || req.user) {
     return next();
   }
   res.status(401).json({ error: "You must be logged in to access this resource" });
@@ -27,7 +29,10 @@ function isAuthenticated(req: Request, res: Response, next: NextFunction) {
 export async function registerRoutes(app: Express): Promise<Server> {
   // Set up authentication
   setupAuth(app);
-  
+
+  // Add JWT authentication middleware (runs after session auth)
+  app.use(jwtAuthMiddleware);
+
   // Configure multer for file uploads
   const fileStorage = multer.diskStorage({
     destination: function (req, file, cb) {
@@ -189,7 +194,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   apiRouter.get("/user", (req: Request, res: Response) => {
-    if (!req.isAuthenticated()) {
+    // Support both session and JWT auth
+    if (!req.isAuthenticated?.() && !req.user) {
       return res.status(401).json({ error: "Not authenticated" });
     }
     const user = req.user as Express.User;
@@ -197,6 +203,92 @@ export async function registerRoutes(app: Express): Promise<Server> {
       id: user.id,
       username: user.username
     });
+  });
+
+  // JWT Authentication endpoints for mobile apps
+
+  // JWT Login - Returns a token instead of creating a session
+  apiRouter.post("/token-login", async (req: Request, res: Response) => {
+    try {
+      const { username, password } = req.body;
+
+      if (!username || !password) {
+        return res.status(400).json({ error: "Username and password are required" });
+      }
+
+      // Verify user credentials
+      const user = await dbStorage.getUserByUsername(username);
+      if (!user) {
+        return res.status(401).json({ error: "Invalid username or password" });
+      }
+
+      const isValidPassword = await comparePasswords(password, user.password);
+      if (!isValidPassword) {
+        return res.status(401).json({ error: "Invalid username or password" });
+      }
+
+      // Generate JWT token
+      const token = generateToken(user);
+
+      // Return token and user info
+      return res.status(200).json({
+        token,
+        user: {
+          id: user.id,
+          username: user.username,
+        }
+      });
+    } catch (error) {
+      console.error("JWT login error:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // JWT Register - Creates user and returns a token
+  apiRouter.post("/token-register", async (req: Request, res: Response) => {
+    try {
+      const userData = insertUserSchema.parse(req.body);
+
+      // Check if user already exists
+      const existingUser = await dbStorage.getUserByUsername(userData.username);
+      if (existingUser) {
+        return res.status(400).json({ error: "Username already exists" });
+      }
+
+      // Hash password
+      const hashedPassword = await hashPassword(userData.password);
+
+      // Create new user
+      const user = await dbStorage.createUser({
+        ...userData,
+        password: hashedPassword
+      });
+
+      // Generate JWT token
+      const token = generateToken(user);
+
+      // Return token and user info
+      return res.status(201).json({
+        token,
+        user: {
+          id: user.id,
+          username: user.username,
+        }
+      });
+    } catch (error) {
+      console.error("JWT registration error:", error);
+
+      const errorMessage = error instanceof Error ? error.message : "Invalid registration data";
+
+      if (errorMessage.includes("already exists")) {
+        return res.status(409).json({ error: "Username already exists" });
+      }
+
+      return res.status(400).json({
+        error: "Registration failed",
+        details: errorMessage
+      });
+    }
   });
 
   // Get all plants
