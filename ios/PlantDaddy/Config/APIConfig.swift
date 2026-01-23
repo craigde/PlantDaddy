@@ -7,11 +7,11 @@
 
 import Foundation
 
-enum Environment {
+enum AppEnvironment {
     case development
     case production
 
-    static var current: Environment {
+    static var current: AppEnvironment {
         #if DEBUG
         return .development
         #else
@@ -23,7 +23,7 @@ enum Environment {
 struct APIConfig {
     /// Base URL for the API
     static var baseURL: String {
-        switch Environment.current {
+        switch AppEnvironment.current {
         case .development:
             // For local testing - change to your computer's IP if testing on device
             // Example: "http://192.168.1.100:5000/api"
