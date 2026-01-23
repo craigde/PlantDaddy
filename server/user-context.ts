@@ -7,12 +7,15 @@ interface UserContext {
 // Create AsyncLocalStorage instance to store the current user's context
 export const userContextStorage = new AsyncLocalStorage<UserContext>();
 
-// Middleware to set user context from the session
+// Middleware to set user context from the session or JWT
 export function setUserContext(req: any, res: any, next: any) {
   try {
-    // Default to null for unauthenticated users
-    const userId = req.isAuthenticated() ? req.user?.id || null : null;
-    
+    // Support both session-based auth (req.isAuthenticated()) and JWT auth (req.user set by JWT middleware)
+    // Check if authenticated via session, or if req.user is set (from JWT)
+    const userId = req.isAuthenticated?.()
+      ? req.user?.id || null
+      : req.user?.id || null;
+
     // Store user context
     userContextStorage.run({ userId }, () => {
       next();
