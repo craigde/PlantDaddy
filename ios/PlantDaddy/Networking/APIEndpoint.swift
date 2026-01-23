@@ -39,6 +39,10 @@ enum APIEndpoint {
     case careActivities(plantId: Int)
     case careActivity(id: Int)
 
+    // Image Upload
+    case plantUploadURL(id: Int)
+    case plantCompleteImageUpload(id: Int)
+
     var path: String {
         switch self {
         case .login:
@@ -67,6 +71,10 @@ enum APIEndpoint {
             return "/plants/\(plantId)/care-activities"
         case .careActivity(let id):
             return "/care-activities/\(id)"
+        case .plantUploadURL(let id):
+            return "/plants/\(id)/upload-url"
+        case .plantCompleteImageUpload(let id):
+            return "/plants/\(id)/image"
         }
     }
 
