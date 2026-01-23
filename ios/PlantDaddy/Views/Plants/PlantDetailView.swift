@@ -16,7 +16,12 @@ struct PlantDetailView: View {
     @State private var isLoading = false
     @State private var showingDeleteAlert = false
     @State private var showingWaterConfirmation = false
+    @State private var showingImagePicker = false
+    @State private var selectedImage: UIImage?
+    @State private var isUploadingImage = false
     @Environment(\.dismiss) private var dismiss
+
+    private let imageUploadService = ImageUploadService.shared
 
     var body: some View {
         ScrollView {
@@ -79,7 +84,7 @@ struct PlantDetailView: View {
     // MARK: - View Components
 
     private func plantImageSection(_ plant: Plant) -> some View {
-        Group {
+        ZStack(alignment: .bottomTrailing) {
             if let imageUrl = plant.imageUrl {
                 AsyncImage(url: URL(string: imageUrl)) { image in
                     image
@@ -103,11 +108,43 @@ struct PlantDetailView: View {
                     ))
                     .frame(height: 300)
                     .overlay(
-                        Image(systemName: "leaf.fill")
-                            .font(.system(size: 80))
-                            .foregroundColor(.green.opacity(0.4))
+                        VStack {
+                            Image(systemName: "leaf.fill")
+                                .font(.system(size: 80))
+                                .foregroundColor(.green.opacity(0.4))
+                            Text("No Photo")
+                                .foregroundColor(.secondary)
+                        }
                     )
                     .clipShape(RoundedRectangle(cornerRadius: 16))
+            }
+
+            // Add/Change Photo Button
+            Button(action: { showingImagePicker = true }) {
+                HStack {
+                    Image(systemName: plant.imageUrl == nil ? "camera.fill" : "pencil.circle.fill")
+                    Text(plant.imageUrl == nil ? "Add Photo" : "Change")
+                }
+                .font(.headline)
+                .foregroundColor(.white)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
+                .background(Color.green)
+                .cornerRadius(20)
+            }
+            .padding(12)
+            .disabled(isUploadingImage)
+
+            if isUploadingImage {
+                ProgressView()
+                    .padding()
+                    .background(Color.black.opacity(0.5))
+                    .cornerRadius(8)
+            }
+        }
+        .sheet(isPresented: $showingImagePicker) {
+            ImagePickerSheet(selectedImage: $selectedImage) { image in
+                uploadImage(image, for: plant.id)
             }
         }
     }
@@ -254,6 +291,21 @@ struct PlantDetailView: View {
             } catch {
                 print("Error deleting plant: \(error)")
             }
+        }
+    }
+
+    private func uploadImage(_ image: UIImage, for plantId: Int) {
+        isUploadingImage = true
+        Task {
+            do {
+                _ = try await imageUploadService.uploadPlantImage(image, for: plantId)
+                // Reload plant to get updated image URL
+                plant = try await plantService.fetchPlant(id: plantId)
+            } catch {
+                print("Error uploading image: \(error)")
+                // Show error to user
+            }
+            isUploadingImage = false
         }
     }
 }

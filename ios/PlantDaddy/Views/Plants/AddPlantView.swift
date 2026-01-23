@@ -17,14 +17,34 @@ struct AddPlantView: View {
     @State private var wateringFrequency: Int = 7
     @State private var lastWatered: Date = Date()
     @State private var notes: String = ""
+    @State private var selectedImage: UIImage?
+    @State private var uploadedImageUrl: String?
     @State private var isLoading: Bool = false
+    @State private var isUploadingImage: Bool = false
     @State private var errorMessage: String?
 
     private let wateringFrequencies = [1, 2, 3, 5, 7, 10, 14, 21, 30]
+    private let imageUploadService = ImageUploadService.shared
 
     var body: some View {
         NavigationView {
             Form {
+                Section("Photo") {
+                    ImagePicker(selectedImage: $selectedImage) { image in
+                        selectedImage = image
+                    }
+                    .listRowInsets(EdgeInsets())
+                    .listRowBackground(Color.clear)
+
+                    if isUploadingImage {
+                        HStack {
+                            ProgressView()
+                            Text("Uploading...")
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                }
+
                 Section("Plant Information") {
                     TextField("Plant Name", text: $name)
 
@@ -120,7 +140,8 @@ struct AddPlantView: View {
 
         Task {
             do {
-                _ = try await plantService.createPlant(
+                // Create plant first
+                let plant = try await plantService.createPlant(
                     name: name.trimmingCharacters(in: .whitespaces),
                     species: species.isEmpty ? nil : species.trimmingCharacters(in: .whitespaces),
                     location: selectedLocation,
@@ -129,6 +150,19 @@ struct AddPlantView: View {
                     notes: notes.isEmpty ? nil : notes.trimmingCharacters(in: .whitespaces),
                     imageUrl: nil
                 )
+
+                // Upload image if one was selected
+                if let image = selectedImage {
+                    isUploadingImage = true
+                    do {
+                        _ = try await imageUploadService.uploadPlantImage(image, for: plant.id)
+                    } catch {
+                        // Image upload failed, but plant was created
+                        print("Failed to upload image: \(error)")
+                        // Don't show error to user, plant is still created
+                    }
+                    isUploadingImage = false
+                }
 
                 dismiss()
             } catch {
