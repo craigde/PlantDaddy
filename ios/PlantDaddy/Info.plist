@@ -13,24 +13,10 @@
 	<!-- Network Security Settings -->
 	<key>NSAppTransportSecurity</key>
 	<dict>
-		<!-- Allow secure connections by default -->
+		<!-- DEVELOPMENT ONLY: Allow connections through Zscaler proxy -->
+		<!-- For production, install Zscaler certificate in iOS or remove this -->
 		<key>NSAllowsArbitraryLoads</key>
-		<false/>
-
-		<!-- Exception domains -->
-		<key>NSExceptionDomains</key>
-		<dict>
-			<!-- Railway Production -->
-			<key>up.railway.app</key>
-			<dict>
-				<key>NSIncludesSubdomains</key>
-				<true/>
-				<key>NSExceptionAllowsInsecureHTTPLoads</key>
-				<false/>
-				<key>NSExceptionRequiresForwardSecrecy</key>
-				<false/>
-			</dict>
-		</dict>
+		<true/>
 	</dict>
 </dict>
 </plist>
