@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Camera Permission -->
+	<key>NSCameraUsageDescription</key>
+	<string>PlantDaddy needs camera access to take photos of your plants</string>
+
+	<!-- Photo Library Permission -->
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>PlantDaddy needs photo library access to choose photos of your plants</string>
+
+	<!-- Network Security Settings -->
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<!-- Allow secure connections by default -->
+		<key>NSAllowsArbitraryLoads</key>
+		<false/>
+
+		<!-- Exception domains -->
+		<key>NSExceptionDomains</key>
+		<dict>
+			<!-- Railway Production -->
+			<key>up.railway.app</key>
+			<dict>
+				<key>NSIncludesSubdomains</key>
+				<true/>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<false/>
+				<key>NSExceptionRequiresForwardSecrecy</key>
+				<false/>
+			</dict>
+		</dict>
+	</dict>
+</dict>
+</plist>
