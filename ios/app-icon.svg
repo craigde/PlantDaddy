@@ -1,0 +1,59 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="1024" height="1024" fill="#2D5016" rx="180"/>
+
+  <!-- Pot -->
+  <path d="M 312 720 L 712 720 L 662 900 C 662 920 645 940 612 940 L 412 940 C 379 940 362 920 362 900 Z"
+        fill="#C85A3E" stroke="#8B4513" stroke-width="8"/>
+
+  <!-- Pot rim -->
+  <rect x="292" y="700" width="440" height="30" rx="10" fill="#D4765F"/>
+
+  <!-- Soil -->
+  <ellipse cx="512" cy="710" rx="220" ry="25" fill="#5D4037"/>
+
+  <!-- Main stem -->
+  <path d="M 512 710 Q 512 650 512 500 Q 512 450 512 400"
+        stroke="#4CAF50" stroke-width="24" fill="none" stroke-linecap="round"/>
+
+  <!-- Left leaf 1 -->
+  <path d="M 512 550 Q 400 500 350 520 Q 400 540 512 570"
+        fill="#66BB6A" stroke="#4CAF50" stroke-width="4"/>
+
+  <!-- Right leaf 1 -->
+  <path d="M 512 550 Q 624 500 674 520 Q 624 540 512 570"
+        fill="#66BB6A" stroke="#4CAF50" stroke-width="4"/>
+
+  <!-- Left leaf 2 -->
+  <path d="M 512 480 Q 420 450 380 480 Q 420 500 512 510"
+        fill="#81C784" stroke="#4CAF50" stroke-width="4"/>
+
+  <!-- Right leaf 2 -->
+  <path d="M 512 480 Q 604 450 644 480 Q 604 500 512 510"
+        fill="#81C784" stroke="#4CAF50" stroke-width="4"/>
+
+  <!-- Left leaf 3 -->
+  <path d="M 512 420 Q 440 400 410 430 Q 440 445 512 450"
+        fill="#A5D6A7" stroke="#4CAF50" stroke-width="4"/>
+
+  <!-- Right leaf 3 -->
+  <path d="M 512 420 Q 584 400 614 430 Q 584 445 512 450"
+        fill="#A5D6A7" stroke="#4CAF50" stroke-width="4"/>
+
+  <!-- Top leaves cluster -->
+  <circle cx="460" cy="380" r="45" fill="#81C784"/>
+  <circle cx="512" cy="350" r="50" fill="#66BB6A"/>
+  <circle cx="564" cy="380" r="45" fill="#81C784"/>
+
+  <!-- Highlights on leaves -->
+  <circle cx="470" cy="370" r="15" fill="#A5D6A7" opacity="0.6"/>
+  <circle cx="520" cy="345" r="18" fill="#A5D6A7" opacity="0.6"/>
+  <circle cx="570" cy="375" r="15" fill="#A5D6A7" opacity="0.6"/>
+
+  <!-- Water droplet -->
+  <path d="M 600 280 Q 600 250 620 230 Q 640 250 640 280 Q 640 310 620 320 Q 600 310 600 280 Z"
+        fill="#4FC3F7" stroke="#0288D1" stroke-width="3" opacity="0.9"/>
+
+  <!-- Droplet highlight -->
+  <ellipse cx="615" cy="270" rx="8" ry="12" fill="#B3E5FC" opacity="0.7"/>
+</svg>
