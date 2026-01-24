@@ -25,13 +25,11 @@ struct APIConfig {
     static var baseURL: String {
         switch AppEnvironment.current {
         case .development:
-            // For local testing - change to your computer's IP if testing on device
-            // Example: "http://192.168.1.100:5000/api"
-            return "http://localhost:5000/api"
+            // Railway production URL (for testing during development)
+            return "https://plantdaddy-production.up.railway.app/api"
         case .production:
-            // Your Railway deployment URL
-            // TODO: Replace with your actual Railway URL
-            return "https://your-app.up.railway.app/api"
+            // Railway production URL
+            return "https://plantdaddy-production.up.railway.app/api"
         }
     }
 
