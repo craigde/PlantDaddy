@@ -30,7 +30,7 @@ struct PlantListView: View {
     }
 
     var body: some View {
-        NavigationView {
+        NavigationStack {
             ZStack {
                 if plantService.isLoading && plantService.plants.isEmpty {
                     ProgressView("Loading plants...")
@@ -41,6 +41,7 @@ struct PlantListView: View {
                 }
             }
             .navigationTitle("My Plants")
+            .navigationBarTitleDisplayMode(.large)
             .searchable(text: $searchText, prompt: "Search plants")
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
