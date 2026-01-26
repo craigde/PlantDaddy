@@ -22,7 +22,6 @@ struct MainTabView: View {
                     Label("Settings", systemImage: "gearshape.fill")
                 }
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
 
