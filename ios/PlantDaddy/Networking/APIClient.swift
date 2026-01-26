@@ -7,25 +7,34 @@
 
 import Foundation
 
-class APIClient {
+class APIClient: NSObject {
     static let shared = APIClient()
 
     private let session: URLSession
     private let decoder: JSONDecoder
     private let encoder: JSONEncoder
 
-    private init() {
-        let config = URLSessionConfiguration.default
-        config.timeoutIntervalForRequest = APIConfig.timeoutInterval
-        self.session = URLSession(configuration: config)
-
-        // Configure JSON decoder for date handling
+    private override init() {
         self.decoder = JSONDecoder()
         self.decoder.dateDecodingStrategy = .iso8601
 
-        // Configure JSON encoder for date handling
         self.encoder = JSONEncoder()
         self.encoder.dateEncodingStrategy = .iso8601
+
+        // Create URLSession with custom delegate to handle Zscaler certificate
+        let config = URLSessionConfiguration.default
+        config.timeoutIntervalForRequest = APIConfig.timeoutInterval
+
+        super.init()
+
+        // In DEBUG mode, use custom delegate to bypass certificate validation (for Zscaler)
+        // In RELEASE mode, use default certificate validation
+        #if DEBUG
+        self.session = URLSession(configuration: config, delegate: self, delegateQueue: nil)
+        print("⚠️ DEBUG MODE: Certificate validation disabled for development (Zscaler compatibility)")
+        #else
+        self.session = URLSession(configuration: config)
+        #endif
     }
 
     // MARK: - Generic Request Methods
@@ -114,6 +123,29 @@ class APIClient {
         )
     }
 }
+
+// MARK: - URLSessionDelegate for Certificate Handling
+
+#if DEBUG
+extension APIClient: URLSessionDelegate {
+    func urlSession(
+        _ session: URLSession,
+        didReceive challenge: URLAuthenticationChallenge,
+        completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void
+    ) {
+        // In DEBUG mode, accept all certificates (for Zscaler corporate proxy)
+        // WARNING: This should NEVER be enabled in production!
+        if challenge.protectionSpace.authenticationMethod == NSURLAuthenticationMethodServerTrust {
+            if let serverTrust = challenge.protectionSpace.serverTrust {
+                let credential = URLCredential(trust: serverTrust)
+                completionHandler(.useCredential, credential)
+                return
+            }
+        }
+        completionHandler(.performDefaultHandling, nil)
+    }
+}
+#endif
 
 // MARK: - Convenience Extensions for Date Formatting
 
