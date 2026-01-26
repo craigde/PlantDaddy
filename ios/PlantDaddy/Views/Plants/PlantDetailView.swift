@@ -311,7 +311,7 @@ struct PlantDetailView: View {
 }
 
 #Preview {
-    NavigationView {
+    NavigationStack {
         PlantDetailView(plantId: 1)
     }
 }

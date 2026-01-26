@@ -30,7 +30,7 @@ struct SettingsView: View {
     @StateObject private var authService = AuthService.shared
 
     var body: some View {
-        NavigationView {
+        NavigationStack {
             List {
                 Section("Account") {
                     if let user = authService.currentUser {
@@ -58,6 +58,7 @@ struct SettingsView: View {
                 }
             }
             .navigationTitle("Settings")
+            .navigationBarTitleDisplayMode(.large)
         }
     }
 }
