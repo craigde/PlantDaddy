@@ -27,7 +27,7 @@ struct AddPlantView: View {
     private let imageUploadService = ImageUploadService.shared
 
     var body: some View {
-        NavigationView {
+        NavigationStack {
             Form {
                 Section("Photo") {
                     ImagePicker(selectedImage: $selectedImage) { image in

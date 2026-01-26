@@ -120,7 +120,7 @@ struct ImagePickerSheet: View {
     let onImageSelected: (UIImage) -> Void
 
     var body: some View {
-        NavigationView {
+        NavigationStack {
             List {
                 Button(action: { showingCamera = true }) {
                     Label("Take Photo", systemImage: "camera.fill")
