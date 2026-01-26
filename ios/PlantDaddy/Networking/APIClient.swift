@@ -135,14 +135,24 @@ extension APIClient: URLSessionDelegate {
     ) {
         // In DEBUG mode, accept all certificates (for Zscaler corporate proxy)
         // WARNING: This should NEVER be enabled in production!
-        if challenge.protectionSpace.authenticationMethod == NSURLAuthenticationMethodServerTrust {
-            if let serverTrust = challenge.protectionSpace.serverTrust {
-                let credential = URLCredential(trust: serverTrust)
-                completionHandler(.useCredential, credential)
-                return
-            }
+        guard challenge.protectionSpace.authenticationMethod == NSURLAuthenticationMethodServerTrust,
+              let serverTrust = challenge.protectionSpace.serverTrust else {
+            completionHandler(.performDefaultHandling, nil)
+            return
         }
-        completionHandler(.performDefaultHandling, nil)
+
+        // Force the trust evaluation to succeed
+        var error: CFError?
+        let result = SecTrustEvaluateWithError(serverTrust, &error)
+
+        if !result {
+            print("⚠️ Certificate validation failed (expected with Zscaler): \(error?.localizedDescription ?? "unknown error")")
+            print("⚠️ Forcing trust acceptance for development")
+        }
+
+        // Accept the credential regardless of validation result
+        let credential = URLCredential(trust: serverTrust)
+        completionHandler(.useCredential, credential)
     }
 }
 #endif
