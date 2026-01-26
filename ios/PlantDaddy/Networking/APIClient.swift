@@ -10,7 +10,20 @@ import Foundation
 class APIClient: NSObject {
     static let shared = APIClient()
 
-    private let session: URLSession
+    private lazy var session: URLSession = {
+        let config = URLSessionConfiguration.default
+        config.timeoutIntervalForRequest = APIConfig.timeoutInterval
+
+        // In DEBUG mode, use custom delegate to bypass certificate validation (for Zscaler)
+        // In RELEASE mode, use default certificate validation
+        #if DEBUG
+        print("⚠️ DEBUG MODE: Certificate validation disabled for development (Zscaler compatibility)")
+        return URLSession(configuration: config, delegate: self, delegateQueue: nil)
+        #else
+        return URLSession(configuration: config)
+        #endif
+    }()
+
     private let decoder: JSONDecoder
     private let encoder: JSONEncoder
 
@@ -21,20 +34,7 @@ class APIClient: NSObject {
         self.encoder = JSONEncoder()
         self.encoder.dateEncodingStrategy = .iso8601
 
-        // Create URLSession with custom delegate to handle Zscaler certificate
-        let config = URLSessionConfiguration.default
-        config.timeoutIntervalForRequest = APIConfig.timeoutInterval
-
         super.init()
-
-        // In DEBUG mode, use custom delegate to bypass certificate validation (for Zscaler)
-        // In RELEASE mode, use default certificate validation
-        #if DEBUG
-        self.session = URLSession(configuration: config, delegate: self, delegateQueue: nil)
-        print("⚠️ DEBUG MODE: Certificate validation disabled for development (Zscaler compatibility)")
-        #else
-        self.session = URLSession(configuration: config)
-        #endif
     }
 
     // MARK: - Generic Request Methods
