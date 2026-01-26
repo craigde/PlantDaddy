@@ -16,6 +16,15 @@
 	<key>CFBundleVersion</key>
 	<string>1</string>
 
+	<!-- UI Configuration -->
+	<key>UILaunchScreen</key>
+	<dict/>
+	<key>UIApplicationSceneManifest</key>
+	<dict>
+		<key>UIApplicationSupportsMultipleScenes</key>
+		<false/>
+	</dict>
+
 	<!-- Camera Permission -->
 	<key>NSCameraUsageDescription</key>
 	<string>PlantDaddy needs camera access to take photos of your plants</string>
