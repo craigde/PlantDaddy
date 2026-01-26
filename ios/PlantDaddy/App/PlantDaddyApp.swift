@@ -30,6 +30,7 @@ struct ContentView: View {
                 LoginView()
             }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .animation(.easeInOut, value: authService.isAuthenticated)
     }
 }
