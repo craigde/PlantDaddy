@@ -83,6 +83,9 @@ struct LoginView: View {
 
             Spacer()
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color(UIColor.systemBackground))
+        .ignoresSafeArea(.all, edges: .all)
         .sheet(isPresented: $showingRegister) {
             RegisterView()
         }
