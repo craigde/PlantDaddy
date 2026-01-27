@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="200px" height="200px" viewBox="0 0 200 200" version="1.1" xmlns="http://www.w3.org/2000/svg">
+  <g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+    <!-- Pot -->
+    <path d="M70,170 L65,190 L135,190 L130,170 Z" fill="#B26E63" />
+    
+    <!-- Main stems -->
+    <path d="M85,170 C85,160 80,135 90,110 C100,85 110,75 120,55" stroke="#5D8250" stroke-width="3" stroke-linecap="round" />
+    <path d="M100,170 C100,160 105,140 115,120 C125,100 130,90 135,70" stroke="#5D8250" stroke-width="3" stroke-linecap="round" />
+    <path d="M115,170 C115,160 110,135 100,110 C90,85 80,75 70,55" stroke="#5D8250" stroke-width="3" stroke-linecap="round" />
+    
+    <!-- Leaflets on first stem -->
+    <circle cx="90" cy="110" r="3" fill="#3D6E36" />
+    <path d="M90,110 L75,105" stroke="#3D6E36" stroke-width="1" />
+    <path d="M75,105 C65,102 60,95 65,90 C70,85 85,87 85,95 C85,103 75,105 75,105 Z" fill="#4A7E43" />
+    
+    <circle cx="95" cy="100" r="3" fill="#3D6E36" />
+    <path d="M95,100 L85,90" stroke="#3D6E36" stroke-width="1" />
+    <path d="M85,90 C75,85 72,75 78,70 C84,65 95,70 95,80 C95,90 85,90 85,90 Z" fill="#4A7E43" />
+    
+    <circle cx="100" cy="90" r="3" fill="#3D6E36" />
+    <path d="M100,90 L110,80" stroke="#3D6E36" stroke-width="1" />
+    <path d="M110,80 C120,75 125,65 120,60 C115,55 100,60 100,70 C100,80 110,80 110,80 Z" fill="#4A7E43" />
+    
+    <circle cx="110" cy="75" r="3" fill="#3D6E36" />
+    <path d="M110,75 L125,70" stroke="#3D6E36" stroke-width="1" />
+    <path d="M125,70 C135,67 140,60 135,55 C130,50 115,55 115,65 C115,75 125,70 125,70 Z" fill="#4A7E43" />
+    
+    <circle cx="120" cy="55" r="3" fill="#3D6E36" />
+    <path d="M120,55 L135,50" stroke="#3D6E36" stroke-width="1" />
+    <path d="M135,50 C145,47 150,40 145,35 C140,30 125,35 125,45 C125,55 135,50 135,50 Z" fill="#4A7E43" />
+    
+    <!-- Leaflets on second stem -->
+    <circle cx="115" cy="120" r="3" fill="#3D6E36" />
+    <path d="M115,120 L130,115" stroke="#3D6E36" stroke-width="1" />
+    <path d="M130,115 C140,112 145,105 140,100 C135,95 120,100 120,110 C120,120 130,115 130,115 Z" fill="#4A7E43" />
+    
+    <circle cx="120" cy="110" r="3" fill="#3D6E36" />
+    <path d="M120,110 L135,100" stroke="#3D6E36" stroke-width="1" />
+    <path d="M135,100 C145,95 150,85 145,80 C140,75 125,80 125,90 C125,100 135,100 135,100 Z" fill="#4A7E43" />
+    
+    <circle cx="125" cy="95" r="3" fill="#3D6E36" />
+    <path d="M125,95 L115,85" stroke="#3D6E36" stroke-width="1" />
+    <path d="M115,85 C105,80 100,70 105,65 C110,60 125,65 125,75 C125,85 115,85 115,85 Z" fill="#4A7E43" />
+    
+    <circle cx="130" cy="80" r="3" fill="#3D6E36" />
+    <path d="M130,80 L145,75" stroke="#3D6E36" stroke-width="1" />
+    <path d="M145,75 C155,72 160,65 155,60 C150,55 135,60 135,70 C135,80 145,75 145,75 Z" fill="#4A7E43" />
+    
+    <circle cx="135" cy="70" r="3" fill="#3D6E36" />
+    <path d="M135,70 L150,65" stroke="#3D6E36" stroke-width="1" />
+    <path d="M150,65 C160,62 165,55 160,50 C155,45 140,50 140,60 C140,70 150,65 150,65 Z" fill="#4A7E43" />
+    
+    <!-- Leaflets on third stem -->
+    <circle cx="100" cy="110" r="3" fill="#3D6E36" />
+    <path d="M100,110 L85,105" stroke="#3D6E36" stroke-width="1" />
+    <path d="M85,105 C75,102 70,95 75,90 C80,85 95,87 95,95 C95,103 85,105 85,105 Z" fill="#4A7E43" />
+    
+    <circle cx="95" cy="100" r="3" fill="#3D6E36" />
+    <path d="M95,100 L80,90" stroke="#3D6E36" stroke-width="1" />
+    <path d="M80,90 C70,85 65,75 70,70 C75,65 90,70 90,80 C90,90 80,90 80,90 Z" fill="#4A7E43" />
+    
+    <circle cx="90" cy="90" r="3" fill="#3D6E36" />
+    <path d="M90,90 L75,80" stroke="#3D6E36" stroke-width="1" />
+    <path d="M75,80 C65,75 60,65 65,60 C70,55 85,60 85,70 C85,80 75,80 75,80 Z" fill="#4A7E43" />
+    
+    <circle cx="80" cy="75" r="3" fill="#3D6E36" />
+    <path d="M80,75 L65,70" stroke="#3D6E36" stroke-width="1" />
+    <path d="M65,70 C55,67 50,60 55,55 C60,50 75,52 75,60 C75,68 65,70 65,70 Z" fill="#4A7E43" />
+    
+    <circle cx="70" cy="55" r="3" fill="#3D6E36" />
+    <path d="M70,55 L55,50" stroke="#3D6E36" stroke-width="1" />
+    <path d="M55,50 C45,47 40,40 45,35 C50,30 65,32 65,40 C65,48 55,50 55,50 Z" fill="#4A7E43" />
+  </g>
+</svg>

@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="200px" height="200px" viewBox="0 0 200 200" version="1.1" xmlns="http://www.w3.org/2000/svg">
+  <g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+    <!-- Pot -->
+    <path d="M70,170 L65,190 L135,190 L130,170 Z" fill="#B26E63" />
+    
+    <!-- Central stem -->
+    <path d="M100,170 L100,85" stroke="#8B4513" stroke-width="3" stroke-linecap="round" />
+    
+    <!-- Distinctive coin-shaped leaves on stems (Chinese Money Plant) -->
+    <!-- Leaf 1 -->
+    <path d="M100,90 L80,65" stroke="#8B4513" stroke-width="1.5" stroke-linecap="round" />
+    <circle cx="80" cy="65" r="15" fill="#6AAA64" />
+    
+    <!-- Leaf 2 -->
+    <path d="M100,95 L130,75" stroke="#8B4513" stroke-width="1.5" stroke-linecap="round" />
+    <circle cx="130" cy="75" r="15" fill="#7FBF7B" />
+    
+    <!-- Leaf 3 -->
+    <path d="M100,105 L65,100" stroke="#8B4513" stroke-width="1.5" stroke-linecap="round" />
+    <circle cx="65" cy="100" r="15" fill="#8BC884" />
+    
+    <!-- Leaf 4 -->
+    <path d="M100,115 L135,115" stroke="#8B4513" stroke-width="1.5" stroke-linecap="round" />
+    <circle cx="135" cy="115" r="15" fill="#6AAA64" />
+    
+    <!-- Leaf 5 -->
+    <path d="M100,125 L75,135" stroke="#8B4513" stroke-width="1.5" stroke-linecap="round" />
+    <circle cx="75" cy="135" r="15" fill="#7FBF7B" />
+    
+    <!-- Leaf 6 -->
+    <path d="M100,110 L110,50" stroke="#8B4513" stroke-width="1.5" stroke-linecap="round" />
+    <circle cx="110" cy="50" r="15" fill="#8BC884" />
+    
+    <!-- Leaf 7 -->
+    <path d="M100,100 L40,90" stroke="#8B4513" stroke-width="1.5" stroke-linecap="round" />
+    <circle cx="40" cy="90" r="15" fill="#6AAA64" />
+    
+    <!-- Leaf 8 -->
+    <path d="M100,130 L120,155" stroke="#8B4513" stroke-width="1.5" stroke-linecap="round" />
+    <circle cx="120" cy="155" r="12" fill="#7FBF7B" />
+    
+    <!-- Small baby plants/pups -->
+    <path d="M70,170 C70,168 75,165 75,162" stroke="#8B4513" stroke-width="1" stroke-linecap="round" />
+    <circle cx="75" cy="162" r="5" fill="#8BC884" />
+    
+    <path d="M130,170 C130,168 125,165 125,160" stroke="#8B4513" stroke-width="1" stroke-linecap="round" />
+    <circle cx="125" cy="160" r="6" fill="#6AAA64" />
+  </g>
+</svg>
