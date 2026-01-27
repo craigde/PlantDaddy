@@ -323,7 +323,7 @@ export class MemStorage implements IStorage {
         propagation: "Division or leaf cuttings",
         toxicity: "toxic to pets",
         commonIssues: "Overwatering leading to root rot. Brown spots may indicate too much direct sunlight.",
-        imageUrl: "/uploads/snake-plant.svg"
+        imageUrl: "/uploads/snake-plant.png"
       },
       {
         name: "Jade Plant",
@@ -339,7 +339,7 @@ export class MemStorage implements IStorage {
         propagation: "Leaf or stem cuttings",
         toxicity: "toxic to pets",
         commonIssues: "Shriveled leaves from underwatering; root rot from overwatering; dropping leaves from cold.",
-        imageUrl: "/uploads/jade-plant.svg"
+        imageUrl: "/uploads/jade-plant.png"
       },
       {
         name: "Pothos",
@@ -355,7 +355,7 @@ export class MemStorage implements IStorage {
         propagation: "Stem cuttings in water or soil",
         toxicity: "toxic to pets",
         commonIssues: "Yellowing leaves from overwatering; brown leaf tips from low humidity or fluoride in water.",
-        imageUrl: "/uploads/pothos.svg"
+        imageUrl: "/uploads/pothos.png"
       },
       {
         name: "Peace Lily",
@@ -371,7 +371,7 @@ export class MemStorage implements IStorage {
         propagation: "Division during repotting",
         toxicity: "toxic to pets and humans",
         commonIssues: "Drooping indicates need for water; brown leaf tips from dry air or chemicals in water.",
-        imageUrl: "/uploads/peace-lily.svg"
+        imageUrl: "/uploads/peace-lily.png"
       },
       {
         name: "ZZ Plant",
@@ -387,7 +387,7 @@ export class MemStorage implements IStorage {
         propagation: "Leaf cuttings or division",
         toxicity: "toxic to pets and humans",
         commonIssues: "Yellowing leaves from overwatering; can go months without water.",
-        imageUrl: "/uploads/zz-plant.svg"
+        imageUrl: "/uploads/zz-plant.png"
       },
       {
         name: "Spider Plant",
@@ -403,7 +403,7 @@ export class MemStorage implements IStorage {
         propagation: "Plantlets/offsets",
         toxicity: "non-toxic",
         commonIssues: "Brown leaf tips from fluoride in water; avoid overwatering.",
-        imageUrl: "/uploads/spider-plant.svg"
+        imageUrl: "/uploads/spider-plant.png"
       },
       {
         name: "Fiddle Leaf Fig",
@@ -419,7 +419,7 @@ export class MemStorage implements IStorage {
         propagation: "Stem cuttings or air layering",
         toxicity: "toxic to pets",
         commonIssues: "Brown spots from overwatering; leaf drop from inconsistent care or drafts.",
-        imageUrl: "/uploads/fiddle-leaf-fig.svg"
+        imageUrl: "/uploads/fiddle-leaf-fig.png"
       },
       {
         name: "Monstera Deliciosa",
@@ -435,7 +435,7 @@ export class MemStorage implements IStorage {
         propagation: "Stem cuttings with nodes",
         toxicity: "toxic to pets",
         commonIssues: "Yellowing leaves from overwatering; lack of fenestrations from insufficient light.",
-        imageUrl: "/uploads/monstera.svg"
+        imageUrl: "/uploads/monstera.png"
       },
       {
         name: "Rubber Plant",
@@ -451,7 +451,7 @@ export class MemStorage implements IStorage {
         propagation: "Stem cuttings or air layering",
         toxicity: "toxic to pets",
         commonIssues: "Leaf drop from overwatering or cold drafts; dusty leaves reduce growth.",
-        imageUrl: "/uploads/rubber-plant-new.svg"
+        imageUrl: "/uploads/rubber-plant-new.png"
       },
       {
         name: "Aloe Vera",
@@ -467,7 +467,7 @@ export class MemStorage implements IStorage {
         propagation: "Offsets/pups",
         toxicity: "toxic to pets",
         commonIssues: "Thin, curling leaves indicate underwatering; soft, mushy leaves indicate overwatering.",
-        imageUrl: "/uploads/aloe-vera.svg"
+        imageUrl: "/uploads/aloe-vera.png"
       },
       {
         name: "Boston Fern",
@@ -483,7 +483,7 @@ export class MemStorage implements IStorage {
         propagation: "Division or spores",
         toxicity: "non-toxic",
         commonIssues: "Brown fronds from low humidity; yellowing from overwatering.",
-        imageUrl: "/uploads/boston-fern.svg"
+        imageUrl: "/uploads/boston-fern.png"
       },
       {
         name: "Chinese Money Plant",
@@ -499,7 +499,7 @@ export class MemStorage implements IStorage {
         propagation: "Offsets/pups",
         toxicity: "non-toxic",
         commonIssues: "Curling leaves from too much light; leggy growth from insufficient light.",
-        imageUrl: "/uploads/chinese-money-plant-new.svg"
+        imageUrl: "/uploads/chinese-money-plant-new.png"
       },
       {
         name: "Calathea",
@@ -515,7 +515,7 @@ export class MemStorage implements IStorage {
         propagation: "Division during repotting",
         toxicity: "non-toxic",
         commonIssues: "Crispy edges from low humidity; brown spots from tap water minerals; curling from underwatering.",
-        imageUrl: "/uploads/calathea-new.svg"
+        imageUrl: "/uploads/calathea-new.png"
       },
       {
         name: "String of Pearls",
@@ -531,7 +531,7 @@ export class MemStorage implements IStorage {
         propagation: "Stem cuttings",
         toxicity: "toxic to pets and humans",
         commonIssues: "Shriveled pearls indicate underwatering; mushy stems indicate overwatering; stretching indicates insufficient light.",
-        imageUrl: "/uploads/string-of-pearls.svg"
+        imageUrl: "/uploads/string-of-pearls.png"
       }
     ];
     

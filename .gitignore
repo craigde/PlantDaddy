@@ -13,7 +13,7 @@ vite.config.ts.*
 # Uploads (will use cloud storage in production)
 uploads/*
 !uploads/.gitkeep
-!uploads/*.svg
+!uploads/*.png
 
 # IDE
 .idea
