@@ -611,10 +611,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Object Storage endpoints for plant images
-
-  // Get upload URL for plant image (Object Storage)
-  apiRouter.post("/plants/:id/upload-url", isAuthenticated, async (req: Request, res: Response) => {
+  // Direct image upload for plant photos
+  apiRouter.post("/plants/:id/image", isAuthenticated, upload.single('image'), async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id);
       if (isNaN(id)) {
@@ -626,65 +624,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Plant not found" });
       }
 
-      // Get the authenticated user id for user-scoped upload path
-      const userId = getCurrentUserId();
-      if (!userId) {
-        return res.status(401).json({ message: "User not authenticated" });
+      if (!req.file) {
+        return res.status(400).json({ message: "No image file provided" });
       }
 
-      const objectStorageService = new ObjectStorageService();
-      const uploadURL = await objectStorageService.getObjectEntityUploadURL(userId.toString(), id);
-      
-      res.json({ uploadURL });
-    } catch (error: any) {
-      const errorMessage = error?.message || "Failed to get upload URL";
-      res.status(400).json({ message: errorMessage });
-    }
-  });
+      const imageUrl = `/uploads/${req.file.filename}`;
+      const updatedPlant = await dbStorage.updatePlant(id, { imageUrl });
 
-  // Complete plant image upload (set ACL and update plant record)
-  apiRouter.put("/plants/:id/image", isAuthenticated, async (req: Request, res: Response) => {
-    try {
-      const id = parseInt(req.params.id);
-      if (isNaN(id)) {
-        return res.status(400).json({ message: "Invalid plant ID" });
-      }
-
-      if (!req.body.imageURL) {
-        return res.status(400).json({ message: "imageURL is required" });
-      }
-
-      const plant = await dbStorage.getPlant(id);
-      if (!plant) {
-        return res.status(404).json({ message: "Plant not found" });
-      }
-
-      // Get the authenticated user id
-      const userId = getCurrentUserId();
-      if (!userId) {
-        return res.status(401).json({ message: "User not authenticated" });
-      }
-
-      const objectStorageService = new ObjectStorageService();
-      const objectPath = await objectStorageService.trySetObjectEntityAclPolicy(
-        req.body.imageURL,
-        {
-          owner: userId.toString(),
-          visibility: "public", // Plant images are public for sharing
-        },
-        userId.toString() // Verify ownership during completion
-      );
-
-      // Update plant with Object Storage URL
-      const updatedPlant = await dbStorage.updatePlant(id, { imageUrl: objectPath });
-      
-      res.json({ 
-        success: true, 
-        imageUrl: objectPath,
+      res.json({
+        success: true,
+        imageUrl,
         plant: updatedPlant
       });
     } catch (error: any) {
-      const errorMessage = error?.message || "Failed to complete image upload";
+      const errorMessage = error?.message || "Failed to upload image";
       res.status(400).json({ message: errorMessage });
     }
   });

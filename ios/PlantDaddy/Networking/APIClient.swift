@@ -90,7 +90,7 @@ class APIClient: NSObject {
             case 400...499:
                 // Client error - try to decode error message
                 if let errorResponse = try? decoder.decode(ErrorResponse.self, from: data) {
-                    throw NetworkError.httpError(httpResponse.statusCode, errorResponse.error)
+                    throw NetworkError.httpError(httpResponse.statusCode, errorResponse.errorMessage)
                 }
                 throw NetworkError.httpError(httpResponse.statusCode, nil)
             case 500...599:
