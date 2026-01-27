@@ -8,15 +8,7 @@
 import Foundation
 import UIKit
 
-struct UploadURLResponse: Codable {
-    let uploadURL: String
-}
-
-struct ImageUploadCompleteRequest: Codable {
-    let imageURL: String
-}
-
-struct ImageUploadCompleteResponse: Codable {
+struct ImageUploadResponse: Codable {
     let success: Bool
     let imageUrl: String
     let plant: Plant?
@@ -25,52 +17,82 @@ struct ImageUploadCompleteResponse: Codable {
 class ImageUploadService {
     static let shared = ImageUploadService()
 
-    private let apiClient = APIClient.shared
-
     private init() {}
 
     // MARK: - Image Upload
 
-    /// Upload an image for a plant
+    /// Upload an image for a plant via multipart form data
     /// - Parameters:
     ///   - image: UIImage to upload
     ///   - plantId: ID of the plant
     /// - Returns: URL of the uploaded image
     func uploadPlantImage(_ image: UIImage, for plantId: Int) async throws -> String {
-        // Step 1: Compress image
         guard let imageData = compressImage(image) else {
             throw NetworkError.unknown
         }
 
-        // Step 2: Get upload URL from backend
-        let uploadURLResponse: UploadURLResponse = try await apiClient.request(
-            endpoint: .plantUploadURL(id: plantId),
-            method: .post
-        )
+        let endpoint = APIEndpoint.plantImageUpload(id: plantId)
+        guard let url = endpoint.url else {
+            throw NetworkError.invalidURL
+        }
 
-        // Step 3: Upload image to storage
-        try await uploadImageData(imageData, to: uploadURLResponse.uploadURL)
+        let boundary = UUID().uuidString
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
 
-        // Step 4: Complete the upload on backend
-        let completeRequest = ImageUploadCompleteRequest(imageURL: uploadURLResponse.uploadURL)
-        let completeResponse: ImageUploadCompleteResponse = try await apiClient.request(
-            endpoint: .plantCompleteImageUpload(id: plantId),
-            method: .put,
-            body: completeRequest
-        )
+        // Add auth token
+        if let token = KeychainService.shared.getToken() {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        } else {
+            throw NetworkError.unauthorized
+        }
 
-        return completeResponse.imageUrl
+        // Build multipart body
+        var body = Data()
+        body.append("--\(boundary)\r\n".data(using: .utf8)!)
+        body.append("Content-Disposition: form-data; name=\"image\"; filename=\"plant.jpg\"\r\n".data(using: .utf8)!)
+        body.append("Content-Type: image/jpeg\r\n\r\n".data(using: .utf8)!)
+        body.append(imageData)
+        body.append("\r\n--\(boundary)--\r\n".data(using: .utf8)!)
+        request.httpBody = body
+
+        let session: URLSession
+        #if DEBUG
+        let config = URLSessionConfiguration.default
+        config.timeoutIntervalForRequest = APIConfig.timeoutInterval
+        session = URLSession(configuration: config, delegate: APIClient.shared, delegateQueue: nil)
+        #else
+        session = URLSession.shared
+        #endif
+
+        let (data, response) = try await session.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw NetworkError.unknown
+        }
+
+        guard (200...299).contains(httpResponse.statusCode) else {
+            if httpResponse.statusCode == 401 {
+                KeychainService.shared.deleteToken()
+                throw NetworkError.unauthorized
+            }
+            let errorMsg = try? JSONDecoder().decode(ServerErrorResponse.self, from: data)
+            throw NetworkError.httpError(httpResponse.statusCode, errorMsg?.message)
+        }
+
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        let uploadResponse = try decoder.decode(ImageUploadResponse.self, from: data)
+        return uploadResponse.imageUrl
     }
 
     // MARK: - Image Processing
 
     /// Compress image to reduce file size
     private func compressImage(_ image: UIImage) -> Data? {
-        // Resize if too large
         let maxSize: CGFloat = 1024
         let resizedImage = resizeImage(image, maxSize: maxSize)
-
-        // Compress to JPEG with quality 0.7
         return resizedImage.jpegData(compressionQuality: 0.7)
     }
 
@@ -79,7 +101,6 @@ class ImageUploadService {
         let size = image.size
         let ratio = min(maxSize / size.width, maxSize / size.height)
 
-        // Already smaller than max size
         if ratio >= 1 {
             return image
         }
@@ -94,40 +115,9 @@ class ImageUploadService {
             image.draw(in: CGRect(origin: .zero, size: newSize))
         }
     }
+}
 
-    /// Upload image data to storage URL
-    private func uploadImageData(_ data: Data, to urlString: String) async throws {
-        guard let url = URL(string: urlString) else {
-            throw NetworkError.invalidURL
-        }
-
-        var request = URLRequest(url: url)
-        request.httpMethod = "PUT"
-        request.setValue("image/jpeg", forHTTPHeaderField: "Content-Type")
-        request.httpBody = data
-
-        let (_, response) = try await URLSession.shared.data(for: request)
-
-        guard let httpResponse = response as? HTTPURLResponse,
-              (200...299).contains(httpResponse.statusCode) else {
-            throw NetworkError.httpError(500, "Failed to upload image")
-        }
-    }
-
-    // MARK: - Helper Methods
-
-    /// Get image from URL (for displaying uploaded images)
-    func loadImage(from urlString: String) async throws -> UIImage {
-        guard let url = URL(string: urlString) else {
-            throw NetworkError.invalidURL
-        }
-
-        let (data, _) = try await URLSession.shared.data(from: url)
-
-        guard let image = UIImage(data: data) else {
-            throw NetworkError.decodingError(NSError(domain: "Invalid image data", code: -1))
-        }
-
-        return image
-    }
+/// Matches the server's error response format: { message: "..." }
+private struct ServerErrorResponse: Codable {
+    let message: String
 }

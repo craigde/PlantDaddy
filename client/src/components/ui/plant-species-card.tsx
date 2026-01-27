@@ -27,7 +27,7 @@ export function PlantSpeciesCard({ species, onSelect }: PlantSpeciesCardProps) {
   };
 
   // Default plant silhouette if no image is provided
-  const imageUrl = species.imageUrl || '/uploads/plant-silhouette.svg';
+  const imageUrl = species.imageUrl || '/uploads/plant-silhouette.png';
 
   return (
     <Card className="h-full flex flex-col hover:shadow-md transition-shadow overflow-hidden">
@@ -39,7 +39,7 @@ export function PlantSpeciesCard({ species, onSelect }: PlantSpeciesCardProps) {
           onError={(e) => {
             // Fallback if image fails to load
             const target = e.target as HTMLImageElement;
-            target.src = '/uploads/plant-silhouette.svg';
+            target.src = '/uploads/plant-silhouette.png';
           }}
         />
       </div>

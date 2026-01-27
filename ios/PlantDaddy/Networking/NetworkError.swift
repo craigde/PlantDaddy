@@ -37,6 +37,12 @@ enum NetworkError: LocalizedError {
 }
 
 struct ErrorResponse: Codable {
-    let error: String
+    let message: String?
+    let error: String?
     let details: String?
+
+    /// Returns whichever error field the server populated
+    var errorMessage: String? {
+        message ?? error
+    }
 }

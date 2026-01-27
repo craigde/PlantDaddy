@@ -18,7 +18,7 @@ const defaultSpecies = [
     propagation: "Leaf cuttings or division",
     toxicity: "toxic to pets",
     commonIssues: "Root rot from overwatering, brown tips from fluoride in water",
-    imageUrl: "/uploads/snake-plant.svg"
+    imageUrl: "/uploads/snake-plant.png"
   },
   {
     name: "Jade Plant",
@@ -34,7 +34,7 @@ const defaultSpecies = [
     propagation: "Stem or leaf cuttings",
     toxicity: "toxic to pets",
     commonIssues: "Overwatering leading to root rot, leaf drop from sudden temperature changes",
-    imageUrl: "/uploads/jade-plant.svg"
+    imageUrl: "/uploads/jade-plant.png"
   },
   {
     name: "Pothos",
@@ -50,7 +50,7 @@ const defaultSpecies = [
     propagation: "Stem cuttings in water or soil",
     toxicity: "toxic to pets",
     commonIssues: "Yellow leaves from overwatering, brown edges from underwatering",
-    imageUrl: "/uploads/pothos.svg"
+    imageUrl: "/uploads/pothos.png"
   },
   {
     name: "Peace Lily",
@@ -66,7 +66,7 @@ const defaultSpecies = [
     propagation: "Division",
     toxicity: "toxic to pets",
     commonIssues: "Brown leaf tips from tap water or low humidity, yellowing from overwatering",
-    imageUrl: "/uploads/peace-lily.svg"
+    imageUrl: "/uploads/peace-lily.png"
   },
   {
     name: "ZZ Plant",
@@ -82,7 +82,7 @@ const defaultSpecies = [
     propagation: "Division or leaf cuttings",
     toxicity: "toxic to pets",
     commonIssues: "Yellow leaves from overwatering, slow growth is normal",
-    imageUrl: "/uploads/zz-plant.svg"
+    imageUrl: "/uploads/zz-plant.png"
   },
   {
     name: "Spider Plant",
@@ -98,7 +98,7 @@ const defaultSpecies = [
     propagation: "Plantlets or division",
     toxicity: "non-toxic",
     commonIssues: "Brown tips from fluoride in water, pale leaves from too much light",
-    imageUrl: "/uploads/spider-plant.svg"
+    imageUrl: "/uploads/spider-plant.png"
   },
   {
     name: "Fiddle Leaf Fig",
@@ -114,7 +114,7 @@ const defaultSpecies = [
     propagation: "Air layering or stem cuttings",
     toxicity: "toxic to pets",
     commonIssues: "Brown spots from inconsistent watering, leaf drop from drafts or moving",
-    imageUrl: "/uploads/fiddle-leaf-fig.svg"
+    imageUrl: "/uploads/fiddle-leaf-fig.png"
   },
   {
     name: "Monstera Deliciosa",
@@ -130,7 +130,7 @@ const defaultSpecies = [
     propagation: "Stem cuttings with aerial roots",
     toxicity: "toxic to pets",
     commonIssues: "Yellow leaves from overwatering, lack of splits from insufficient light",
-    imageUrl: "/uploads/monstera.svg"
+    imageUrl: "/uploads/monstera.png"
   },
   {
     name: "Rubber Plant",
@@ -146,7 +146,7 @@ const defaultSpecies = [
     propagation: "Air layering or stem cuttings",
     toxicity: "toxic to pets",
     commonIssues: "Leaf drop from overwatering or cold drafts, leggy growth from low light",
-    imageUrl: "/uploads/rubber-plant.svg"
+    imageUrl: "/uploads/rubber-plant.png"
   },
   {
     name: "Aloe Vera",
@@ -162,7 +162,7 @@ const defaultSpecies = [
     propagation: "Offsets (pups)",
     toxicity: "toxic to pets",
     commonIssues: "Brown or mushy leaves from overwatering, pale leaves from too much sun",
-    imageUrl: "/uploads/aloe-vera.svg"
+    imageUrl: "/uploads/aloe-vera.png"
   },
   {
     name: "Boston Fern",
@@ -178,7 +178,7 @@ const defaultSpecies = [
     propagation: "Division or runners",
     toxicity: "non-toxic",
     commonIssues: "Brown, crispy fronds from low humidity or underwatering",
-    imageUrl: "/uploads/boston-fern.svg"
+    imageUrl: "/uploads/boston-fern.png"
   },
   {
     name: "Chinese Money Plant",
@@ -194,7 +194,7 @@ const defaultSpecies = [
     propagation: "Offsets or stem cuttings",
     toxicity: "non-toxic",
     commonIssues: "Curling leaves from underwatering, yellow leaves from overwatering",
-    imageUrl: "/uploads/chinese-money-plant.svg"
+    imageUrl: "/uploads/chinese-money-plant.png"
   },
   {
     name: "Calathea",
@@ -210,7 +210,7 @@ const defaultSpecies = [
     propagation: "Division",
     toxicity: "non-toxic",
     commonIssues: "Brown, crispy edges from low humidity or tap water, curling leaves from underwatering",
-    imageUrl: "/uploads/calathea.svg"
+    imageUrl: "/uploads/calathea.png"
   },
   {
     name: "String of Pearls",
@@ -226,7 +226,7 @@ const defaultSpecies = [
     propagation: "Stem cuttings",
     toxicity: "toxic to pets",
     commonIssues: "Shriveled beads from underwatering, mushy beads from overwatering",
-    imageUrl: "/uploads/string-of-pearls.svg"
+    imageUrl: "/uploads/string-of-pearls.png"
   }
 ];
 
