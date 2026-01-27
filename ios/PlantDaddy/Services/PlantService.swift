@@ -14,6 +14,7 @@ class PlantService: ObservableObject {
 
     @Published var plants: [Plant] = []
     @Published var locations: [Location] = []
+    @Published var plantSpecies: [PlantSpecies] = []
     @Published var isLoading: Bool = false
     @Published var error: String?
 
@@ -114,11 +115,22 @@ class PlantService: ObservableObject {
         return response.plant
     }
 
-    func fetchWateringHistory(plantId: Int) async throws -> [WateringEntry] {
-        try await apiClient.request(
-            endpoint: .wateringHistory(plantId: plantId),
-            method: .get
-        )
+    // MARK: - Plant Species Operations
+
+    func fetchPlantSpecies() async {
+        isLoading = true
+        error = nil
+
+        do {
+            plantSpecies = try await apiClient.request(
+                endpoint: .plantSpecies,
+                method: .get
+            )
+        } catch {
+            self.error = error.localizedDescription
+        }
+
+        isLoading = false
     }
 
     // MARK: - Location Operations

@@ -56,13 +56,6 @@ struct UpdatePlantRequest: Codable {
 
 struct WaterPlantResponse: Codable {
     let success: Bool
-    let watering: WateringEntry
+    let careActivity: CareActivity
     let plant: Plant
-}
-
-struct WateringEntry: Codable, Identifiable {
-    let id: Int
-    let plantId: Int
-    let wateredAt: Date
-    let userId: Int
 }
