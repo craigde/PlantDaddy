@@ -362,7 +362,7 @@ struct PlantDetailView: View {
 
     private func speciesImageUrl(for plant: Plant) -> String? {
         guard let speciesName = plant.species else { return nil }
-        return plantService.plantSpecies.first { $0.name == speciesName }?.imageUrl
+        return plantService.plantSpecies.first { $0.name == speciesName }?.fullImageUrl
     }
 
     private func loadCareData() async {
