@@ -4,6 +4,7 @@ import { setupVite, serveStatic, log } from "./vite";
 import { startScheduler } from "./scheduler";
 import { setUserContext } from "./user-context";
 import { pool } from "./db";
+import { seedPlantSpecies } from "./seed-species";
 
 const app = express();
 app.use(express.json());
@@ -147,7 +148,10 @@ app.use((req, res, next) => {
 (async () => {
   // Initialize database tables before starting
   await initializeDatabase();
-  
+
+  // Seed default plant species
+  await seedPlantSpecies();
+
   const server = await registerRoutes(app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
