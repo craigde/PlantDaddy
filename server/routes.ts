@@ -612,34 +612,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Direct image upload for plant photos
+  // Note: multer's async multipart parsing can break AsyncLocalStorage context,
+  // so we re-establish it from req.user before calling storage methods.
   apiRouter.post("/plants/:id/image", isAuthenticated, upload.single('image'), async (req: Request, res: Response) => {
-    try {
-      const id = parseInt(req.params.id);
-      if (isNaN(id)) {
-        return res.status(400).json({ message: "Invalid plant ID" });
+    const userId = (req.user as any)?.id ?? null;
+    await userContextStorage.run({ userId }, async () => {
+      try {
+        const id = parseInt(req.params.id);
+        if (isNaN(id)) {
+          return res.status(400).json({ message: "Invalid plant ID" });
+        }
+
+        const plant = await dbStorage.getPlant(id);
+        if (!plant) {
+          return res.status(404).json({ message: "Plant not found" });
+        }
+
+        if (!req.file) {
+          return res.status(400).json({ message: "No image file provided" });
+        }
+
+        const imageUrl = `/uploads/${req.file.filename}`;
+        const updatedPlant = await dbStorage.updatePlant(id, { imageUrl });
+
+        res.json({
+          success: true,
+          imageUrl,
+          plant: updatedPlant
+        });
+      } catch (error: any) {
+        const errorMessage = error?.message || "Failed to upload image";
+        res.status(400).json({ message: errorMessage });
       }
-
-      const plant = await dbStorage.getPlant(id);
-      if (!plant) {
-        return res.status(404).json({ message: "Plant not found" });
-      }
-
-      if (!req.file) {
-        return res.status(400).json({ message: "No image file provided" });
-      }
-
-      const imageUrl = `/uploads/${req.file.filename}`;
-      const updatedPlant = await dbStorage.updatePlant(id, { imageUrl });
-
-      res.json({
-        success: true,
-        imageUrl,
-        plant: updatedPlant
-      });
-    } catch (error: any) {
-      const errorMessage = error?.message || "Failed to upload image";
-      res.status(400).json({ message: errorMessage });
-    }
+    });
   });
 
   // Notification endpoints
