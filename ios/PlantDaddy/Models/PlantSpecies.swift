@@ -7,7 +7,7 @@
 
 import Foundation
 
-struct PlantSpecies: Codable, Identifiable {
+struct PlantSpecies: Codable, Identifiable, Hashable {
     let id: Int
     let name: String
     let scientificName: String
@@ -30,7 +30,7 @@ struct PlantSpecies: Codable, Identifiable {
     }
 }
 
-enum CareLevel: String, Codable, CaseIterable {
+enum CareLevel: String, Codable, CaseIterable, Hashable {
     case easy = "easy"
     case moderate = "moderate"
     case difficult = "difficult"
