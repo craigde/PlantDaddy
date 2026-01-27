@@ -31,6 +31,7 @@ struct PlantCardView: View {
             let displayImageUrl = plant.imageUrl ?? speciesImageUrl
 
             if let imageUrl = displayImageUrl {
+                let _ = print("🖼️ PlantCardView loading image: \(imageUrl)")
                 AsyncImage(url: URL(string: imageUrl)) { image in
                     image
                         .resizable()
