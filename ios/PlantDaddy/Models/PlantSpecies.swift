@@ -35,6 +35,7 @@ struct PlantSpecies: Codable, Identifiable, Hashable {
 
         // If it's already a full URL (starts with http), return as-is
         if imageUrl.hasPrefix("http") {
+            print("🖼️ Full URL already: \(imageUrl)")
             return imageUrl
         }
 
@@ -42,9 +43,12 @@ struct PlantSpecies: Codable, Identifiable, Hashable {
         if imageUrl.hasPrefix("/") {
             // Remove /api from the base URL since uploads are served from root
             let baseURL = APIConfig.baseURL.replacingOccurrences(of: "/api", with: "")
-            return baseURL + imageUrl
+            let fullURL = baseURL + imageUrl
+            print("🖼️ Converted relative URL: \(imageUrl) -> \(fullURL)")
+            return fullURL
         }
 
+        print("🖼️ Returning imageUrl as-is: \(imageUrl)")
         return imageUrl
     }
 }

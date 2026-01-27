@@ -96,6 +96,7 @@ struct PlantDetailView: View {
 
     private func plantImageSection(_ plant: Plant) -> some View {
         let displayImageUrl = plant.imageUrl ?? speciesImageUrl(for: plant)
+        let _ = print("🖼️ PlantDetailView loading image: \(displayImageUrl ?? "nil")")
 
         return ZStack(alignment: .bottomTrailing) {
             if let imageUrl = displayImageUrl {
