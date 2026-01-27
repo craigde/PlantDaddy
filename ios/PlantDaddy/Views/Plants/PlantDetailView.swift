@@ -12,10 +12,12 @@ struct PlantDetailView: View {
 
     @StateObject private var plantService = PlantService.shared
     @State private var plant: Plant?
-    @State private var wateringHistory: [WateringEntry] = []
+    @State private var careActivities: [CareActivity] = []
+    @State private var healthRecords: [HealthRecord] = []
     @State private var isLoading = false
     @State private var showingDeleteAlert = false
     @State private var showingWaterConfirmation = false
+    @State private var showingHealthSheet = false
     @State private var showingImagePicker = false
     @State private var selectedImage: UIImage?
     @State private var isUploadingImage = false
@@ -39,8 +41,8 @@ struct PlantDetailView: View {
                     // Watering Schedule
                     wateringScheduleSection(plant)
 
-                    // Watering History
-                    wateringHistorySection
+                    // Care Timeline (combines care activities and health records)
+                    careTimelineSection
                 }
                 .padding()
             } else if isLoading {
@@ -75,6 +77,15 @@ struct PlantDetailView: View {
             Button("OK", role: .cancel) {}
         } message: {
             Text("\(plant?.name ?? "Plant") has been watered successfully.")
+        }
+        .sheet(isPresented: $showingHealthSheet) {
+            if let plant = plant {
+                LogHealthView(plantId: plant.id) {
+                    Task {
+                        await loadCareData()
+                    }
+                }
+            }
         }
         .task {
             await loadPlant()
@@ -180,19 +191,34 @@ struct PlantDetailView: View {
 
     private func quickActionsSection(_ plant: Plant) -> some View {
         VStack(spacing: 12) {
-            Button(action: waterPlant) {
-                HStack {
-                    Image(systemName: "drop.fill")
-                    Text("Water Plant")
-                        .fontWeight(.semibold)
+            HStack(spacing: 12) {
+                Button(action: waterPlant) {
+                    HStack {
+                        Image(systemName: "drop.fill")
+                        Text("Water")
+                            .fontWeight(.semibold)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(plant.needsWatering ? Color.blue : Color.green)
+                    .foregroundColor(.white)
+                    .cornerRadius(12)
                 }
-                .frame(maxWidth: .infinity)
-                .padding()
-                .background(plant.needsWatering ? Color.blue : Color.green)
-                .foregroundColor(.white)
-                .cornerRadius(12)
+                .disabled(isLoading)
+
+                Button(action: { showingHealthSheet = true }) {
+                    HStack {
+                        Image(systemName: "heart.text.square.fill")
+                        Text("Health")
+                            .fontWeight(.semibold)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(Color.orange)
+                    .foregroundColor(.white)
+                    .cornerRadius(12)
+                }
             }
-            .disabled(isLoading)
         }
     }
 
@@ -230,30 +256,92 @@ struct PlantDetailView: View {
         }
     }
 
-    private var wateringHistorySection: some View {
+    private var careTimelineSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Watering History")
+            Text("Care Timeline")
                 .font(.headline)
 
-            if wateringHistory.isEmpty {
-                Text("No watering history yet")
+            if careActivities.isEmpty && healthRecords.isEmpty {
+                Text("No care history yet")
                     .foregroundColor(.secondary)
                     .frame(maxWidth: .infinity, alignment: .center)
                     .padding()
             } else {
-                ForEach(wateringHistory.prefix(10)) { entry in
-                    HStack {
-                        Image(systemName: "drop.fill")
-                            .foregroundColor(.blue)
-                        Text(entry.wateredAt, style: .date)
-                        Text(entry.wateredAt, style: .time)
-                            .foregroundColor(.secondary)
+                // Combine and sort activities
+                let timeline = buildTimeline()
+
+                ForEach(timeline.prefix(15), id: \.id) { item in
+                    HStack(alignment: .top, spacing: 12) {
+                        // Icon based on type
+                        ZStack {
+                            Circle()
+                                .fill(item.color.opacity(0.2))
+                                .frame(width: 40, height: 40)
+                            Text(item.emoji)
+                                .font(.title3)
+                        }
+
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(item.title)
+                                .font(.headline)
+                            Text(item.date, style: .date)
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                            if let notes = item.notes {
+                                Text(notes)
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+
                         Spacer()
                     }
-                    .padding(.vertical, 4)
+                    .padding(.vertical, 8)
                 }
             }
         }
+    }
+
+    // MARK: - Timeline Data
+
+    struct TimelineItem {
+        let id: String
+        let title: String
+        let emoji: String
+        let color: Color
+        let date: Date
+        let notes: String?
+    }
+
+    private func buildTimeline() -> [TimelineItem] {
+        var items: [TimelineItem] = []
+
+        // Add care activities
+        for activity in careActivities {
+            items.append(TimelineItem(
+                id: "activity-\(activity.id)",
+                title: activity.activityType.displayName,
+                emoji: activity.activityType.emoji,
+                color: .blue,
+                date: activity.performedAt,
+                notes: activity.notes
+            ))
+        }
+
+        // Add health records
+        for record in healthRecords {
+            items.append(TimelineItem(
+                id: "health-\(record.id)",
+                title: "Health: \(record.status.displayName)",
+                emoji: record.status.emoji,
+                color: record.status == .thriving ? .green : record.status == .struggling ? .orange : .red,
+                date: record.recordedAt,
+                notes: record.notes
+            ))
+        }
+
+        // Sort by date descending
+        return items.sorted { $0.date > $1.date }
     }
 
     // MARK: - Actions
@@ -262,19 +350,30 @@ struct PlantDetailView: View {
         isLoading = true
         do {
             plant = try await plantService.fetchPlant(id: plantId)
-            wateringHistory = try await plantService.fetchWateringHistory(plantId: plantId)
+            await loadCareData()
         } catch {
             print("Error loading plant: \(error)")
         }
         isLoading = false
     }
 
+    private func loadCareData() async {
+        do {
+            careActivities = try await plantService.fetchCareActivities(plantId: plantId)
+            healthRecords = try await plantService.fetchHealthRecords(plantId: plantId)
+        } catch {
+            print("Error loading care data: \(error)")
+        }
+    }
+
     private func waterPlant() {
         isLoading = true
         Task {
             do {
+                // Water the plant (creates a care activity on backend)
                 plant = try await plantService.waterPlant(id: plantId)
-                wateringHistory = try await plantService.fetchWateringHistory(plantId: plantId)
+                // Reload care activities to show the new watering
+                await loadCareData()
                 showingWaterConfirmation = true
             } catch {
                 print("Error watering plant: \(error)")
@@ -306,6 +405,91 @@ struct PlantDetailView: View {
                 // Show error to user
             }
             isUploadingImage = false
+        }
+    }
+}
+
+// MARK: - Log Health View
+
+struct LogHealthView: View {
+    let plantId: Int
+    let onSave: () -> Void
+
+    @Environment(\.dismiss) private var dismiss
+    @StateObject private var plantService = PlantService.shared
+
+    @State private var selectedStatus: HealthStatus = .thriving
+    @State private var notes: String = ""
+    @State private var isLoading: Bool = false
+    @State private var errorMessage: String?
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section("Health Status") {
+                    Picker("Status", selection: $selectedStatus) {
+                        ForEach(HealthStatus.allCases, id: \.self) { status in
+                            HStack {
+                                Text(status.emoji)
+                                Text(status.displayName)
+                            }
+                            .tag(status)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                }
+
+                Section("Notes (optional)") {
+                    TextEditor(text: $notes)
+                        .frame(height: 100)
+                }
+
+                if let errorMessage = errorMessage {
+                    Section {
+                        Text(errorMessage)
+                            .foregroundColor(.red)
+                            .font(.caption)
+                    }
+                }
+            }
+            .navigationTitle("Log Health")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                }
+
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Save") {
+                        saveHealthRecord()
+                    }
+                    .disabled(isLoading)
+                }
+            }
+        }
+    }
+
+    private func saveHealthRecord() {
+        errorMessage = nil
+        isLoading = true
+
+        Task {
+            do {
+                _ = try await plantService.createHealthRecord(
+                    plantId: plantId,
+                    status: selectedStatus,
+                    notes: notes.isEmpty ? nil : notes.trimmingCharacters(in: .whitespaces),
+                    imageUrl: nil
+                )
+                onSave()
+                dismiss()
+            } catch {
+                errorMessage = error.localizedDescription
+            }
+
+            isLoading = false
         }
     }
 }
