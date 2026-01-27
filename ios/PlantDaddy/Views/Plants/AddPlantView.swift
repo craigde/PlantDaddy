@@ -62,7 +62,7 @@ struct AddPlantView: View {
                                 .tag(species as PlantSpecies?)
                             }
                         }
-                        .onChange(of: selectedSpecies) { _, newSpecies in
+                        .onChange(of: selectedSpecies) { newSpecies in
                             if let species = newSpecies {
                                 wateringFrequency = species.wateringFrequency
                             }
