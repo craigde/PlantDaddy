@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="200px" height="200px" viewBox="0 0 200 200" version="1.1" xmlns="http://www.w3.org/2000/svg">
+  <g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+    <!-- Pot -->
+    <path d="M70,170 L65,190 L135,190 L130,170 Z" fill="#B26E63" />
+    
+    <!-- Stems -->
+    <path d="M100,170 C100,160 95,150 105,130 C115,110 130,100 140,70" stroke="#5D8250" stroke-width="3" stroke-linecap="round" />
+    <path d="M100,170 C100,160 105,150 95,130 C85,110 70,100 60,70" stroke="#5D8250" stroke-width="3" stroke-linecap="round" />
+    <path d="M100,170 C100,160 95,140 90,120 C85,100 80,80 90,50" stroke="#5D8250" stroke-width="3" stroke-linecap="round" />
+    
+    <!-- Monstera leaf with characteristic holes - right -->
+    <path d="M140,70 C160,60 170,40 160,20 C150,0 120,10 115,20 C110,30 120,55 140,70 Z" fill="#4A7E43" />
+    <!-- Holes in the leaf -->
+    <ellipse cx="140" cy="40" rx="5" ry="10" fill="white" transform="rotate(-30 140 40)" />
+    <ellipse cx="130" cy="30" rx="4" ry="8" fill="white" transform="rotate(-15 130 30)" />
+    <ellipse cx="135" cy="55" rx="3" ry="7" fill="white" transform="rotate(-45 135 55)" />
+    
+    <!-- Monstera leaf with characteristic holes - left -->
+    <path d="M60,70 C40,60 30,40 40,20 C50,0 80,10 85,20 C90,30 80,55 60,70 Z" fill="#4A7E43" />
+    <!-- Holes in the leaf -->
+    <ellipse cx="60" cy="40" rx="5" ry="10" fill="white" transform="rotate(30 60 40)" />
+    <ellipse cx="70" cy="30" rx="4" ry="8" fill="white" transform="rotate(15 70 30)" />
+    <ellipse cx="65" cy="55" rx="3" ry="7" fill="white" transform="rotate(45 65 55)" />
+    
+    <!-- Top center leaf -->
+    <path d="M90,50 C70,40 65,20 80,10 C95,0 110,15 110,30 C110,45 100,60 90,50 Z" fill="#4A7E43" />
+    <!-- Holes in the leaf -->
+    <ellipse cx="90" cy="25" rx="4" ry="8" fill="white" transform="rotate(15 90 25)" />
+    <ellipse cx="100" cy="20" rx="3" ry="6" fill="white" transform="rotate(-20 100 20)" />
+    
+    <!-- Additional smaller leaves -->
+    <path d="M105,130 C115,120 125,115 140,110 C155,105 150,85 140,80 C130,75 115,85 105,100 C95,115 105,130 105,130 Z" fill="#4A7E43" />
+    
+    <path d="M95,130 C85,120 75,115 60,110 C45,105 50,85 60,80 C70,75 85,85 95,100 C105,115 95,130 95,130 Z" fill="#4A7E43" />
+    
+    <path d="M90,120 C80,110 75,105 80,90 C85,75 100,65 110,70 C120,75 115,90 105,105 C95,120 90,120 90,120 Z" fill="#4A7E43" />
+    
+    <!-- Leaf details -->
+    <path d="M140,70 C160,60 170,40 160,20" stroke="#3D6E36" stroke-width="1" />
+    <path d="M60,70 C40,60 30,40 40,20" stroke="#3D6E36" stroke-width="1" />
+    <path d="M90,50 C70,40 65,20 80,10" stroke="#3D6E36" stroke-width="1" />
+    <path d="M105,130 C115,120 125,115 140,110" stroke="#3D6E36" stroke-width="1" />
+    <path d="M95,130 C85,120 75,115 60,110" stroke="#3D6E36" stroke-width="1" />
+    <path d="M90,120 C80,110 75,105 80,90" stroke="#3D6E36" stroke-width="1" />
+  </g>
+</svg>

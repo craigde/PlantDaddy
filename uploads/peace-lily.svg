@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="200px" height="200px" viewBox="0 0 200 200" version="1.1" xmlns="http://www.w3.org/2000/svg">
+  <g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+    <!-- Pot -->
+    <path d="M70,170 L65,190 L135,190 L130,170 Z" fill="#B26E63" />
+    
+    <!-- Stems -->
+    <path d="M100,170 C100,160 105,150 110,130" stroke="#4C7F3D" stroke-width="2" stroke-linecap="round" />
+    <path d="M100,170 C100,160 95,150 85,130" stroke="#4C7F3D" stroke-width="2" stroke-linecap="round" />
+    <path d="M100,170 C100,160 105,140 120,120" stroke="#4C7F3D" stroke-width="2" stroke-linecap="round" />
+    <path d="M100,170 C100,160 95,140 80,120" stroke="#4C7F3D" stroke-width="2" stroke-linecap="round" />
+    <path d="M100,170 C100,160 98,130 100,110" stroke="#4C7F3D" stroke-width="2" stroke-linecap="round" />
+    
+    <!-- Leaves -->
+    <!-- Middle leaf cluster -->
+    <path d="M100,110 C90,90 95,70 100,60 C105,70 110,90 100,110 Z" fill="#4A7E43" />
+    <path d="M100,110 C90,90 85,75 80,55 C85,65 95,85 100,110 Z" fill="#4A7E43" />
+    <path d="M100,110 C110,90 115,75 120,55 C115,65 105,85 100,110 Z" fill="#4A7E43" />
+    
+    <!-- Left leaf clusters -->
+    <path d="M85,130 C70,120 65,105 60,85 C70,95 82,110 85,130 Z" fill="#4A7E43" />
+    <path d="M85,130 C65,125 50,115 45,95 C55,105 75,120 85,130 Z" fill="#4A7E43" />
+    
+    <path d="M80,120 C70,110 60,90 55,70 C65,85 75,105 80,120 Z" fill="#4A7E43" />
+    <path d="M80,120 C60,110 50,95 35,85 C50,95 70,110 80,120 Z" fill="#4A7E43" />
+    
+    <!-- Right leaf clusters -->
+    <path d="M110,130 C125,120 135,105 140,85 C130,95 113,110 110,130 Z" fill="#4A7E43" />
+    <path d="M110,130 C130,125 150,115 155,95 C145,105 120,120 110,130 Z" fill="#4A7E43" />
+    
+    <path d="M120,120 C130,110 140,90 145,70 C135,85 125,105 120,120 Z" fill="#4A7E43" />
+    <path d="M120,120 C140,110 150,95 165,85 C150,95 130,110 120,120 Z" fill="#4A7E43" />
+    
+    <!-- White flower spathes -->
+    <path d="M100,110 C95,100 85,85 70,75 C60,65 50,60 45,45 C55,50 75,60 85,55 C95,50 90,40 100,35 C110,40 105,50 115,55 C125,60 145,50 155,45 C150,60 140,65 130,75 C115,85 105,100 100,110 Z" fill="white" />
+    <path d="M100,110 C95,100 85,85 70,75 C60,65 50,60 45,45" stroke="#E7E7E7" stroke-width="1" />
+    <path d="M100,110 C105,100 115,85 130,75 C140,65 150,60 155,45" stroke="#E7E7E7" stroke-width="1" />
+    
+    <!-- Yellow spadix -->
+    <path d="M100,75 L100,45" stroke="#FFEB3B" stroke-width="3" stroke-linecap="round" />
+    <ellipse cx="100" cy="45" rx="3" ry="8" fill="#FFEB3B" />
+  </g>
+</svg>

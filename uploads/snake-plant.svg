@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="200px" height="200px" viewBox="0 0 200 200" version="1.1" xmlns="http://www.w3.org/2000/svg">
+  <g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+    <!-- Pot -->
+    <path d="M65,170 L55,190 L145,190 L135,170 Z" fill="#B26E63" />
+    
+    <!-- Leaves -->
+    <!-- Center tall leaf -->
+    <path d="M100,170 L100,30 L110,40 L100,50 L90,40 L100,30" fill="#4A7E43" />
+    <path d="M100,170 L100,30" stroke="#336633" stroke-width="2" />
+    <path d="M90,40 L110,40" stroke="#336633" stroke-width="1" />
+    <path d="M90,55 L110,55" stroke="#336633" stroke-width="1" />
+    <path d="M90,70 L110,70" stroke="#336633" stroke-width="1" />
+    <path d="M90,85 L110,85" stroke="#336633" stroke-width="1" />
+    <path d="M90,100 L110,100" stroke="#336633" stroke-width="1" />
+    <path d="M90,115 L110,115" stroke="#336633" stroke-width="1" />
+    <path d="M90,130 L110,130" stroke="#336633" stroke-width="1" />
+    <path d="M90,145 L110,145" stroke="#336633" stroke-width="1" />
+    <path d="M90,160 L110,160" stroke="#336633" stroke-width="1" />
+    
+    <!-- Left leaf -->
+    <path d="M85,170 L70,50 L85,55 L75,65 L90,70 L85,50" fill="#4A7E43" />
+    <path d="M85,170 L70,50" stroke="#336633" stroke-width="2" />
+    <path d="M70,65 L85,70" stroke="#336633" stroke-width="1" />
+    <path d="M72,80 L87,85" stroke="#336633" stroke-width="1" />
+    <path d="M74,95 L89,100" stroke="#336633" stroke-width="1" />
+    <path d="M76,110 L91,115" stroke="#336633" stroke-width="1" />
+    <path d="M78,125 L93,130" stroke="#336633" stroke-width="1" />
+    <path d="M80,140 L95,145" stroke="#336633" stroke-width="1" />
+    <path d="M82,155 L97,160" stroke="#336633" stroke-width="1" />
+    
+    <!-- Right leaf -->
+    <path d="M115,170 L130,60 L115,65 L125,75 L110,80 L115,60" fill="#4A7E43" />
+    <path d="M115,170 L130,60" stroke="#336633" stroke-width="2" />
+    <path d="M130,75 L115,80" stroke="#336633" stroke-width="1" />
+    <path d="M128,90 L113,95" stroke="#336633" stroke-width="1" />
+    <path d="M126,105 L111,110" stroke="#336633" stroke-width="1" />
+    <path d="M124,120 L109,125" stroke="#336633" stroke-width="1" />
+    <path d="M122,135 L107,140" stroke="#336633" stroke-width="1" />
+    <path d="M120,150 L105,155" stroke="#336633" stroke-width="1" />
+    
+    <!-- Yellow edges on leaves - giving the variegated appearance -->
+    <path d="M100,30 L110,40 L100,50" fill="#B9D168" fill-opacity="0.7" />
+    <path d="M70,50 L85,55 L75,65" fill="#B9D168" fill-opacity="0.7" />
+    <path d="M130,60 L115,65 L125,75" fill="#B9D168" fill-opacity="0.7" />
+  </g>
+</svg>
