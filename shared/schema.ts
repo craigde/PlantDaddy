@@ -137,7 +137,6 @@ export const careActivities = pgTable("care_activities", {
   notes: text("notes"),
   performedAt: timestamp("performed_at").notNull().defaultNow(),
   userId: integer("user_id").references(() => users.id).notNull(),
-  originalWateringId: integer("original_watering_id").references(() => wateringHistory.id, { onDelete: 'set null' }), // For migration tracking
 });
 
 export const careActivitySchema = createInsertSchema(careActivities);

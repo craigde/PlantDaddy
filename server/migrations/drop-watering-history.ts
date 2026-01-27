@@ -40,16 +40,3 @@ export async function dropWateringHistory() {
     client.release();
   }
 }
-
-// Allow running this migration directly
-if (require.main === module) {
-  dropWateringHistory()
-    .then((result) => {
-      console.log("Migration complete:", result);
-      process.exit(0);
-    })
-    .catch((error) => {
-      console.error("Migration failed:", error);
-      process.exit(1);
-    });
-}

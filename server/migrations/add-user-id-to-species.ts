@@ -42,16 +42,3 @@ export async function addUserIdToSpecies() {
     client.release();
   }
 }
-
-// Allow running this migration directly
-if (require.main === module) {
-  addUserIdToSpecies()
-    .then((result) => {
-      console.log("Migration complete:", result);
-      process.exit(0);
-    })
-    .catch((error) => {
-      console.error("Migration failed:", error);
-      process.exit(1);
-    });
-}
