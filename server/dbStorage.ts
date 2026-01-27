@@ -1,11 +1,13 @@
 import { eq } from "drizzle-orm";
-import { 
+import {
   users, type User, type InsertUser,
   plants, type Plant, type InsertPlant,
   wateringHistory, type WateringHistory, type InsertWateringHistory,
   locations, type Location, type InsertLocation,
   plantSpecies, type PlantSpecies, type InsertPlantSpecies,
-  notificationSettings, type NotificationSettings, type InsertNotificationSettings
+  notificationSettings, type NotificationSettings, type InsertNotificationSettings,
+  plantHealthRecords,
+  careActivities
 } from "@shared/schema";
 import { db } from "./db";
 
@@ -89,6 +91,9 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deletePlant(id: number): Promise<boolean> {
+    // Delete child records first to avoid foreign key constraint violations
+    await db.delete(plantHealthRecords).where(eq(plantHealthRecords.plantId, id));
+    await db.delete(careActivities).where(eq(careActivities.plantId, id));
     const result = await db.delete(plants).where(eq(plants.id, id)).returning();
     return result.length > 0;
   }
