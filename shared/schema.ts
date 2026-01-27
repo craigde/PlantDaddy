@@ -91,6 +91,7 @@ export const plantSpecies = pgTable("plant_species", {
   toxicity: text("toxicity"), // "non-toxic", "toxic to pets", "toxic to humans"
   commonIssues: text("common_issues"),
   imageUrl: text("image_url"),
+  userId: integer("user_id").references(() => users.id), // null = global species, set = user custom species
 });
 
 export const plantSpeciesSchema = createInsertSchema(plantSpecies);

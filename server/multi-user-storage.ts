@@ -1,4 +1,4 @@
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, sql, or, isNull } from "drizzle-orm";
 import { 
   users, type User, type InsertUser,
   plants, type Plant, type InsertPlant,
@@ -359,9 +359,23 @@ export class MultiUserStorage implements IStorage {
     return result.length > 0;
   }
 
-  // Plant species catalog methods - these aren't user-specific
+  // Plant species catalog methods
+  // Returns global species (userId = null) + current user's custom species
   async getAllPlantSpecies(): Promise<PlantSpecies[]> {
-    return await db.select().from(plantSpecies);
+    const userId = getCurrentUserId();
+
+    // If no user is logged in, return only global species
+    if (!userId) {
+      return await db.select().from(plantSpecies).where(isNull(plantSpecies.userId));
+    }
+
+    // Return global species + user's custom species
+    return await db.select().from(plantSpecies).where(
+      or(
+        isNull(plantSpecies.userId), // Global species
+        eq(plantSpecies.userId, userId) // User's custom species
+      )
+    );
   }
 
   async getPlantSpecies(id: number): Promise<PlantSpecies | undefined> {
@@ -379,64 +393,100 @@ export class MultiUserStorage implements IStorage {
   }
 
   async createPlantSpecies(insertSpecies: InsertPlantSpecies): Promise<PlantSpecies> {
-    // Check if species with this name already exists
+    const userId = requireAuth(); // User must be logged in to create species
+
+    // Check if species with this name already exists (global or user's own)
     const existingSpecies = await this.getPlantSpeciesByName(insertSpecies.name);
-    
+
     if (existingSpecies) {
       throw new Error(`Plant species with name '${insertSpecies.name}' already exists`);
     }
-    
-    const [species] = await db.insert(plantSpecies).values(insertSpecies).returning();
+
+    // Create species with userId (makes it user-specific, not global)
+    const [species] = await db.insert(plantSpecies).values({
+      ...insertSpecies,
+      userId // Set to current user's ID
+    }).returning();
+
     return species;
   }
 
   async updatePlantSpecies(id: number, speciesUpdate: Partial<InsertPlantSpecies>): Promise<PlantSpecies | undefined> {
+    const userId = requireAuth(); // User must be logged in
+
+    // Get the species to check ownership
+    const species = await this.getPlantSpecies(id);
+    if (!species) {
+      throw new Error('Species not found');
+    }
+
+    // Cannot update global species (userId = null)
+    if (species.userId === null) {
+      throw new Error('Cannot update global plant species. Only custom species can be edited.');
+    }
+
+    // Cannot update species that belongs to another user
+    if (species.userId !== userId) {
+      throw new Error('You can only update your own custom species');
+    }
+
     // If name is being updated, check if it already exists
     if (speciesUpdate.name) {
       const [nameExists] = await db
         .select()
         .from(plantSpecies)
         .where(eq(plantSpecies.name, speciesUpdate.name));
-      
+
       if (nameExists && nameExists.id !== id) {
         throw new Error(`Plant species with name '${speciesUpdate.name}' already exists`);
       }
     }
-    
+
+    // Update the user's custom species
     const [updatedSpecies] = await db
       .update(plantSpecies)
       .set(speciesUpdate)
       .where(eq(plantSpecies.id, id))
       .returning();
-    
+
     return updatedSpecies || undefined;
   }
 
   async deletePlantSpecies(id: number): Promise<boolean> {
-    const userId = getCurrentUserId();
-    
-    // Check if this species is used by any plants
-    if (userId !== null) {
-      const species = await this.getPlantSpecies(id);
-      if (!species) {
-        return false;
-      }
-      
-      const plantsWithSpecies = await db
-        .select()
-        .from(plants)
-        .where(
-          and(
-            eq(plants.species, species.name),
-            eq(plants.userId, userId)
-          )
-        );
-      
-      if (plantsWithSpecies.length > 0) {
-        throw new Error('Cannot delete species that is being used by plants');
-      }
+    const userId = requireAuth(); // User must be logged in
+
+    // Get the species to check ownership
+    const species = await this.getPlantSpecies(id);
+    if (!species) {
+      return false;
     }
-    
+
+    // Cannot delete global species (userId = null)
+    if (species.userId === null) {
+      throw new Error('Cannot delete global plant species. Only custom species can be deleted.');
+    }
+
+    // Cannot delete species that belongs to another user
+    if (species.userId !== userId) {
+      throw new Error('You can only delete your own custom species');
+    }
+
+    // Check if this species is used by any of the user's plants
+    const plantsWithSpecies = await db
+      .select()
+      .from(plants)
+      .where(
+        and(
+          eq(plants.species, species.name),
+          eq(plants.userId, userId)
+        )
+      );
+
+    if (plantsWithSpecies.length > 0) {
+      throw new Error(`Cannot delete species '${species.name}' because it is being used by ${plantsWithSpecies.length} plant(s)`);
+    }
+
+    // Delete the user's custom species
     const result = await db.delete(plantSpecies).where(eq(plantSpecies.id, id)).returning();
     return result.length > 0;
   }

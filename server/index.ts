@@ -5,6 +5,7 @@ import { startScheduler } from "./scheduler";
 import { setUserContext } from "./user-context";
 import { pool } from "./db";
 import { seedPlantSpecies } from "./seed-species";
+import { addUserIdToSpecies } from "./migrations/add-user-id-to-species";
 
 const app = express();
 app.use(express.json());
@@ -149,7 +150,10 @@ app.use((req, res, next) => {
   // Initialize database tables before starting
   await initializeDatabase();
 
-  // Seed default plant species
+  // Run migrations
+  await addUserIdToSpecies();
+
+  // Seed default plant species (global, userId = null)
   await seedPlantSpecies();
 
   const server = await registerRoutes(app);
