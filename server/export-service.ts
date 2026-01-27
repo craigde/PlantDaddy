@@ -1,7 +1,6 @@
-import { 
-  type Plant, 
-  type Location, 
-  type WateringHistory, 
+import {
+  type Plant,
+  type Location,
   type NotificationSettings,
   type User,
   type PlantHealthRecord,
@@ -21,7 +20,6 @@ export interface UserBackupData {
   };
   plants: Plant[];
   locations: Location[];
-  wateringHistory: WateringHistory[];
   plantHealthRecords: PlantHealthRecord[];
   careActivities: CareActivity[];
   notificationSettings?: Omit<NotificationSettings, 'pushoverAppToken' | 'pushoverUserKey' | 'sendgridApiKey'>;
@@ -49,10 +47,9 @@ export class ExportService {
     }
 
     // Gather all user data
-    const [plants, locations, wateringHistory, plantHealthRecords, careActivities, notificationSettings] = await Promise.all([
+    const [plants, locations, plantHealthRecords, careActivities, notificationSettings] = await Promise.all([
       this.storage.getAllPlants(),
       this.storage.getAllLocations(),
-      this.storage.getAllWateringHistoryForUser(),
       this.storage.getAllHealthRecordsForUser(),
       this.storage.getAllCareActivitiesForUser(),
       this.storage.getNotificationSettings()
@@ -78,7 +75,6 @@ export class ExportService {
       },
       plants,
       locations,
-      wateringHistory,
       plantHealthRecords,
       careActivities,
       notificationSettings: sanitizedNotificationSettings
@@ -156,7 +152,7 @@ export class ExportService {
 
   // Get backup summary for display to user
   getBackupSummary(backupData: UserBackupData): string {
-    const { plants, locations, wateringHistory, plantHealthRecords, careActivities } = backupData;
-    return `Backup includes:\n- ${plants.length} plants\n- ${locations.length} locations\n- ${wateringHistory.length} watering records\n- ${plantHealthRecords.length} health records\n- ${careActivities.length} care activities\n- Notification settings`;
+    const { plants, locations, plantHealthRecords, careActivities } = backupData;
+    return `Backup includes:\n- ${plants.length} plants\n- ${locations.length} locations\n- ${plantHealthRecords.length} health records\n- ${careActivities.length} care activities\n- Notification settings`;
   }
 }

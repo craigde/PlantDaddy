@@ -314,8 +314,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Plant not found" });
       }
 
-      const wateringHistory = await dbStorage.getWateringHistory(id);
-      res.json({ ...plant, wateringHistory });
+      res.json(plant);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch plant details" });
     }
@@ -490,39 +489,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Invalid plant ID" });
       }
 
-      const wateringEntry = await dbStorage.waterPlant(id);
+      // Create care activity for watering
+      const careActivity = await dbStorage.createCareActivity({
+        plantId: id,
+        activityType: 'watering',
+        notes: req.body.notes || null,
+        performedAt: new Date(),
+      });
+
+      // Also update the plant's lastWatered field
+      await dbStorage.updatePlant(id, {
+        lastWatered: new Date(),
+      });
+
       const updatedPlant = await dbStorage.getPlant(id);
-      
+
       // Send a confirmation notification via Pushover
       const notificationTitle = "🪴 PlantDaddy: Plant Watered";
       const notificationMessage = `${updatedPlant?.name} has been watered successfully.`;
-      
+
       // We don't need to await this, it can happen in the background
       sendPushoverNotification(notificationTitle, notificationMessage, 0)
         .catch((err: Error) => console.error("Failed to send watering confirmation notification:", err));
 
       res.json({
         success: true,
-        watering: wateringEntry,
+        careActivity: careActivity,
         plant: updatedPlant
       });
     } catch (error) {
       res.status(500).json({ message: "Failed to water plant" });
-    }
-  });
-
-  // Get watering history for a plant
-  apiRouter.get("/plants/:id/watering-history", async (req: Request, res: Response) => {
-    try {
-      const id = parseInt(req.params.id);
-      if (isNaN(id)) {
-        return res.status(400).json({ message: "Invalid plant ID" });
-      }
-
-      const history = await dbStorage.getWateringHistory(id);
-      res.json(history);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to fetch watering history" });
     }
   });
 
