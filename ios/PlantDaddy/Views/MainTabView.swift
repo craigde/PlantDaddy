@@ -8,7 +8,7 @@
 import SwiftUI
 
 struct MainTabView: View {
-    @StateObject private var authService = AuthService.shared
+    @ObservedObject private var authService = AuthService.shared
 
     var body: some View {
         TabView {
@@ -27,7 +27,7 @@ struct MainTabView: View {
 
 // Settings View (basic for now)
 struct SettingsView: View {
-    @StateObject private var authService = AuthService.shared
+    @ObservedObject private var authService = AuthService.shared
 
     var body: some View {
         NavigationStack {
