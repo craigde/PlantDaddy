@@ -10,7 +10,7 @@ import SwiftUI
 struct PlantDetailView: View {
     let plantId: Int
 
-    @StateObject private var plantService = PlantService.shared
+    @ObservedObject private var plantService = PlantService.shared
     @State private var plant: Plant?
     @State private var careActivities: [CareActivity] = []
     @State private var healthRecords: [HealthRecord] = []
@@ -416,7 +416,7 @@ struct LogHealthView: View {
     let onSave: () -> Void
 
     @Environment(\.dismiss) private var dismiss
-    @StateObject private var plantService = PlantService.shared
+    @ObservedObject private var plantService = PlantService.shared
 
     @State private var selectedStatus: HealthStatus = .thriving
     @State private var notes: String = ""

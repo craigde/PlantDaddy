@@ -9,7 +9,7 @@ import SwiftUI
 
 struct AddPlantView: View {
     @Environment(\.dismiss) private var dismiss
-    @StateObject private var plantService = PlantService.shared
+    @ObservedObject private var plantService = PlantService.shared
 
     @State private var name: String = ""
     @State private var selectedSpecies: PlantSpecies?
