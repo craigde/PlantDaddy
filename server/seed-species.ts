@@ -1,5 +1,6 @@
 import { db } from "./db";
 import { plantSpecies } from "../shared/schema";
+import { eq, isNull, and } from "drizzle-orm";
 
 // Default plant species to seed the database
 const defaultSpecies = [
@@ -237,8 +238,17 @@ export async function seedPlantSpecies() {
     const existingSpecies = await db.select().from(plantSpecies).limit(1);
 
     if (existingSpecies.length > 0) {
-      console.log("✅ Plant species already seeded. Skipping...");
-      return { success: true, message: "Species already exist", count: 0 };
+      console.log("✅ Plant species already exist. Updating image URLs...");
+
+      // Update imageUrl for each existing species to use local SVGs
+      for (const species of defaultSpecies) {
+        await db.update(plantSpecies)
+          .set({ imageUrl: species.imageUrl })
+          .where(and(eq(plantSpecies.name, species.name), isNull(plantSpecies.userId)));
+      }
+
+      console.log(`✅ Updated image URLs for ${defaultSpecies.length} species!`);
+      return { success: true, message: "Species updated", count: defaultSpecies.length };
     }
 
     // Insert all default species

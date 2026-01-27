@@ -70,6 +70,7 @@ struct PlantListView: View {
             .task {
                 await plantService.fetchPlants()
                 await plantService.fetchLocations()
+                await plantService.fetchPlantSpecies()
             }
             .refreshable {
                 await plantService.fetchPlants()
@@ -96,8 +97,11 @@ struct PlantListView: View {
                 // Plants grid
                 ForEach(filteredPlants) { plant in
                     NavigationLink(destination: PlantDetailView(plantId: plant.id)) {
-                        PlantCardView(plant: plant)
-                            .padding(.horizontal)
+                        PlantCardView(
+                            plant: plant,
+                            speciesImageUrl: speciesImageUrl(for: plant)
+                        )
+                        .padding(.horizontal)
                     }
                     .buttonStyle(PlainButtonStyle())
                 }
@@ -137,6 +141,11 @@ struct PlantListView: View {
         Task {
             await plantService.fetchPlants()
         }
+    }
+
+    private func speciesImageUrl(for plant: Plant) -> String? {
+        guard let speciesName = plant.species else { return nil }
+        return plantService.plantSpecies.first { $0.name == speciesName }?.imageUrl
     }
 }
 
