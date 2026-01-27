@@ -1,4 +1,4 @@
-import { db } from "../db";
+import { db } from "./db";
 import { plantSpecies } from "../shared/schema";
 
 // Default plant species to seed the database
