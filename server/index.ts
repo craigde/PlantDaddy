@@ -96,8 +96,7 @@ async function initializeDatabase() {
       activity_type TEXT NOT NULL,
       notes TEXT,
       performed_at TIMESTAMP NOT NULL DEFAULT NOW(),
-      user_id INTEGER NOT NULL REFERENCES users(id),
-      original_watering_id INTEGER REFERENCES watering_history(id) ON DELETE SET NULL
+      user_id INTEGER NOT NULL REFERENCES users(id)
     );
   `;
 

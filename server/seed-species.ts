@@ -252,16 +252,3 @@ export async function seedPlantSpecies() {
     throw error;
   }
 }
-
-// Allow running this script directly
-if (require.main === module) {
-  seedPlantSpecies()
-    .then((result) => {
-      console.log("Seeding complete:", result);
-      process.exit(0);
-    })
-    .catch((error) => {
-      console.error("Seeding failed:", error);
-      process.exit(1);
-    });
-}
