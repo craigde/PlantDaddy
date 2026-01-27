@@ -162,12 +162,18 @@ export class MultiUserStorage implements IStorage {
 
   async deletePlant(id: number): Promise<boolean> {
     const userId = requireAuth();
-    
+
+    // Delete child records first to avoid foreign key constraint violations
+    await db.delete(plantHealthRecords).where(eq(plantHealthRecords.plantId, id));
+    await db.delete(careActivities).where(eq(careActivities.plantId, id));
+    // Handle legacy watering_history table if it still exists
+    await db.execute(sql`DELETE FROM watering_history WHERE plant_id = ${id}`).catch(() => {});
+
     const result = await db
       .delete(plants)
       .where(and(eq(plants.id, id), eq(plants.userId, userId)))
       .returning();
-    
+
     return result.length > 0;
   }
 
