@@ -92,7 +92,7 @@ struct AddPlantView: View {
                     if let species = selectedSpecies {
                         VStack(alignment: .leading, spacing: 8) {
                             HStack {
-                                AsyncImage(url: URL(string: species.imageUrl ?? "")) { image in
+                                AsyncImage(url: URL(string: species.fullImageUrl ?? "")) { image in
                                     image
                                         .resizable()
                                         .aspectRatio(contentMode: .fill)

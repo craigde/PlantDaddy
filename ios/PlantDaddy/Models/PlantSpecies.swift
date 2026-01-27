@@ -28,6 +28,25 @@ struct PlantSpecies: Codable, Identifiable, Hashable {
     var isGlobal: Bool {
         userId == nil
     }
+
+    // Full URL for the image (handles relative URLs from backend)
+    var fullImageUrl: String? {
+        guard let imageUrl = imageUrl else { return nil }
+
+        // If it's already a full URL (starts with http), return as-is
+        if imageUrl.hasPrefix("http") {
+            return imageUrl
+        }
+
+        // If it's a relative URL (starts with /), prepend the base domain
+        if imageUrl.hasPrefix("/") {
+            // Remove /api from the base URL since uploads are served from root
+            let baseURL = APIConfig.baseURL.replacingOccurrences(of: "/api", with: "")
+            return baseURL + imageUrl
+        }
+
+        return imageUrl
+    }
 }
 
 enum CareLevel: String, Codable, CaseIterable, Hashable {
