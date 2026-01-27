@@ -95,8 +95,10 @@ struct PlantDetailView: View {
     // MARK: - View Components
 
     private func plantImageSection(_ plant: Plant) -> some View {
-        ZStack(alignment: .bottomTrailing) {
-            if let imageUrl = plant.imageUrl {
+        let displayImageUrl = plant.imageUrl ?? speciesImageUrl(for: plant)
+
+        return ZStack(alignment: .bottomTrailing) {
+            if let imageUrl = displayImageUrl {
                 AsyncImage(url: URL(string: imageUrl)) { image in
                     image
                         .resizable()
@@ -350,11 +352,17 @@ struct PlantDetailView: View {
         isLoading = true
         do {
             plant = try await plantService.fetchPlant(id: plantId)
+            await plantService.fetchPlantSpecies()
             await loadCareData()
         } catch {
             print("Error loading plant: \(error)")
         }
         isLoading = false
+    }
+
+    private func speciesImageUrl(for plant: Plant) -> String? {
+        guard let speciesName = plant.species else { return nil }
+        return plantService.plantSpecies.first { $0.name == speciesName }?.imageUrl
     }
 
     private func loadCareData() async {
@@ -429,14 +437,21 @@ struct LogHealthView: View {
                 Section("Health Status") {
                     Picker("Status", selection: $selectedStatus) {
                         ForEach(HealthStatus.allCases, id: \.self) { status in
-                            HStack {
-                                Text(status.emoji)
-                                Text(status.displayName)
-                            }
-                            .tag(status)
+                            Text(status.emoji)
+                                .tag(status)
                         }
                     }
                     .pickerStyle(.segmented)
+
+                    // Show full status name below picker
+                    HStack {
+                        Spacer()
+                        Text(selectedStatus.displayName)
+                            .font(.headline)
+                            .foregroundColor(selectedStatus == .thriving ? .green : selectedStatus == .struggling ? .orange : .red)
+                        Spacer()
+                    }
+                    .listRowBackground(Color.clear)
                 }
 
                 Section("Notes (optional)") {

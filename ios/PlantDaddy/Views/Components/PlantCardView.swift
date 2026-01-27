@@ -9,6 +9,7 @@ import SwiftUI
 
 struct PlantCardView: View {
     let plant: Plant
+    var speciesImageUrl: String? = nil
 
     private var wateringStatus: (color: Color, text: String, icon: String) {
         let days = plant.daysUntilWatering
@@ -26,8 +27,10 @@ struct PlantCardView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            // Plant Image
-            if let imageUrl = plant.imageUrl {
+            // Plant Image (with species image fallback)
+            let displayImageUrl = plant.imageUrl ?? speciesImageUrl
+
+            if let imageUrl = displayImageUrl {
                 AsyncImage(url: URL(string: imageUrl)) { image in
                     image
                         .resizable()
