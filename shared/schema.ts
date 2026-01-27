@@ -95,7 +95,7 @@ export const plantSpecies = pgTable("plant_species", {
 });
 
 export const plantSpeciesSchema = createInsertSchema(plantSpecies);
-export const insertPlantSpeciesSchema = plantSpeciesSchema.omit({ id: true });
+export const insertPlantSpeciesSchema = plantSpeciesSchema.omit({ id: true, userId: true }); // userId is set automatically by the server
 
 export type PlantSpecies = typeof plantSpecies.$inferSelect;
 export type InsertPlantSpecies = z.infer<typeof insertPlantSpeciesSchema>;
