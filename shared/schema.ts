@@ -60,20 +60,6 @@ export const insertPlantSchema = plantSchema
 export type Plant = typeof plants.$inferSelect;
 export type InsertPlant = z.infer<typeof insertPlantSchema>;
 
-// Watering history table
-export const wateringHistory = pgTable("watering_history", {
-  id: serial("id").primaryKey(),
-  plantId: integer("plant_id").notNull(),
-  wateredAt: timestamp("watered_at").notNull(),
-  userId: integer("user_id").references(() => users.id).notNull(),
-});
-
-export const wateringHistorySchema = createInsertSchema(wateringHistory);
-export const insertWateringHistorySchema = wateringHistorySchema.omit({ id: true });
-
-export type WateringHistory = typeof wateringHistory.$inferSelect;
-export type InsertWateringHistory = z.infer<typeof insertWateringHistorySchema>;
-
 // Plant species catalog
 export const plantSpecies = pgTable("plant_species", {
   id: serial("id").primaryKey(),

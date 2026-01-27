@@ -1,8 +1,7 @@
 import { and, eq, sql, or, isNull } from "drizzle-orm";
-import { 
+import {
   users, type User, type InsertUser,
   plants, type Plant, type InsertPlant,
-  wateringHistory, type WateringHistory, type InsertWateringHistory,
   locations, type Location, type InsertLocation,
   plantSpecies, type PlantSpecies, type InsertPlantSpecies,
   notificationSettings, type NotificationSettings, type InsertNotificationSettings,
@@ -170,67 +169,6 @@ export class MultiUserStorage implements IStorage {
       .returning();
     
     return result.length > 0;
-  }
-
-  // Watering methods
-  async waterPlant(plantId: number): Promise<WateringHistory> {
-    const userId = requireAuth();
-    
-    // First check if the plant belongs to the user
-    const plant = await this.getPlant(plantId);
-    if (!plant) {
-      throw new Error(`Plant with ID ${plantId} not found or does not belong to the current user`);
-    }
-    
-    // Create watering history entry
-    const wateringEntry: InsertWateringHistory = {
-      plantId,
-      userId,
-      wateredAt: new Date(),
-    };
-    
-    const [entry] = await db.insert(wateringHistory).values(wateringEntry).returning();
-    
-    // Update the plant's last watered date
-    await db
-      .update(plants)
-      .set({ lastWatered: new Date() })
-      .where(eq(plants.id, plantId));
-    
-    return entry;
-  }
-
-  async getWateringHistory(plantId: number): Promise<WateringHistory[]> {
-    const userId = getCurrentUserId();
-    
-    if (userId === null) {
-      return [];
-    }
-    
-    return await db
-      .select()
-      .from(wateringHistory)
-      .where(
-        and(
-          eq(wateringHistory.plantId, plantId),
-          eq(wateringHistory.userId, userId)
-        )
-      )
-      .orderBy(wateringHistory.wateredAt);
-  }
-
-  async getAllWateringHistoryForUser(): Promise<WateringHistory[]> {
-    const userId = getCurrentUserId();
-    
-    if (userId === null) {
-      return [];
-    }
-    
-    return await db
-      .select()
-      .from(wateringHistory)
-      .where(eq(wateringHistory.userId, userId))
-      .orderBy(wateringHistory.wateredAt);
   }
 
   // Location methods

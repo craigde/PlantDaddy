@@ -4,12 +4,10 @@ import JSZip from "jszip";
 import * as fs from "fs";
 import * as path from "path";
 import { z } from "zod";
-import { 
-  type Plant, 
+import {
+  type Plant,
   type InsertPlant,
   type Location,
-  type WateringHistory,
-  type InsertWateringHistory,
   type NotificationSettings,
   type InsertNotificationSettings,
   type PlantHealthRecord,
@@ -82,9 +80,9 @@ const BackupDataSchema = z.object({
   exportInfo: BackupExportInfoSchema,
   plants: z.array(BackupPlantSchema),
   locations: z.array(BackupLocationSchema),
-  wateringHistory: z.array(BackupWateringHistorySchema),
-  plantHealthRecords: z.array(BackupPlantHealthRecordSchema).optional().default([]), // Optional for backward compatibility
-  careActivities: z.array(BackupCareActivitySchema).optional().default([]), // Optional for backward compatibility
+  wateringHistory: z.array(BackupWateringHistorySchema).optional().default([]), // Deprecated, kept for backward compatibility
+  plantHealthRecords: z.array(BackupPlantHealthRecordSchema).optional().default([]),
+  careActivities: z.array(BackupCareActivitySchema).optional().default([]),
   notificationSettings: BackupNotificationSettingsSchema.optional()
 });
 
@@ -95,7 +93,6 @@ export interface ImportSummary {
   mode: ImportMode;
   plantsImported: number;
   locationsImported: number;
-  wateringHistoryImported: number;
   healthRecordsImported: number;
   careActivitiesImported: number;
   imagesImported: number;
@@ -125,17 +122,16 @@ export class ImportService {
       mode,
       plantsImported: 0,
       locationsImported: 0,
-      wateringHistoryImported: 0,
       healthRecordsImported: 0,
       careActivitiesImported: 0,
       imagesImported: 0,
       notificationSettingsUpdated: false,
       warnings: []
     };
-    
+
     // Create ID mapping for plants
     const plantIdMapping = new Map<number, number>();
-    
+
     try {
       // Delete all user data if in replace mode - do this inside try block to prevent data loss
       if (mode === "replace") {
@@ -143,24 +139,17 @@ export class ImportService {
       }
       // 1. Restore locations first
       const locationMapping = await this.restoreLocations(validatedData.locations, summary);
-      
+
       // 2. Restore plants with image handling
       await this.restorePlants(
-        validatedData.plants, 
-        imageFiles, 
-        mode, 
-        plantIdMapping, 
+        validatedData.plants,
+        imageFiles,
+        mode,
+        plantIdMapping,
         summary
       );
-      
-      // 3. Restore watering history with ID remapping
-      await this.restoreWateringHistory(
-        validatedData.wateringHistory, 
-        plantIdMapping, 
-        summary
-      );
-      
-      // 4. Restore health records with ID remapping
+
+      // 3. Restore health records with ID remapping
       await this.restoreHealthRecords(
         validatedData.plantHealthRecords, 
         plantIdMapping, 

@@ -6,6 +6,7 @@ import { setUserContext } from "./user-context";
 import { pool } from "./db";
 import { seedPlantSpecies } from "./seed-species";
 import { addUserIdToSpecies } from "./migrations/add-user-id-to-species";
+import { dropWateringHistory } from "./migrations/drop-watering-history";
 
 const app = express();
 app.use(express.json());
@@ -45,13 +46,6 @@ async function initializeDatabase() {
       last_watered TIMESTAMP NOT NULL,
       notes TEXT,
       image_url TEXT,
-      user_id INTEGER NOT NULL REFERENCES users(id)
-    );
-
-    CREATE TABLE IF NOT EXISTS watering_history (
-      id SERIAL PRIMARY KEY,
-      plant_id INTEGER NOT NULL,
-      watered_at TIMESTAMP NOT NULL,
       user_id INTEGER NOT NULL REFERENCES users(id)
     );
 
@@ -152,6 +146,7 @@ app.use((req, res, next) => {
 
   // Run migrations
   await addUserIdToSpecies();
+  await dropWateringHistory();
 
   // Seed default plant species (global, userId = null)
   await seedPlantSpecies();

@@ -314,8 +314,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Plant not found" });
       }
 
-      const wateringHistory = await dbStorage.getWateringHistory(id);
-      res.json({ ...plant, wateringHistory });
+      res.json(plant);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch plant details" });
     }
@@ -520,21 +519,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       res.status(500).json({ message: "Failed to water plant" });
-    }
-  });
-
-  // Get watering history for a plant
-  apiRouter.get("/plants/:id/watering-history", async (req: Request, res: Response) => {
-    try {
-      const id = parseInt(req.params.id);
-      if (isNaN(id)) {
-        return res.status(400).json({ message: "Invalid plant ID" });
-      }
-
-      const history = await dbStorage.getWateringHistory(id);
-      res.json(history);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to fetch watering history" });
     }
   });
 
