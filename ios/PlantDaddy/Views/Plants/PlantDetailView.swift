@@ -568,7 +568,7 @@ struct LogHealthView: View {
                 // Upload image first if one was selected
                 var imageUrl: String? = nil
                 if let image = selectedImage {
-                    imageUrl = try await imageUploadService.uploadGenericImage(image)
+                    imageUrl = try await imageUploadService.uploadGenericImage(image, plantId: plantId)
                 }
 
                 _ = try await plantService.createHealthRecord(
