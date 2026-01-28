@@ -110,7 +110,8 @@ struct PlantDetailView: View {
                             ProgressView()
                         )
                 }
-                .frame(height: 300)
+                .frame(maxWidth: .infinity, maxHeight: 300)
+                .clipped()
                 .clipShape(RoundedRectangle(cornerRadius: 16))
             } else {
                 Rectangle()
@@ -156,9 +157,16 @@ struct PlantDetailView: View {
             }
         }
         .sheet(isPresented: $showingImagePicker) {
-            ImagePickerSheet(selectedImage: $selectedImage) { image in
-                uploadImage(image, for: plant.id)
-            }
+            ImagePickerSheet(
+                selectedImage: $selectedImage,
+                hasExistingImage: plant.imageUrl != nil,
+                onImageSelected: { image in
+                    uploadImage(image, for: plant.id)
+                },
+                onImageRemoved: {
+                    removePhoto(for: plant.id)
+                }
+            )
         }
     }
 
@@ -410,7 +418,23 @@ struct PlantDetailView: View {
                 plant = try await plantService.fetchPlant(id: plantId)
             } catch {
                 print("Error uploading image: \(error)")
-                // Show error to user
+            }
+            isUploadingImage = false
+        }
+    }
+
+    private func removePhoto(for plantId: Int) {
+        isUploadingImage = true
+        Task {
+            do {
+                try await APIClient.shared.requestWithoutResponse(
+                    endpoint: .plantImageUpload(id: plantId),
+                    method: .delete
+                )
+                // Reload plant — imageUrl will be null, so species default shows
+                plant = try await plantService.fetchPlant(id: plantId)
+            } catch {
+                print("Error removing photo: \(error)")
             }
             isUploadingImage = false
         }
