@@ -7,14 +7,12 @@
 
 import Foundation
 import UserNotifications
-import Combine
 
 @MainActor
 class NotificationService: ObservableObject {
     static let shared = NotificationService()
 
     @Published var isAuthorized: Bool = false
-    @Published var deviceToken: String?
 
     private let notificationCenter = UNUserNotificationCenter.current()
 
@@ -27,17 +25,16 @@ class NotificationService: ObservableObject {
     // MARK: - Authorization
 
     /// Request notification permission from user
-    func requestAuthorization() async throws -> Bool {
-        let options: UNAuthorizationOptions = [.alert, .badge, .sound]
-
-        let granted = try await notificationCenter.requestAuthorization(options: options)
-        isAuthorized = granted
-
-        if granted {
-            await registerForRemoteNotifications()
+    func requestAuthorization() async -> Bool {
+        do {
+            let options: UNAuthorizationOptions = [.alert, .badge, .sound]
+            let granted = try await notificationCenter.requestAuthorization(options: options)
+            isAuthorized = granted
+            return granted
+        } catch {
+            print("Notification authorization error: \(error)")
+            return false
         }
-
-        return granted
     }
 
     /// Check current authorization status
@@ -46,89 +43,79 @@ class NotificationService: ObservableObject {
         isAuthorized = settings.authorizationStatus == .authorized
     }
 
-    /// Register for remote (push) notifications
-    private func registerForRemoteNotifications() async {
-        await MainActor.run {
-            #if !targetEnvironment(simulator)
-            UIApplication.shared.registerForRemoteNotifications()
-            #endif
-        }
-    }
-
-    // MARK: - Device Token
-
-    /// Handle device token registration (called from AppDelegate)
-    func didRegisterForRemoteNotifications(deviceToken: Data) {
-        let tokenParts = deviceToken.map { data in String(format: "%02.2hhx", data) }
-        let token = tokenParts.joined()
-        self.deviceToken = token
-
-        // TODO: Send token to backend
-        Task {
-            await sendDeviceTokenToBackend(token)
-        }
-    }
-
-    /// Send device token to backend for APNs
-    private func sendDeviceTokenToBackend(_ token: String) async {
-        // TODO: Implement backend endpoint for registering device token
-        print("Device token: \(token)")
-        // This would be something like:
-        // try await APIClient.shared.request(
-        //     endpoint: .registerDeviceToken,
-        //     method: .post,
-        //     body: ["token": token, "platform": "ios"]
-        // )
-    }
-
     // MARK: - Local Notifications
 
-    /// Schedule a local notification for plant watering
-    func scheduleWateringReminder(for plant: Plant) async throws {
-        // Remove any existing notifications for this plant
-        await removeWateringReminder(for: plant.id)
+    /// Schedule watering reminders for all plants.
+    /// Schedules a notification at 8 AM on the day each plant needs watering.
+    /// Skips plants more than 30 days out to stay under the 64 notification limit.
+    func scheduleAllPlantReminders(_ plants: [Plant]) async {
+        // Clear existing plant reminders first
+        let pending = await notificationCenter.pendingNotificationRequests()
+        let plantIds = pending
+            .filter { $0.identifier.hasPrefix("plant-") }
+            .map { $0.identifier }
+        notificationCenter.removePendingNotificationRequests(withIdentifiers: plantIds)
 
-        // Calculate notification date (day before watering is due)
-        let notificationDate = Calendar.current.date(
-            byAdding: .day,
-            value: -1,
-            to: plant.nextWateringDate
-        ) ?? plant.nextWateringDate
+        for plant in plants {
+            await scheduleWateringReminder(for: plant)
+        }
+    }
 
-        // Create notification content
+    /// Schedule a notification for a single plant.
+    /// - Already overdue: fires in 5 seconds
+    /// - Due today or within 30 days: fires at 8 AM on the due date
+    /// - More than 30 days out: skipped (will be scheduled on next app open)
+    func scheduleWateringReminder(for plant: Plant) async {
         let content = UNMutableNotificationContent()
-        content.title = "🪴 Water \(plant.name)"
-        content.body = "\(plant.name) needs watering tomorrow"
+        content.title = "Time to water \(plant.name)"
         content.sound = .default
-        content.badge = 1
         content.userInfo = ["plantId": plant.id]
 
-        // Create trigger
-        let triggerDate = Calendar.current.dateComponents(
-            [.year, .month, .day, .hour, .minute],
-            from: notificationDate
-        )
-        let trigger = UNCalendarNotificationTrigger(dateMatching: triggerDate, repeats: false)
+        let dueDate = plant.nextWateringDate
+        let now = Date()
 
-        // Create request
+        // Skip plants more than 30 days out
+        let daysUntil = Calendar.current.dateComponents([.day], from: now, to: dueDate).day ?? 0
+        if daysUntil > 30 {
+            return
+        }
+
+        let trigger: UNNotificationTrigger
+
+        if dueDate <= now {
+            // Already overdue — notify soon
+            let daysOverdue = Calendar.current.dateComponents([.day], from: dueDate, to: now).day ?? 0
+            content.body = "\(plant.name) in \(plant.location) is \(max(daysOverdue, 1)) day\(daysOverdue == 1 ? "" : "s") overdue for watering"
+            content.interruptionLevel = .timeSensitive
+            trigger = UNTimeIntervalNotificationTrigger(timeInterval: 5, repeats: false)
+        } else {
+            // Upcoming — schedule for 8 AM on the due date
+            if daysUntil <= 1 {
+                content.body = "\(plant.name) in \(plant.location) needs watering today"
+            } else {
+                content.body = "\(plant.name) in \(plant.location) needs watering"
+            }
+            var dateComponents = Calendar.current.dateComponents([.year, .month, .day], from: dueDate)
+            dateComponents.hour = 8
+            dateComponents.minute = 0
+            trigger = UNCalendarNotificationTrigger(dateMatching: dateComponents, repeats: false)
+        }
+
         let request = UNNotificationRequest(
             identifier: "plant-\(plant.id)",
             content: content,
             trigger: trigger
         )
 
-        try await notificationCenter.add(request)
-    }
-
-    /// Schedule notifications for all plants
-    func scheduleAllPlantReminders(plants: [Plant]) async {
-        for plant in plants where plant.needsWatering {
-            try? await scheduleWateringReminder(for: plant)
+        do {
+            try await notificationCenter.add(request)
+        } catch {
+            print("Failed to schedule notification for \(plant.name): \(error)")
         }
     }
 
     /// Remove watering reminder for a specific plant
-    func removeWateringReminder(for plantId: Int) async {
+    func removeWateringReminder(for plantId: Int) {
         notificationCenter.removePendingNotificationRequests(
             withIdentifiers: ["plant-\(plantId)"]
         )
@@ -139,14 +126,9 @@ class NotificationService: ObservableObject {
         notificationCenter.removeAllPendingNotificationRequests()
     }
 
-    /// Get all pending notifications
-    func getPendingNotifications() async -> [UNNotificationRequest] {
-        await notificationCenter.pendingNotificationRequests()
-    }
-
     // MARK: - Badge Management
 
-    /// Update app badge count
+    /// Update app badge count with number of overdue plants
     func updateBadgeCount(_ count: Int) {
         #if !targetEnvironment(simulator)
         Task { @MainActor in
@@ -163,9 +145,9 @@ class NotificationService: ObservableObject {
     // MARK: - Testing
 
     /// Send a test notification immediately
-    func sendTestNotification() async throws {
+    func sendTestNotification() async {
         let content = UNMutableNotificationContent()
-        content.title = "🪴 PlantDaddy"
+        content.title = "PlantDaddy"
         content.body = "Notifications are working!"
         content.sound = .default
 
@@ -176,27 +158,6 @@ class NotificationService: ObservableObject {
             trigger: trigger
         )
 
-        try await notificationCenter.add(request)
-    }
-}
-
-// MARK: - Notification Settings Helper
-
-extension UNAuthorizationStatus {
-    var description: String {
-        switch self {
-        case .notDetermined:
-            return "Not Determined"
-        case .denied:
-            return "Denied"
-        case .authorized:
-            return "Authorized"
-        case .provisional:
-            return "Provisional"
-        case .ephemeral:
-            return "Ephemeral"
-        @unknown default:
-            return "Unknown"
-        }
+        try? await notificationCenter.add(request)
     }
 }
