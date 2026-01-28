@@ -70,15 +70,10 @@ export class R2StorageService {
     const command = new PutObjectCommand({
       Bucket: this.bucket,
       Key: key,
-      ContentType: contentType,
     });
 
     // Generate presigned URL valid for 15 minutes
-    // Include Content-Type in signed headers for R2 compatibility
-    const url = await getSignedUrl(this.client, command, {
-      expiresIn: 900,
-      signableHeaders: new Set(["content-type"]),
-    });
+    const url = await getSignedUrl(this.client, command, { expiresIn: 900 });
 
     return { url, key };
   }
