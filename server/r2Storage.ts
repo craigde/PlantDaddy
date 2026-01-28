@@ -74,7 +74,11 @@ export class R2StorageService {
     });
 
     // Generate presigned URL valid for 15 minutes
-    const url = await getSignedUrl(this.client, command, { expiresIn: 900 });
+    // Include Content-Type in signed headers for R2 compatibility
+    const url = await getSignedUrl(this.client, command, {
+      expiresIn: 900,
+      signableHeaders: new Set(["content-type"]),
+    });
 
     return { url, key };
   }
