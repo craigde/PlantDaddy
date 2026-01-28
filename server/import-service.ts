@@ -1,5 +1,4 @@
 import { IStorage } from "./storage";
-import { ObjectStorageService } from "./objectStorage";
 import JSZip from "jszip";
 import * as fs from "fs";
 import * as path from "path";
@@ -101,11 +100,7 @@ export interface ImportSummary {
 }
 
 export class ImportService {
-  private objectStorageService: ObjectStorageService;
-  
-  constructor(private storage: IStorage) {
-    this.objectStorageService = new ObjectStorageService();
-  }
+  constructor(private storage: IStorage) {}
 
   async importFromZipBuffer(
     zipBuffer: Buffer, 

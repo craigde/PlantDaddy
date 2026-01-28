@@ -16,7 +16,7 @@ import { useToast } from "@/hooks/use-toast";
 import { formatDate, formatDistanceToNow } from "@/lib/date-utils";
 import { Loader2, Plus, Activity, Heart, AlertTriangle, Camera, Trash2 } from "lucide-react";
 import type { PlantHealthRecord } from "@shared/schema";
-import { ObjectUploader } from "@/components/ObjectUploader";
+import { R2ImageUploader } from "@/components/R2ImageUploader";
 
 const healthRecordSchema = z.object({
   status: z.enum(["thriving", "struggling", "sick"]),
@@ -253,16 +253,16 @@ export function PlantHealthTracker({ plantId, plantName }: PlantHealthTrackerPro
                           </Button>
                         </div>
                       ) : (
-                        <ObjectUploader
+                        <R2ImageUploader
+                          plantId={plantId}
                           onUpload={handleImageUpload}
                           className="w-full"
-                          variant="health-record"
                         >
                           <div className="text-center py-4">
                             <Camera className="h-8 w-8 mx-auto mb-2 text-gray-400" />
                             <p className="text-sm text-gray-600">Click to upload health photo</p>
                           </div>
-                        </ObjectUploader>
+                        </R2ImageUploader>
                       )}
                     </div>
                   </div>

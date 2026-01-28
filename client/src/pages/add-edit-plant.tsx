@@ -32,8 +32,7 @@ import { useLocations } from "@/hooks/use-locations";
 import { useLocationState } from "@/hooks/use-location-state";
 import { usePlantSpecies } from "@/hooks/use-plant-species";
 import { Loader2, Upload, Image } from "lucide-react";
-import { ObjectUploader } from "@/components/ObjectUploader";
-import type { UploadResult } from "@uppy/core";
+import { R2ImageUploader } from "@/components/R2ImageUploader";
 
 export default function AddEditPlant() {
   const params = useParams();
@@ -42,9 +41,7 @@ export default function AddEditPlant() {
   const { toast } = useToast();
   const isEditing = id !== "new";
   const plantId = isEditing && id ? parseInt(id) : null;
-  const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [isUploading, setIsUploading] = useState(false);
   
   // Access recommended plant data from URL query parameters
   const [searchParams] = useState(() => {
@@ -78,7 +75,7 @@ export default function AddEditPlant() {
     }
   }, [recommendedPlant]);
 
-  const { useGetPlant, createPlant, updatePlant, uploadPlantImage, getUploadUrl, completeImageUpload } = usePlants();
+  const { useGetPlant, createPlant, updatePlant } = usePlants();
   
   // Debug form submission
   useEffect(() => {
@@ -182,67 +179,40 @@ export default function AddEditPlant() {
       });
     }
   }, [isEditing, isLoadingLocations, locations, isLoadingSpecies, plantSpeciesData, recommendedPlant, form]);
-  
-  // Handle image selection
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    
-    setSelectedImage(file);
-    
-    // Create a preview URL
-    const reader = new FileReader();
-    reader.onload = () => {
-      setImagePreview(reader.result as string);
-    };
-    reader.readAsDataURL(file);
-  };
-  
-  // Object Storage upload handlers
-  const handleGetUploadParameters = async () => {
-    if (!isEditing || !plantId) {
-      throw new Error('Plant ID is required for upload');
-    }
-    
-    const uploadURL = await getUploadUrl.mutateAsync(plantId);
-    return {
-      method: "PUT" as const,
-      url: uploadURL,
-    };
-  };
 
-  const handleUploadComplete = async (result: UploadResult<Record<string, unknown>, Record<string, unknown>>) => {
+  // R2 upload handler
+  const handleR2Upload = async (imageUrl: string) => {
     if (!isEditing || !plantId) return;
-    
-    setIsUploading(true);
-    
+
     try {
-      if (result.successful && result.successful.length > 0) {
-        const uploadedFile = result.successful[0];
-        
-        // Complete the upload by setting ACL and updating plant record
-        const response = await completeImageUpload.mutateAsync({
-          plantId,
-          imageURL: uploadedFile.uploadURL as string
-        });
-        
-        // Update the image preview with the new Object Storage URL
-        setImagePreview(response.imageUrl);
-        
-        toast({
-          title: "Image uploaded",
-          description: "Plant image has been uploaded successfully."
-        });
-      }
+      // Update the plant record with the new image URL
+      await updatePlant.mutateAsync({
+        id: plantId,
+        data: { imageUrl }
+      });
+
+      // Update the preview
+      setImagePreview(imageUrl);
+
+      toast({
+        title: "Image uploaded",
+        description: "Plant image has been uploaded successfully."
+      });
     } catch (error) {
       toast({
-        title: "Failed to complete upload",
+        title: "Failed to save image",
         description: "Please try again.",
         variant: "destructive"
       });
-    } finally {
-      setIsUploading(false);
     }
+  };
+
+  const handleUploadError = (error: Error) => {
+    toast({
+      title: "Upload failed",
+      description: error.message,
+      variant: "destructive"
+    });
   };
 
   const onSubmit = (values: z.infer<typeof formSchema>) => {
@@ -437,27 +407,17 @@ export default function AddEditPlant() {
                     
                     {isEditing && (
                       <div className="flex flex-col gap-2 w-full">
-                        <ObjectUploader
-                          maxNumberOfFiles={1}
-                          maxFileSize={10485760} // 10MB
-                          onGetUploadParameters={handleGetUploadParameters}
-                          onComplete={handleUploadComplete}
-                          buttonClassName="w-full"
+                        <R2ImageUploader
+                          plantId={plantId || undefined}
+                          onUpload={handleR2Upload}
+                          onError={handleUploadError}
+                          className="w-full"
                         >
-                          <div className="flex items-center gap-2">
-                            {isUploading ? (
-                              <Loader2 className="size-4 animate-spin" />
-                            ) : (
-                              <Upload className="size-4" />
-                            )}
+                          <Button variant="outline" className="w-full" type="button">
+                            <Upload className="size-4 mr-2" />
                             Upload Plant Image
-                          </div>
-                        </ObjectUploader>
-                        {isUploading && (
-                          <div className="text-sm text-muted-foreground">
-                            Uploading to secure storage...
-                          </div>
-                        )}
+                          </Button>
+                        </R2ImageUploader>
                       </div>
                     )}
                   </div>
