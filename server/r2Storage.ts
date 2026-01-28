@@ -32,6 +32,7 @@ function getR2Client(): S3Client {
   return new S3Client({
     region: "auto",
     endpoint: `https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+    forcePathStyle: true, // Required for R2 presigned URLs
     credentials: {
       accessKeyId: R2_ACCESS_KEY_ID!,
       secretAccessKey: R2_SECRET_ACCESS_KEY!,
