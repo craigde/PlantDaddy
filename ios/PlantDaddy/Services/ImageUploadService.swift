@@ -87,6 +87,7 @@ class ImageUploadService {
         var request = URLRequest(url: url)
         request.httpMethod = "PUT"
         request.setValue(contentType, forHTTPHeaderField: "Content-Type")
+        request.setValue("\(imageData.count)", forHTTPHeaderField: "Content-Length")
         request.httpBody = imageData
 
         // Use a basic session for R2 upload (no auth needed, presigned URL handles it)
