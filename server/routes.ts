@@ -677,6 +677,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
+  // Delete plant image (revert to species default)
+  apiRouter.delete("/plants/:id/image", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid plant ID" });
+      }
+
+      const plant = await dbStorage.getPlant(id);
+      if (!plant) {
+        return res.status(404).json({ message: "Plant not found" });
+      }
+
+      // Delete the image file if it exists and is a user upload
+      if (plant.imageUrl && plant.imageUrl.startsWith('/uploads/plant-')) {
+        const filePath = path.join(process.cwd(), plant.imageUrl);
+        fs.unlink(filePath, () => {});
+      }
+
+      // Clear the imageUrl on the plant
+      const updatedPlant = await dbStorage.updatePlant(id, { imageUrl: null });
+      res.json({ success: true, plant: updatedPlant });
+    } catch (error: any) {
+      const errorMessage = error?.message || "Failed to delete image";
+      res.status(500).json({ message: errorMessage });
+    }
+  });
+
   // Notification endpoints
   apiRouter.post("/notifications/test", async (req: Request, res: Response) => {
     try {
