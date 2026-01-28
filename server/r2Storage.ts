@@ -136,6 +136,15 @@ export class R2StorageService {
       ? `users/${userId}/plants/${plantId}/${objectId}`
       : `users/${userId}/uploads/${objectId}`;
 
+    console.log("[R2StorageService] uploadFile called:", {
+      userId,
+      plantId,
+      contentType,
+      dataSize: data?.length,
+      bucket: this.bucket,
+      key
+    });
+
     const command = new PutObjectCommand({
       Bucket: this.bucket,
       Key: key,
@@ -143,8 +152,24 @@ export class R2StorageService {
       ContentType: contentType,
     });
 
-    await this.client.send(command);
-    return key;
+    try {
+      const result = await this.client.send(command);
+      console.log("[R2StorageService] Upload successful:", {
+        key,
+        httpStatusCode: result.$metadata?.httpStatusCode,
+        requestId: result.$metadata?.requestId
+      });
+      return key;
+    } catch (error: any) {
+      console.error("[R2StorageService] Upload failed:", {
+        key,
+        errorName: error?.name,
+        errorMessage: error?.message,
+        httpStatusCode: error?.$metadata?.httpStatusCode,
+        requestId: error?.$metadata?.requestId
+      });
+      throw error;
+    }
   }
 
   /**

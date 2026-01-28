@@ -76,6 +76,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Configure multer for R2 uploads (in-memory storage required for buffer access)
+  const r2Upload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 10 * 1024 * 1024 }, // 10MB file size limit
+    fileFilter: function(req, file, cb) {
+      // Accept only image files
+      if (!file.mimetype.startsWith('image/')) {
+        return cb(new Error('Only image files are allowed'));
+      }
+      cb(null, true);
+    }
+  });
+
   // Serve uploaded files statically
   app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
   
@@ -758,33 +771,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // R2 Storage endpoints
 
   // Upload image to R2 via server (avoids CORS issues with presigned URLs)
-  apiRouter.post("/r2/upload", isAuthenticated, upload.single('image'), async (req: Request, res: Response) => {
+  apiRouter.post("/r2/upload", isAuthenticated, r2Upload.single('image'), async (req: Request, res: Response) => {
+    console.log("[R2 Upload] Request received");
+
     try {
+      // Check R2 configuration
       if (!isR2Configured()) {
+        console.log("[R2 Upload] R2 not configured");
         return res.status(503).json({ message: "R2 storage is not configured" });
       }
+      console.log("[R2 Upload] R2 is configured");
 
+      // Check user authentication
       const userId = getCurrentUserId();
       if (!userId) {
+        console.log("[R2 Upload] User not authenticated");
         return res.status(401).json({ message: "User not authenticated" });
       }
+      console.log("[R2 Upload] User authenticated:", userId);
 
+      // Check file was uploaded
       if (!req.file) {
+        console.log("[R2 Upload] No file in request");
         return res.status(400).json({ message: "No image file provided" });
       }
+      console.log("[R2 Upload] File received:", {
+        originalname: req.file.originalname,
+        mimetype: req.file.mimetype,
+        size: req.file.size,
+        hasBuffer: !!req.file.buffer,
+        bufferLength: req.file.buffer?.length
+      });
 
       const plantId = req.body.plantId ? parseInt(req.body.plantId) : undefined;
+      console.log("[R2 Upload] PlantId:", plantId);
+
       const r2Service = new R2StorageService();
 
       // Upload file to R2
+      console.log("[R2 Upload] Uploading to R2...");
       const key = await r2Service.uploadFile(
         userId,
         req.file.buffer,
         req.file.mimetype,
         plantId
       );
+      console.log("[R2 Upload] Upload successful, key:", key);
 
       const imageUrl = r2Service.keyToInternalUrl(key);
+      console.log("[R2 Upload] Image URL:", imageUrl);
 
       res.json({
         success: true,
@@ -792,8 +827,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         key
       });
     } catch (error: any) {
-      console.error("Failed to upload to R2:", error);
-      res.status(500).json({ message: "Failed to upload image" });
+      console.error("[R2 Upload] Failed:", error);
+      console.error("[R2 Upload] Error name:", error?.name);
+      console.error("[R2 Upload] Error message:", error?.message);
+      console.error("[R2 Upload] Error stack:", error?.stack);
+      res.status(500).json({ message: "Failed to upload image", error: error?.message });
     }
   });
 
