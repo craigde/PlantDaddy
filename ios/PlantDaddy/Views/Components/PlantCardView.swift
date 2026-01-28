@@ -28,7 +28,7 @@ struct PlantCardView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             // Plant Image (with species image fallback)
-            let displayImageUrl = plant.imageUrl ?? speciesImageUrl
+            let displayImageUrl = plant.fullImageUrl ?? speciesImageUrl
 
             if let imageUrl = displayImageUrl {
                 let _ = print("🖼️ PlantCardView loading image: \(imageUrl)")

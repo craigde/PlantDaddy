@@ -32,6 +32,22 @@ struct Plant: Codable, Identifiable {
     var daysUntilWatering: Int {
         Calendar.current.dateComponents([.day], from: Date(), to: nextWateringDate).day ?? 0
     }
+
+    // Full URL for the image (handles relative URLs from backend)
+    var fullImageUrl: String? {
+        guard let imageUrl = imageUrl else { return nil }
+
+        if imageUrl.hasPrefix("http") {
+            return imageUrl
+        }
+
+        if imageUrl.hasPrefix("/") {
+            let baseURL = APIConfig.baseURL.replacingOccurrences(of: "/api", with: "")
+            return baseURL + imageUrl
+        }
+
+        return imageUrl
+    }
 }
 
 struct CreatePlantRequest: Codable {

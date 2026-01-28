@@ -470,9 +470,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Invalid plant ID" });
       }
 
+      // Collect image URLs to clean up before deleting DB records
+      const plant = await dbStorage.getPlant(id);
+      if (!plant) {
+        return res.status(404).json({ message: "Plant not found" });
+      }
+
+      const imagesToDelete: string[] = [];
+      if (plant.imageUrl && plant.imageUrl.startsWith('/uploads/plant-')) {
+        imagesToDelete.push(plant.imageUrl);
+      }
+
+      // Collect health record images
+      const healthRecords = await dbStorage.getPlantHealthRecords(id);
+      for (const record of healthRecords) {
+        if (record.imageUrl && record.imageUrl.startsWith('/uploads/plant-')) {
+          imagesToDelete.push(record.imageUrl);
+        }
+      }
+
       const deleted = await dbStorage.deletePlant(id);
       if (!deleted) {
         return res.status(404).json({ message: "Plant not found" });
+      }
+
+      // Clean up image files from disk (fire-and-forget)
+      for (const imageUrl of imagesToDelete) {
+        fs.unlink(path.join(process.cwd(), imageUrl), () => {});
       }
 
       res.json({ success: true });
@@ -630,6 +654,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         if (!req.file) {
           return res.status(400).json({ message: "No image file provided" });
+        }
+
+        // Delete the old image file if it exists and is a user upload (not a species image)
+        if (plant.imageUrl && plant.imageUrl.startsWith('/uploads/plant-')) {
+          const oldPath = path.join(process.cwd(), plant.imageUrl);
+          fs.unlink(oldPath, () => {}); // fire-and-forget, ignore errors
         }
 
         const imageUrl = `/uploads/${req.file.filename}`;
