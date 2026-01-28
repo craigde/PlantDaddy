@@ -87,6 +87,65 @@ class ImageUploadService {
         return uploadResponse.imageUrl
     }
 
+    /// Upload an image via the general upload endpoint (for health records, etc.)
+    /// - Returns: The server path of the uploaded image (e.g. "/uploads/...")
+    func uploadGenericImage(_ image: UIImage) async throws -> String {
+        guard let imageData = compressImage(image) else {
+            throw NetworkError.unknown
+        }
+
+        let endpoint = APIEndpoint.uploadImage
+        guard let url = endpoint.url else {
+            throw NetworkError.invalidURL
+        }
+
+        let boundary = UUID().uuidString
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+
+        if let token = KeychainService.shared.getToken() {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        } else {
+            throw NetworkError.unauthorized
+        }
+
+        var body = Data()
+        body.append("--\(boundary)\r\n".data(using: .utf8)!)
+        body.append("Content-Disposition: form-data; name=\"image\"; filename=\"health.jpg\"\r\n".data(using: .utf8)!)
+        body.append("Content-Type: image/jpeg\r\n\r\n".data(using: .utf8)!)
+        body.append(imageData)
+        body.append("\r\n--\(boundary)--\r\n".data(using: .utf8)!)
+        request.httpBody = body
+
+        let session: URLSession
+        #if DEBUG
+        let config = URLSessionConfiguration.default
+        config.timeoutIntervalForRequest = APIConfig.timeoutInterval
+        session = URLSession(configuration: config, delegate: APIClient.shared, delegateQueue: nil)
+        #else
+        session = URLSession.shared
+        #endif
+
+        let (data, response) = try await session.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw NetworkError.unknown
+        }
+
+        guard (200...299).contains(httpResponse.statusCode) else {
+            if httpResponse.statusCode == 401 {
+                KeychainService.shared.deleteToken()
+                throw NetworkError.unauthorized
+            }
+            let errorMsg = try? JSONDecoder().decode(ServerErrorResponse.self, from: data)
+            throw NetworkError.httpError(httpResponse.statusCode, errorMsg?.message)
+        }
+
+        let uploadResponse = try JSONDecoder().decode(ImageUploadResponse.self, from: data)
+        return uploadResponse.imageUrl
+    }
+
     // MARK: - Image Processing
 
     /// Compress image to reduce file size
