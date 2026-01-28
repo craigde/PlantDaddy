@@ -128,76 +128,6 @@ export function usePlants() {
     }
   });
   
-  // Upload an image for a plant using Object Storage
-  const uploadPlantImage = useMutation({
-    mutationFn: async ({ id, imageFile }: { id: number; imageFile: File }) => {
-      // Step 1: Get upload URL from backend
-      const uploadUrlRes = await apiRequest({
-        url: `/api/plants/${id}/upload-url`,
-        method: "POST"
-      });
-      
-      if (!uploadUrlRes.uploadURL) {
-        throw new Error('Failed to get upload URL');
-      }
-      
-      // Step 2: Upload directly to Object Storage
-      const uploadRes = await fetch(uploadUrlRes.uploadURL, {
-        method: 'PUT',
-        body: imageFile,
-        headers: {
-          'Content-Type': imageFile.type,
-        },
-      });
-      
-      if (!uploadRes.ok) {
-        throw new Error('Failed to upload to Object Storage');
-      }
-      
-      // Step 3: Complete the upload by setting ACL and updating plant record
-      const completeRes = await apiRequest({
-        url: `/api/plants/${id}/image`,
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ imageURL: uploadUrlRes.uploadURL })
-      });
-      
-      return completeRes;
-    },
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["/api/plants"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/plants", variables.id] });
-    },
-  });
-
-  // Get upload URL for Object Storage
-  const getUploadUrl = useMutation({
-    mutationFn: async (plantId: number) => {
-      const res = await apiRequest({
-        url: `/api/plants/${plantId}/upload-url`,
-        method: "POST"
-      });
-      return res.uploadURL;
-    },
-  });
-
-  // Complete image upload after Object Storage upload
-  const completeImageUpload = useMutation({
-    mutationFn: async ({ plantId, imageURL }: { plantId: number; imageURL: string }) => {
-      const res = await apiRequest({
-        url: `/api/plants/${plantId}/image`,
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ imageURL })
-      });
-      return res;
-    },
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["/api/plants"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/plants", variables.plantId] });
-    },
-  });
-  
   return {
     plants,
     isLoading,
@@ -207,8 +137,5 @@ export function usePlants() {
     updatePlant,
     deletePlant,
     waterPlant,
-    uploadPlantImage,
-    getUploadUrl,
-    completeImageUpload,
   };
 }

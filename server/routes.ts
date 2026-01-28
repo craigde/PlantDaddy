@@ -11,9 +11,8 @@ import { setupAuth, hashPassword, jwtAuthMiddleware, comparePasswords } from "./
 import passport from "passport";
 import { setUserContext, getCurrentUserId, userContextStorage } from "./user-context";
 import { generateToken } from "./jwt";
-// Object Storage integration for secure, persistent plant image uploads
-import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
-import { ObjectPermission } from "./objectAcl";
+// R2 Storage integration for secure, persistent plant image uploads
+import { R2StorageService, isR2Configured } from "./r2Storage";
 import { ExportService } from "./export-service";
 import { ImportService } from "./import-service";
 
@@ -476,16 +475,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Plant not found" });
       }
 
-      const imagesToDelete: string[] = [];
-      if (plant.imageUrl && plant.imageUrl.startsWith('/uploads/plant-')) {
-        imagesToDelete.push(plant.imageUrl);
+      const localImagesToDelete: string[] = [];
+      const r2KeysToDelete: string[] = [];
+
+      // Categorize plant image
+      if (plant.imageUrl) {
+        if (plant.imageUrl.startsWith('/r2/')) {
+          r2KeysToDelete.push(plant.imageUrl.slice(4));
+        } else if (plant.imageUrl.startsWith('/uploads/plant-')) {
+          localImagesToDelete.push(plant.imageUrl);
+        }
       }
 
       // Collect health record images
       const healthRecords = await dbStorage.getPlantHealthRecords(id);
       for (const record of healthRecords) {
-        if (record.imageUrl && record.imageUrl.startsWith('/uploads/plant-')) {
-          imagesToDelete.push(record.imageUrl);
+        if (record.imageUrl) {
+          if (record.imageUrl.startsWith('/r2/')) {
+            r2KeysToDelete.push(record.imageUrl.slice(4));
+          } else if (record.imageUrl.startsWith('/uploads/plant-')) {
+            localImagesToDelete.push(record.imageUrl);
+          }
         }
       }
 
@@ -494,9 +504,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Plant not found" });
       }
 
-      // Clean up image files from disk (fire-and-forget)
-      for (const imageUrl of imagesToDelete) {
+      // Clean up local image files (fire-and-forget)
+      for (const imageUrl of localImagesToDelete) {
         fs.unlink(path.join(process.cwd(), imageUrl), () => {});
+      }
+
+      // Clean up R2 images (fire-and-forget)
+      if (r2KeysToDelete.length > 0 && isR2Configured()) {
+        const r2Service = new R2StorageService();
+        for (const key of r2KeysToDelete) {
+          r2Service.deleteObject(key).catch(err =>
+            console.error("Failed to delete R2 object:", key, err)
+          );
+        }
       }
 
       res.json({ success: true });
@@ -705,10 +725,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Plant not found" });
       }
 
-      // Delete the image file if it exists and is a user upload
-      if (plant.imageUrl && plant.imageUrl.startsWith('/uploads/plant-')) {
-        const filePath = path.join(process.cwd(), plant.imageUrl);
-        fs.unlink(filePath, () => {});
+      // Delete the image file if it exists
+      if (plant.imageUrl) {
+        // Handle R2 images
+        if (plant.imageUrl.startsWith('/r2/') && isR2Configured()) {
+          try {
+            const r2Service = new R2StorageService();
+            const key = r2Service.extractKeyFromUrl(plant.imageUrl);
+            if (key) {
+              await r2Service.deleteObject(key);
+            }
+          } catch (err) {
+            console.error("Failed to delete R2 image:", err);
+          }
+        }
+        // Handle local uploads
+        else if (plant.imageUrl.startsWith('/uploads/plant-')) {
+          const filePath = path.join(process.cwd(), plant.imageUrl);
+          fs.unlink(filePath, () => {});
+        }
       }
 
       // Clear the imageUrl on the plant
@@ -717,6 +752,74 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       const errorMessage = error?.message || "Failed to delete image";
       res.status(500).json({ message: errorMessage });
+    }
+  });
+
+  // R2 Storage endpoints
+
+  // Get a presigned upload URL for R2
+  apiRouter.post("/r2/upload-url", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      if (!isR2Configured()) {
+        return res.status(503).json({ message: "R2 storage is not configured" });
+      }
+
+      const userId = getCurrentUserId();
+      if (!userId) {
+        return res.status(401).json({ message: "User not authenticated" });
+      }
+
+      const { plantId, contentType } = req.body;
+      const r2Service = new R2StorageService();
+
+      const { url, key } = await r2Service.getUploadUrl(
+        userId,
+        plantId ? parseInt(plantId) : undefined,
+        contentType || "image/jpeg"
+      );
+
+      res.json({
+        method: "PUT",
+        url,
+        key,
+        // Return the internal URL format for storing in database after upload
+        imageUrl: r2Service.keyToInternalUrl(key)
+      });
+    } catch (error: any) {
+      console.error("Failed to get R2 upload URL:", error);
+      res.status(500).json({ message: "Failed to generate upload URL" });
+    }
+  });
+
+  // Get a presigned download URL for an R2 image
+  apiRouter.get("/r2/download-url", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      if (!isR2Configured()) {
+        return res.status(503).json({ message: "R2 storage is not configured" });
+      }
+
+      const userId = getCurrentUserId();
+      if (!userId) {
+        return res.status(401).json({ message: "User not authenticated" });
+      }
+
+      const { key } = req.query;
+      if (!key || typeof key !== "string") {
+        return res.status(400).json({ message: "Missing or invalid key parameter" });
+      }
+
+      const r2Service = new R2StorageService();
+
+      // Verify the user owns this image
+      if (!r2Service.verifyUserOwnership(key, userId)) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const url = await r2Service.getDownloadUrl(key);
+      res.json({ url });
+    } catch (error: any) {
+      console.error("Failed to get R2 download URL:", error);
+      res.status(500).json({ message: "Failed to generate download URL" });
     }
   });
 
@@ -1440,45 +1543,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // Object Storage serving endpoints
-  
-  // Serve private objects (plant images) with proper ACL checks
-  app.get("/objects/:objectPath(*)", isAuthenticated, async (req, res) => {
+  // R2 Storage serving endpoint - redirects to presigned URLs
+  app.get("/r2/*", isAuthenticated, async (req, res) => {
+    if (!isR2Configured()) {
+      return res.status(503).json({ error: "R2 storage is not configured" });
+    }
+
     const userId = getCurrentUserId();
-    const objectStorageService = new ObjectStorageService();
+    if (!userId) {
+      return res.sendStatus(401);
+    }
+
+    // Extract the key from the path (remove /r2/ prefix)
+    const key = req.path.slice(4);
+    if (!key) {
+      return res.status(400).json({ error: "Missing object key" });
+    }
+
+    const r2Service = new R2StorageService();
+
+    // Verify the user owns this image
+    if (!r2Service.verifyUserOwnership(key, userId)) {
+      return res.sendStatus(403);
+    }
+
     try {
-      const objectFile = await objectStorageService.getObjectEntityFile(req.path);
-      const canAccess = await objectStorageService.canAccessObjectEntity({
-        objectFile,
-        userId: userId?.toString(),
-        requestedPermission: ObjectPermission.READ,
-      });
-      if (!canAccess) {
-        return res.sendStatus(401);
-      }
-      objectStorageService.downloadObject(objectFile, res);
-    } catch (error) {
-      console.error("Error checking object access:", error);
-      if (error instanceof ObjectNotFoundError) {
+      // Check if object exists
+      const exists = await r2Service.objectExists(key);
+      if (!exists) {
         return res.sendStatus(404);
       }
-      return res.sendStatus(500);
-    }
-  });
 
-  // Serve public objects (fallback for assets)
-  app.get("/public-objects/:filePath(*)", async (req, res) => {
-    const filePath = req.params.filePath;
-    const objectStorageService = new ObjectStorageService();
-    try {
-      const file = await objectStorageService.searchPublicObject(filePath);
-      if (!file) {
-        return res.status(404).json({ error: "File not found" });
-      }
-      objectStorageService.downloadObject(file, res);
+      // Generate presigned download URL and redirect
+      const url = await r2Service.getDownloadUrl(key);
+      res.redirect(url);
     } catch (error) {
-      console.error("Error searching for public object:", error);
-      return res.status(500).json({ error: "Internal server error" });
+      console.error("Error serving R2 object:", error);
+      return res.sendStatus(500);
     }
   });
 
