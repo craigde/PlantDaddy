@@ -15,14 +15,13 @@ interface R2ImageUploaderProps {
 }
 
 /**
- * A simple image upload component that uploads directly to R2 storage.
+ * A simple image upload component that uploads to R2 storage via server.
  *
  * Flow:
  * 1. User clicks the button/children area
  * 2. File picker opens
- * 3. After selection, gets presigned URL from backend
- * 4. Uploads directly to R2
- * 5. Calls onUpload with the image URL for storing in database
+ * 3. After selection, uploads to server which proxies to R2
+ * 4. Calls onUpload with the image URL for storing in database
  */
 export function R2ImageUploader({
   plantId,
@@ -57,37 +56,26 @@ export function R2ImageUploader({
     setIsUploading(true);
 
     try {
-      // Step 1: Get presigned upload URL from backend
-      const uploadParams = await apiRequest({
-        url: "/api/r2/upload-url",
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          plantId,
-          contentType: file.type,
-        }),
-      });
-
-      if (!uploadParams.url) {
-        throw new Error("Failed to get upload URL");
+      // Upload to server which proxies to R2
+      const formData = new FormData();
+      formData.append('image', file);
+      if (plantId) {
+        formData.append('plantId', plantId.toString());
       }
 
-      // Step 2: Upload directly to R2
-      const uploadResponse = await fetch(uploadParams.url, {
-        method: "PUT",
-        body: file,
-        headers: {
-          "Content-Type": file.type,
-        },
+      const response = await fetch('/api/r2/upload', {
+        method: 'POST',
+        body: formData,
+        credentials: 'include',
       });
 
-      if (!uploadResponse.ok) {
-        throw new Error("Failed to upload image");
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ message: 'Upload failed' }));
+        throw new Error(error.message || 'Upload failed');
       }
 
-      // Step 3: Return the internal URL for storing in database
-      // The imageUrl is the /r2/... format that our backend serves
-      onUpload(uploadParams.imageUrl);
+      const result = await response.json();
+      onUpload(result.imageUrl);
     } catch (error) {
       console.error("Upload error:", error);
       onError?.(error instanceof Error ? error : new Error("Upload failed"));

@@ -757,7 +757,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // R2 Storage endpoints
 
-  // Get a presigned upload URL for R2
+  // Upload image to R2 via server (avoids CORS issues with presigned URLs)
+  apiRouter.post("/r2/upload", isAuthenticated, upload.single('image'), async (req: Request, res: Response) => {
+    try {
+      if (!isR2Configured()) {
+        return res.status(503).json({ message: "R2 storage is not configured" });
+      }
+
+      const userId = getCurrentUserId();
+      if (!userId) {
+        return res.status(401).json({ message: "User not authenticated" });
+      }
+
+      if (!req.file) {
+        return res.status(400).json({ message: "No image file provided" });
+      }
+
+      const plantId = req.body.plantId ? parseInt(req.body.plantId) : undefined;
+      const r2Service = new R2StorageService();
+
+      // Upload file to R2
+      const key = await r2Service.uploadFile(
+        userId,
+        req.file.buffer,
+        req.file.mimetype,
+        plantId
+      );
+
+      const imageUrl = r2Service.keyToInternalUrl(key);
+
+      res.json({
+        success: true,
+        imageUrl,
+        key
+      });
+    } catch (error: any) {
+      console.error("Failed to upload to R2:", error);
+      res.status(500).json({ message: "Failed to upload image" });
+    }
+  });
+
+  // Get a presigned upload URL for R2 (kept for backwards compatibility)
   apiRouter.post("/r2/upload-url", isAuthenticated, async (req: Request, res: Response) => {
     try {
       if (!isR2Configured()) {

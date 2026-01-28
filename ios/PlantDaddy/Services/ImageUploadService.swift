@@ -14,33 +14,35 @@ struct ImageUploadResponse: Codable {
     let plant: Plant?
 }
 
-/// Response from /api/r2/upload-url endpoint
-struct R2UploadUrlResponse: Codable {
-    let method: String
-    let url: String
-    let key: String
-    let imageUrl: String
-}
-
 class ImageUploadService {
     static let shared = ImageUploadService()
 
     private init() {}
 
-    // MARK: - R2 Upload URL
+    // MARK: - R2 Server Upload
 
-    /// Get a presigned URL for uploading directly to R2
-    /// - Parameter plantId: Optional plant ID for organizing uploads
-    /// - Returns: R2UploadUrlResponse containing the presigned URL and final image URL
-    private func getR2UploadUrl(plantId: Int? = nil, contentType: String = "image/jpeg") async throws -> R2UploadUrlResponse {
-        let endpoint = APIEndpoint.r2UploadUrl
+    /// Response from /api/r2/upload endpoint
+    private struct R2UploadResponse: Codable {
+        let success: Bool
+        let imageUrl: String
+        let key: String
+    }
+
+    /// Upload image to R2 via server (multipart form upload)
+    /// - Parameters:
+    ///   - imageData: The image data to upload
+    ///   - plantId: Optional plant ID for organizing uploads
+    /// - Returns: The image URL for storing in database
+    private func uploadToR2ViaServer(imageData: Data, plantId: Int? = nil) async throws -> String {
+        let endpoint = APIEndpoint.r2Upload
         guard let url = endpoint.url else {
             throw NetworkError.invalidURL
         }
 
+        let boundary = UUID().uuidString
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
 
         if let token = KeychainService.shared.getToken() {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
@@ -48,12 +50,25 @@ class ImageUploadService {
             throw NetworkError.unauthorized
         }
 
-        // Build JSON body
-        var bodyDict: [String: Any] = ["contentType": contentType]
+        // Build multipart body
+        var body = Data()
+
+        // Add image file
+        body.append("--\(boundary)\r\n".data(using: .utf8)!)
+        body.append("Content-Disposition: form-data; name=\"image\"; filename=\"image.jpg\"\r\n".data(using: .utf8)!)
+        body.append("Content-Type: image/jpeg\r\n\r\n".data(using: .utf8)!)
+        body.append(imageData)
+        body.append("\r\n".data(using: .utf8)!)
+
+        // Add plantId if provided
         if let plantId = plantId {
-            bodyDict["plantId"] = plantId
+            body.append("--\(boundary)\r\n".data(using: .utf8)!)
+            body.append("Content-Disposition: form-data; name=\"plantId\"\r\n\r\n".data(using: .utf8)!)
+            body.append("\(plantId)\r\n".data(using: .utf8)!)
         }
-        request.httpBody = try JSONSerialization.data(withJSONObject: bodyDict)
+
+        body.append("--\(boundary)--\r\n".data(using: .utf8)!)
+        request.httpBody = body
 
         let session = createURLSession()
         let (data, response) = try await session.data(for: request)
@@ -68,38 +83,14 @@ class ImageUploadService {
                 throw NetworkError.unauthorized
             }
             if httpResponse.statusCode == 503 {
-                // R2 not configured - fall back to local upload
                 throw NetworkError.httpError(503, "R2 storage not configured")
             }
             let errorMsg = try? JSONDecoder().decode(ServerErrorResponse.self, from: data)
             throw NetworkError.httpError(httpResponse.statusCode, errorMsg?.message)
         }
 
-        return try JSONDecoder().decode(R2UploadUrlResponse.self, from: data)
-    }
-
-    /// Upload image data directly to R2 using a presigned URL
-    private func uploadToR2(presignedUrl: String, imageData: Data, contentType: String = "image/jpeg") async throws {
-        guard let url = URL(string: presignedUrl) else {
-            throw NetworkError.invalidURL
-        }
-
-        var request = URLRequest(url: url)
-        request.httpMethod = "PUT"
-        request.setValue(contentType, forHTTPHeaderField: "Content-Type")
-        request.setValue("\(imageData.count)", forHTTPHeaderField: "Content-Length")
-        request.httpBody = imageData
-
-        // Use a basic session for R2 upload (no auth needed, presigned URL handles it)
-        let (_, response) = try await URLSession.shared.data(for: request)
-
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw NetworkError.unknown
-        }
-
-        guard (200...299).contains(httpResponse.statusCode) else {
-            throw NetworkError.httpError(httpResponse.statusCode, "Failed to upload to R2")
-        }
+        let uploadResponse = try JSONDecoder().decode(R2UploadResponse.self, from: data)
+        return uploadResponse.imageUrl
     }
 
     /// Create a URL session with appropriate configuration
@@ -115,7 +106,7 @@ class ImageUploadService {
 
     // MARK: - Image Upload
 
-    /// Upload an image for a plant to R2 storage
+    /// Upload an image for a plant to R2 storage via server
     /// - Parameters:
     ///   - image: UIImage to upload
     ///   - plantId: ID of the plant
@@ -125,31 +116,17 @@ class ImageUploadService {
             throw NetworkError.unknown
         }
 
-        // Get presigned URL from backend
-        let uploadUrlResponse = try await getR2UploadUrl(plantId: plantId, contentType: "image/jpeg")
-
-        // Upload directly to R2
-        try await uploadToR2(presignedUrl: uploadUrlResponse.url, imageData: imageData)
-
-        // Return the internal URL for storing in database
-        return uploadUrlResponse.imageUrl
+        return try await uploadToR2ViaServer(imageData: imageData, plantId: plantId)
     }
 
-    /// Upload an image via R2 (for health records, etc.)
+    /// Upload an image via R2 server (for health records, etc.)
     /// - Returns: The server path of the uploaded image (e.g. "/r2/users/1/uploads/uuid")
     func uploadGenericImage(_ image: UIImage, plantId: Int? = nil) async throws -> String {
         guard let imageData = compressImage(image) else {
             throw NetworkError.unknown
         }
 
-        // Get presigned URL from backend
-        let uploadUrlResponse = try await getR2UploadUrl(plantId: plantId, contentType: "image/jpeg")
-
-        // Upload directly to R2
-        try await uploadToR2(presignedUrl: uploadUrlResponse.url, imageData: imageData)
-
-        // Return the internal URL for storing in database
-        return uploadUrlResponse.imageUrl
+        return try await uploadToR2ViaServer(imageData: imageData, plantId: plantId)
     }
 
     // MARK: - Image Processing
