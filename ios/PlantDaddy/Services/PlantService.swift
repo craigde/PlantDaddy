@@ -19,6 +19,7 @@ class PlantService: ObservableObject {
     @Published var error: String?
 
     private let apiClient = APIClient.shared
+    private let notificationService = NotificationService.shared
 
     private init() {}
 
@@ -33,6 +34,12 @@ class PlantService: ObservableObject {
                 endpoint: .plants,
                 method: .get
             )
+
+            // Reschedule local notifications for all plants
+            if notificationService.isAuthorized {
+                await notificationService.scheduleAllPlantReminders(plants)
+                notificationService.updateBadgeCount(plants.filter { $0.needsWatering }.count)
+            }
         } catch {
             self.error = error.localizedDescription
         }
@@ -99,6 +106,10 @@ class PlantService: ObservableObject {
 
         // Remove from local array
         plants.removeAll { $0.id == id }
+
+        // Remove notification for deleted plant
+        notificationService.removeWateringReminder(for: id)
+        notificationService.updateBadgeCount(plants.filter { $0.needsWatering }.count)
     }
 
     func waterPlant(id: Int) async throws -> Plant {
@@ -110,6 +121,12 @@ class PlantService: ObservableObject {
         // Update local array
         if let index = plants.firstIndex(where: { $0.id == id }) {
             plants[index] = response.plant
+        }
+
+        // Reschedule notification for the updated plant
+        if notificationService.isAuthorized {
+            await notificationService.scheduleWateringReminder(for: response.plant)
+            notificationService.updateBadgeCount(plants.filter { $0.needsWatering }.count)
         }
 
         return response.plant

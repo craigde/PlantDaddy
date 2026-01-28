@@ -26,6 +26,10 @@ struct ContentView: View {
         ZStack {
             if authService.isAuthenticated {
                 MainTabView()
+                    .task {
+                        // Request notification permission when user is authenticated
+                        await NotificationService.shared.requestAuthorization()
+                    }
             } else {
                 LoginView()
             }
