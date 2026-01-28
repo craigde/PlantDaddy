@@ -14,136 +14,141 @@ struct ImageUploadResponse: Codable {
     let plant: Plant?
 }
 
+/// Response from /api/r2/upload-url endpoint
+struct R2UploadUrlResponse: Codable {
+    let method: String
+    let url: String
+    let key: String
+    let imageUrl: String
+}
+
 class ImageUploadService {
     static let shared = ImageUploadService()
 
     private init() {}
 
+    // MARK: - R2 Upload URL
+
+    /// Get a presigned URL for uploading directly to R2
+    /// - Parameter plantId: Optional plant ID for organizing uploads
+    /// - Returns: R2UploadUrlResponse containing the presigned URL and final image URL
+    private func getR2UploadUrl(plantId: Int? = nil, contentType: String = "image/jpeg") async throws -> R2UploadUrlResponse {
+        let endpoint = APIEndpoint.r2UploadUrl
+        guard let url = endpoint.url else {
+            throw NetworkError.invalidURL
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        if let token = KeychainService.shared.getToken() {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        } else {
+            throw NetworkError.unauthorized
+        }
+
+        // Build JSON body
+        var bodyDict: [String: Any] = ["contentType": contentType]
+        if let plantId = plantId {
+            bodyDict["plantId"] = plantId
+        }
+        request.httpBody = try JSONSerialization.data(withJSONObject: bodyDict)
+
+        let session = createURLSession()
+        let (data, response) = try await session.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw NetworkError.unknown
+        }
+
+        guard (200...299).contains(httpResponse.statusCode) else {
+            if httpResponse.statusCode == 401 {
+                KeychainService.shared.deleteToken()
+                throw NetworkError.unauthorized
+            }
+            if httpResponse.statusCode == 503 {
+                // R2 not configured - fall back to local upload
+                throw NetworkError.httpError(503, "R2 storage not configured")
+            }
+            let errorMsg = try? JSONDecoder().decode(ServerErrorResponse.self, from: data)
+            throw NetworkError.httpError(httpResponse.statusCode, errorMsg?.message)
+        }
+
+        return try JSONDecoder().decode(R2UploadUrlResponse.self, from: data)
+    }
+
+    /// Upload image data directly to R2 using a presigned URL
+    private func uploadToR2(presignedUrl: String, imageData: Data, contentType: String = "image/jpeg") async throws {
+        guard let url = URL(string: presignedUrl) else {
+            throw NetworkError.invalidURL
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "PUT"
+        request.setValue(contentType, forHTTPHeaderField: "Content-Type")
+        request.httpBody = imageData
+
+        // Use a basic session for R2 upload (no auth needed, presigned URL handles it)
+        let (_, response) = try await URLSession.shared.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw NetworkError.unknown
+        }
+
+        guard (200...299).contains(httpResponse.statusCode) else {
+            throw NetworkError.httpError(httpResponse.statusCode, "Failed to upload to R2")
+        }
+    }
+
+    /// Create a URL session with appropriate configuration
+    private func createURLSession() -> URLSession {
+        #if DEBUG
+        let config = URLSessionConfiguration.default
+        config.timeoutIntervalForRequest = APIConfig.timeoutInterval
+        return URLSession(configuration: config, delegate: APIClient.shared, delegateQueue: nil)
+        #else
+        return URLSession.shared
+        #endif
+    }
+
     // MARK: - Image Upload
 
-    /// Upload an image for a plant via multipart form data
+    /// Upload an image for a plant to R2 storage
     /// - Parameters:
     ///   - image: UIImage to upload
     ///   - plantId: ID of the plant
-    /// - Returns: URL of the uploaded image
+    /// - Returns: URL of the uploaded image (e.g. "/r2/users/1/plants/2/uuid")
     func uploadPlantImage(_ image: UIImage, for plantId: Int) async throws -> String {
         guard let imageData = compressImage(image) else {
             throw NetworkError.unknown
         }
 
-        let endpoint = APIEndpoint.plantImageUpload(id: plantId)
-        guard let url = endpoint.url else {
-            throw NetworkError.invalidURL
-        }
+        // Get presigned URL from backend
+        let uploadUrlResponse = try await getR2UploadUrl(plantId: plantId, contentType: "image/jpeg")
 
-        let boundary = UUID().uuidString
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+        // Upload directly to R2
+        try await uploadToR2(presignedUrl: uploadUrlResponse.url, imageData: imageData)
 
-        // Add auth token
-        if let token = KeychainService.shared.getToken() {
-            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        } else {
-            throw NetworkError.unauthorized
-        }
-
-        // Build multipart body
-        var body = Data()
-        body.append("--\(boundary)\r\n".data(using: .utf8)!)
-        body.append("Content-Disposition: form-data; name=\"image\"; filename=\"plant.jpg\"\r\n".data(using: .utf8)!)
-        body.append("Content-Type: image/jpeg\r\n\r\n".data(using: .utf8)!)
-        body.append(imageData)
-        body.append("\r\n--\(boundary)--\r\n".data(using: .utf8)!)
-        request.httpBody = body
-
-        let session: URLSession
-        #if DEBUG
-        let config = URLSessionConfiguration.default
-        config.timeoutIntervalForRequest = APIConfig.timeoutInterval
-        session = URLSession(configuration: config, delegate: APIClient.shared, delegateQueue: nil)
-        #else
-        session = URLSession.shared
-        #endif
-
-        let (data, response) = try await session.data(for: request)
-
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw NetworkError.unknown
-        }
-
-        guard (200...299).contains(httpResponse.statusCode) else {
-            if httpResponse.statusCode == 401 {
-                KeychainService.shared.deleteToken()
-                throw NetworkError.unauthorized
-            }
-            let errorMsg = try? JSONDecoder().decode(ServerErrorResponse.self, from: data)
-            throw NetworkError.httpError(httpResponse.statusCode, errorMsg?.message)
-        }
-
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
-        let uploadResponse = try decoder.decode(ImageUploadResponse.self, from: data)
-        return uploadResponse.imageUrl
+        // Return the internal URL for storing in database
+        return uploadUrlResponse.imageUrl
     }
 
-    /// Upload an image via the general upload endpoint (for health records, etc.)
-    /// - Returns: The server path of the uploaded image (e.g. "/uploads/...")
-    func uploadGenericImage(_ image: UIImage) async throws -> String {
+    /// Upload an image via R2 (for health records, etc.)
+    /// - Returns: The server path of the uploaded image (e.g. "/r2/users/1/uploads/uuid")
+    func uploadGenericImage(_ image: UIImage, plantId: Int? = nil) async throws -> String {
         guard let imageData = compressImage(image) else {
             throw NetworkError.unknown
         }
 
-        let endpoint = APIEndpoint.uploadImage
-        guard let url = endpoint.url else {
-            throw NetworkError.invalidURL
-        }
+        // Get presigned URL from backend
+        let uploadUrlResponse = try await getR2UploadUrl(plantId: plantId, contentType: "image/jpeg")
 
-        let boundary = UUID().uuidString
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+        // Upload directly to R2
+        try await uploadToR2(presignedUrl: uploadUrlResponse.url, imageData: imageData)
 
-        if let token = KeychainService.shared.getToken() {
-            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        } else {
-            throw NetworkError.unauthorized
-        }
-
-        var body = Data()
-        body.append("--\(boundary)\r\n".data(using: .utf8)!)
-        body.append("Content-Disposition: form-data; name=\"image\"; filename=\"health.jpg\"\r\n".data(using: .utf8)!)
-        body.append("Content-Type: image/jpeg\r\n\r\n".data(using: .utf8)!)
-        body.append(imageData)
-        body.append("\r\n--\(boundary)--\r\n".data(using: .utf8)!)
-        request.httpBody = body
-
-        let session: URLSession
-        #if DEBUG
-        let config = URLSessionConfiguration.default
-        config.timeoutIntervalForRequest = APIConfig.timeoutInterval
-        session = URLSession(configuration: config, delegate: APIClient.shared, delegateQueue: nil)
-        #else
-        session = URLSession.shared
-        #endif
-
-        let (data, response) = try await session.data(for: request)
-
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw NetworkError.unknown
-        }
-
-        guard (200...299).contains(httpResponse.statusCode) else {
-            if httpResponse.statusCode == 401 {
-                KeychainService.shared.deleteToken()
-                throw NetworkError.unauthorized
-            }
-            let errorMsg = try? JSONDecoder().decode(ServerErrorResponse.self, from: data)
-            throw NetworkError.httpError(httpResponse.statusCode, errorMsg?.message)
-        }
-
-        let uploadResponse = try JSONDecoder().decode(ImageUploadResponse.self, from: data)
-        return uploadResponse.imageUrl
+        // Return the internal URL for storing in database
+        return uploadUrlResponse.imageUrl
     }
 
     // MARK: - Image Processing
