@@ -117,7 +117,9 @@ struct ImagePickerSheet: View {
     @State private var showingCamera = false
     @State private var showingLibrary = false
 
+    let hasExistingImage: Bool
     let onImageSelected: (UIImage) -> Void
+    var onImageRemoved: (() -> Void)?
 
     var body: some View {
         NavigationStack {
@@ -130,7 +132,7 @@ struct ImagePickerSheet: View {
                     Label("Choose from Library", systemImage: "photo.fill")
                 }
 
-                if selectedImage != nil {
+                if selectedImage != nil || hasExistingImage {
                     Button(role: .destructive, action: removeImage) {
                         Label("Remove Photo", systemImage: "trash.fill")
                     }
@@ -170,6 +172,7 @@ struct ImagePickerSheet: View {
 
     private func removeImage() {
         selectedImage = nil
+        onImageRemoved?()
         dismiss()
     }
 }

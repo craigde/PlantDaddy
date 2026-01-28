@@ -21,7 +21,6 @@ struct PlantDetailView: View {
     @State private var showingImagePicker = false
     @State private var selectedImage: UIImage?
     @State private var isUploadingImage = false
-    @State private var showingRemovePhotoAlert = false
     @Environment(\.dismiss) private var dismiss
 
     private let imageUploadService = ImageUploadService.shared
@@ -134,35 +133,18 @@ struct PlantDetailView: View {
                     .clipShape(RoundedRectangle(cornerRadius: 16))
             }
 
-            // Photo action buttons
-            VStack(spacing: 8) {
-                Button(action: { showingImagePicker = true }) {
-                    HStack {
-                        Image(systemName: plant.imageUrl == nil ? "camera.fill" : "pencil.circle.fill")
-                        Text(plant.imageUrl == nil ? "Add Photo" : "Change")
-                    }
-                    .font(.headline)
-                    .foregroundColor(.white)
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 8)
-                    .background(Color.green)
-                    .cornerRadius(20)
+            // Add/Change Photo Button
+            Button(action: { showingImagePicker = true }) {
+                HStack {
+                    Image(systemName: plant.imageUrl == nil ? "camera.fill" : "pencil.circle.fill")
+                    Text(plant.imageUrl == nil ? "Add Photo" : "Change")
                 }
-
-                if plant.imageUrl != nil {
-                    Button(action: { showingRemovePhotoAlert = true }) {
-                        HStack {
-                            Image(systemName: "trash")
-                            Text("Remove")
-                        }
-                        .font(.subheadline)
-                        .foregroundColor(.white)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 6)
-                        .background(Color.red.opacity(0.8))
-                        .cornerRadius(16)
-                    }
-                }
+                .font(.headline)
+                .foregroundColor(.white)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
+                .background(Color.green)
+                .cornerRadius(20)
             }
             .padding(12)
             .disabled(isUploadingImage)
@@ -175,17 +157,16 @@ struct PlantDetailView: View {
             }
         }
         .sheet(isPresented: $showingImagePicker) {
-            ImagePickerSheet(selectedImage: $selectedImage) { image in
-                uploadImage(image, for: plant.id)
-            }
-        }
-        .alert("Remove Photo", isPresented: $showingRemovePhotoAlert) {
-            Button("Cancel", role: .cancel) {}
-            Button("Remove", role: .destructive) {
-                removePhoto(for: plant.id)
-            }
-        } message: {
-            Text("Remove the custom photo? The default species image will be shown instead.")
+            ImagePickerSheet(
+                selectedImage: $selectedImage,
+                hasExistingImage: plant.imageUrl != nil,
+                onImageSelected: { image in
+                    uploadImage(image, for: plant.id)
+                },
+                onImageRemoved: {
+                    removePhoto(for: plant.id)
+                }
+            )
         }
     }
 
