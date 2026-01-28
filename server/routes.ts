@@ -635,6 +635,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // General image upload (for health records, etc.)
+  // Returns the uploaded file URL without attaching it to any entity.
+  apiRouter.post("/upload-image", isAuthenticated, upload.single('image'), async (req: Request, res: Response) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ message: "No image file provided" });
+      }
+      const imageUrl = `/uploads/${req.file.filename}`;
+      res.json({ success: true, imageUrl });
+    } catch (error: any) {
+      const errorMessage = error?.message || "Failed to upload image";
+      res.status(400).json({ message: errorMessage });
+    }
+  });
+
   // Direct image upload for plant photos
   // Note: multer's async multipart parsing can break AsyncLocalStorage context,
   // so we re-establish it from req.user before calling storage methods.

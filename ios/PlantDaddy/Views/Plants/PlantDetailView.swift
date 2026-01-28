@@ -21,6 +21,7 @@ struct PlantDetailView: View {
     @State private var showingImagePicker = false
     @State private var selectedImage: UIImage?
     @State private var isUploadingImage = false
+    @State private var showingEditSheet = false
     @Environment(\.dismiss) private var dismiss
 
     private let imageUploadService = ImageUploadService.shared
@@ -59,6 +60,9 @@ struct PlantDetailView: View {
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
                 Menu {
+                    Button(action: { showingEditSheet = true }) {
+                        Label("Edit Plant", systemImage: "pencil")
+                    }
                     Button(role: .destructive, action: { showingDeleteAlert = true }) {
                         Label("Delete Plant", systemImage: "trash")
                     }
@@ -84,6 +88,13 @@ struct PlantDetailView: View {
                     Task {
                         await loadCareData()
                     }
+                }
+            }
+        }
+        .sheet(isPresented: $showingEditSheet) {
+            if let plant = plant {
+                EditPlantView(plant: plant) { updatedPlant in
+                    self.plant = updatedPlant
                 }
             }
         }
@@ -452,8 +463,12 @@ struct LogHealthView: View {
 
     @State private var selectedStatus: HealthStatus = .thriving
     @State private var notes: String = ""
+    @State private var selectedImage: UIImage?
+    @State private var showingImagePicker = false
     @State private var isLoading: Bool = false
     @State private var errorMessage: String?
+
+    private let imageUploadService = ImageUploadService.shared
 
     var body: some View {
         NavigationStack {
@@ -476,6 +491,31 @@ struct LogHealthView: View {
                         Spacer()
                     }
                     .listRowBackground(Color.clear)
+                }
+
+                Section("Photo (optional)") {
+                    if let image = selectedImage {
+                        Image(uiImage: image)
+                            .resizable()
+                            .aspectRatio(contentMode: .fill)
+                            .frame(height: 150)
+                            .frame(maxWidth: .infinity)
+                            .clipped()
+                            .clipShape(RoundedRectangle(cornerRadius: 8))
+                            .onTapGesture { showingImagePicker = true }
+
+                        Button(role: .destructive) {
+                            selectedImage = nil
+                        } label: {
+                            Label("Remove Photo", systemImage: "trash")
+                        }
+                    } else {
+                        Button {
+                            showingImagePicker = true
+                        } label: {
+                            Label("Add Photo", systemImage: "camera.fill")
+                        }
+                    }
                 }
 
                 Section("Notes (optional)") {
@@ -507,6 +547,15 @@ struct LogHealthView: View {
                     .disabled(isLoading)
                 }
             }
+            .sheet(isPresented: $showingImagePicker) {
+                ImagePickerSheet(
+                    selectedImage: $selectedImage,
+                    hasExistingImage: false,
+                    onImageSelected: { image in
+                        selectedImage = image
+                    }
+                )
+            }
         }
     }
 
@@ -516,11 +565,17 @@ struct LogHealthView: View {
 
         Task {
             do {
+                // Upload image first if one was selected
+                var imageUrl: String? = nil
+                if let image = selectedImage {
+                    imageUrl = try await imageUploadService.uploadGenericImage(image)
+                }
+
                 _ = try await plantService.createHealthRecord(
                     plantId: plantId,
                     status: selectedStatus,
                     notes: notes.isEmpty ? nil : notes.trimmingCharacters(in: .whitespaces),
-                    imageUrl: nil
+                    imageUrl: imageUrl
                 )
                 onSave()
                 dismiss()
