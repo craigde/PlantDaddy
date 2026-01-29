@@ -111,6 +111,9 @@ struct PlantDetailView: View {
         let fallbackUrl = speciesImageUrl(for: plant)
         let hasAnyImageUrl = primaryUrl != nil || fallbackUrl != nil
 
+        // Create a stable ID that changes when the image URL changes
+        let imageId = primaryUrl ?? fallbackUrl ?? "no-image"
+
         return ZStack(alignment: .bottomTrailing) {
             if hasAnyImageUrl {
                 AuthenticatedImage(
@@ -140,6 +143,7 @@ struct PlantDetailView: View {
                             )
                     }
                 )
+                .id(imageId)  // Force view recreation when URL changes
                 .aspectRatio(contentMode: .fill)
                 .frame(maxWidth: .infinity, maxHeight: 300)
                 .clipped()
