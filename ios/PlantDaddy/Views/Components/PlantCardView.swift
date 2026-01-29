@@ -31,15 +31,23 @@ struct PlantCardView: View {
             let displayImageUrl = plant.fullImageUrl ?? speciesImageUrl
 
             if let imageUrl = displayImageUrl {
-                AuthenticatedImage(url: imageUrl) {
-                    Rectangle()
-                        .fill(Color.gray.opacity(0.2))
-                        .overlay(
-                            Image(systemName: "leaf.fill")
-                                .font(.largeTitle)
-                                .foregroundColor(.green.opacity(0.3))
-                        )
-                }
+                AuthenticatedImage(
+                    url: imageUrl,
+                    loadingPlaceholder: {
+                        Rectangle()
+                            .fill(Color.gray.opacity(0.2))
+                            .overlay(ProgressView())
+                    },
+                    failurePlaceholder: {
+                        Rectangle()
+                            .fill(Color.gray.opacity(0.2))
+                            .overlay(
+                                Image(systemName: "leaf.fill")
+                                    .font(.largeTitle)
+                                    .foregroundColor(.green.opacity(0.3))
+                            )
+                    }
+                )
                 .aspectRatio(contentMode: .fill)
                 .frame(height: 200)
                 .clipShape(RoundedRectangle(cornerRadius: 12))

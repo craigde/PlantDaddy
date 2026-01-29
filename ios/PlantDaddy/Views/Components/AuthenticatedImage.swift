@@ -9,17 +9,23 @@ import SwiftUI
 
 /// A view that loads images with authentication support for R2 storage
 /// R2 images require JWT auth and redirect to presigned URLs
-struct AuthenticatedImage<Placeholder: View>: View {
+struct AuthenticatedImage<LoadingPlaceholder: View, FailurePlaceholder: View>: View {
     let url: String?
-    let placeholder: () -> Placeholder
+    let loadingPlaceholder: () -> LoadingPlaceholder
+    let failurePlaceholder: () -> FailurePlaceholder
 
     @State private var loadedImage: UIImage?
     @State private var isLoading = false
     @State private var loadFailed = false
 
-    init(url: String?, @ViewBuilder placeholder: @escaping () -> Placeholder) {
+    init(
+        url: String?,
+        @ViewBuilder loadingPlaceholder: @escaping () -> LoadingPlaceholder,
+        @ViewBuilder failurePlaceholder: @escaping () -> FailurePlaceholder
+    ) {
         self.url = url
-        self.placeholder = placeholder
+        self.loadingPlaceholder = loadingPlaceholder
+        self.failurePlaceholder = failurePlaceholder
     }
 
     var body: some View {
@@ -27,8 +33,10 @@ struct AuthenticatedImage<Placeholder: View>: View {
             if let image = loadedImage {
                 Image(uiImage: image)
                     .resizable()
+            } else if loadFailed {
+                failurePlaceholder()
             } else {
-                placeholder()
+                loadingPlaceholder()
             }
         }
         .onAppear {
@@ -179,19 +187,36 @@ struct AuthenticatedImage<Placeholder: View>: View {
     }
 }
 
-// Convenience initializer with default placeholder
-extension AuthenticatedImage where Placeholder == AnyView {
+// Convenience initializer with same placeholder for both states (backward compatibility)
+extension AuthenticatedImage where LoadingPlaceholder == FailurePlaceholder {
+    init(url: String?, @ViewBuilder placeholder: @escaping () -> LoadingPlaceholder) {
+        self.init(url: url, loadingPlaceholder: placeholder, failurePlaceholder: placeholder)
+    }
+}
+
+// Convenience initializer with default placeholders
+extension AuthenticatedImage where LoadingPlaceholder == AnyView, FailurePlaceholder == AnyView {
     init(url: String?) {
-        self.init(url: url) {
-            AnyView(
-                Rectangle()
-                    .fill(Color.gray.opacity(0.2))
-                    .overlay(
-                        Image(systemName: "leaf.fill")
-                            .font(.largeTitle)
-                            .foregroundColor(.green.opacity(0.3))
-                    )
-            )
-        }
+        self.init(
+            url: url,
+            loadingPlaceholder: {
+                AnyView(
+                    Rectangle()
+                        .fill(Color.gray.opacity(0.2))
+                        .overlay(ProgressView())
+                )
+            },
+            failurePlaceholder: {
+                AnyView(
+                    Rectangle()
+                        .fill(Color.gray.opacity(0.2))
+                        .overlay(
+                            Image(systemName: "leaf.fill")
+                                .font(.largeTitle)
+                                .foregroundColor(.green.opacity(0.3))
+                        )
+                )
+            }
+        )
     }
 }

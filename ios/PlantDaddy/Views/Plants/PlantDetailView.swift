@@ -110,13 +110,32 @@ struct PlantDetailView: View {
 
         return ZStack(alignment: .bottomTrailing) {
             if let imageUrl = displayImageUrl {
-                AuthenticatedImage(url: imageUrl) {
-                    Rectangle()
-                        .fill(Color.gray.opacity(0.2))
-                        .overlay(
-                            ProgressView()
-                        )
-                }
+                AuthenticatedImage(
+                    url: imageUrl,
+                    loadingPlaceholder: {
+                        Rectangle()
+                            .fill(Color.gray.opacity(0.2))
+                            .overlay(ProgressView())
+                    },
+                    failurePlaceholder: {
+                        // Show nice fallback on failure (same as no-photo state)
+                        Rectangle()
+                            .fill(LinearGradient(
+                                colors: [.green.opacity(0.3), .green.opacity(0.1)],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            ))
+                            .overlay(
+                                VStack {
+                                    Image(systemName: "leaf.fill")
+                                        .font(.system(size: 80))
+                                        .foregroundColor(.green.opacity(0.4))
+                                    Text("No Photo")
+                                        .foregroundColor(.secondary)
+                                }
+                            )
+                    }
+                )
                 .aspectRatio(contentMode: .fill)
                 .frame(maxWidth: .infinity, maxHeight: 300)
                 .clipped()
