@@ -1,0 +1,21 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <rect width="512" height="512" fill="white"/>
+  <!-- Wall mount (wooden board) -->
+  <ellipse cx="256" cy="300" rx="80" ry="90" fill="#C4A56C"/>
+  <ellipse cx="256" cy="300" rx="70" ry="80" fill="#D4B87C"/>
+  <!-- Shield frond (base) -->
+  <ellipse cx="256" cy="310" rx="55" ry="60" fill="#8BAF6B"/>
+  <ellipse cx="256" cy="310" rx="45" ry="50" fill="#6B9E5C"/>
+  <!-- Antler-shaped fronds -->
+  <path d="M 240 280 C 220 230 200 180 170 140 C 160 125 150 130 155 145 C 165 170 145 150 130 130" stroke="#4A7C3F" stroke-width="14" fill="none" stroke-linecap="round"/>
+  <path d="M 272 280 C 292 230 312 180 342 140 C 352 125 362 130 357 145 C 347 170 367 150 382 130" stroke="#4A7C3F" stroke-width="14" fill="none" stroke-linecap="round"/>
+  <!-- More fork tips -->
+  <path d="M 170 140 C 180 120 195 105 210 95" stroke="#6B9E5C" stroke-width="10" fill="none" stroke-linecap="round"/>
+  <path d="M 342 140 C 332 120 317 105 302 95" stroke="#6B9E5C" stroke-width="10" fill="none" stroke-linecap="round"/>
+  <!-- Smaller side fronds -->
+  <path d="M 250 290 C 220 270 190 260 165 265" stroke="#6B9E5C" stroke-width="10" fill="none" stroke-linecap="round"/>
+  <path d="M 262 290 C 292 270 322 260 347 265" stroke="#6B9E5C" stroke-width="10" fill="none" stroke-linecap="round"/>
+  <!-- Hanging hook -->
+  <line x1="256" y1="210" x2="256" y2="180" stroke="#888" stroke-width="3"/>
+  <circle cx="256" cy="175" r="8" fill="none" stroke="#888" stroke-width="3"/>
+</svg>

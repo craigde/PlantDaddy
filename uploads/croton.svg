@@ -1,0 +1,24 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <rect width="512" height="512" fill="white"/>
+  <!-- Pot -->
+  <path d="M 190 370 L 322 370 L 302 450 L 210 450 Z" fill="#A67563"/>
+  <rect x="182" y="358" width="148" height="16" rx="3" fill="#B88A7A"/>
+  <!-- Central stem -->
+  <line x1="256" y1="370" x2="256" y2="150" stroke="#3D7A32" stroke-width="6" stroke-linecap="round"/>
+  <!-- Colorful elongated leaves -->
+  <ellipse cx="210" cy="200" rx="45" ry="16" fill="#E8A530" transform="rotate(-30 210 200)"/>
+  <ellipse cx="210" cy="200" rx="40" ry="10" fill="#D4442A" transform="rotate(-30 210 200)"/>
+  <ellipse cx="300" cy="180" rx="45" ry="16" fill="#4A7C3F" transform="rotate(25 300 180)"/>
+  <ellipse cx="300" cy="180" rx="40" ry="10" fill="#E8A530" transform="rotate(25 300 180)"/>
+  <ellipse cx="195" cy="270" rx="42" ry="15" fill="#D4442A" transform="rotate(-20 195 270)"/>
+  <ellipse cx="195" cy="270" rx="37" ry="9" fill="#E8A530" transform="rotate(-20 195 270)"/>
+  <ellipse cx="315" cy="260" rx="42" ry="15" fill="#E8A530" transform="rotate(22 315 260)"/>
+  <ellipse cx="315" cy="260" rx="37" ry="9" fill="#4A7C3F" transform="rotate(22 315 260)"/>
+  <ellipse cx="220" cy="330" rx="38" ry="14" fill="#4A7C3F" transform="rotate(-15 220 330)"/>
+  <ellipse cx="220" cy="330" rx="33" ry="8" fill="#D4442A" transform="rotate(-15 220 330)"/>
+  <ellipse cx="290" cy="325" rx="38" ry="14" fill="#D4442A" transform="rotate(18 290 325)"/>
+  <ellipse cx="290" cy="325" rx="33" ry="8" fill="#E8A530" transform="rotate(18 290 325)"/>
+  <!-- Top leaf -->
+  <ellipse cx="256" cy="140" rx="35" ry="13" fill="#E8A530" transform="rotate(5 256 140)"/>
+  <ellipse cx="256" cy="140" rx="30" ry="7" fill="#D4442A" transform="rotate(5 256 140)"/>
+</svg>

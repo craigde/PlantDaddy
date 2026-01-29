@@ -1,0 +1,28 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <rect width="512" height="512" fill="white"/>
+  <!-- Pot -->
+  <path d="M 190 320 L 322 320 L 302 400 L 210 400 Z" fill="#A67563"/>
+  <rect x="182" y="308" width="148" height="16" rx="3" fill="#B88A7A"/>
+  <!-- Segmented stems (flat oval segments) -->
+  <!-- Left drooping branch -->
+  <ellipse cx="220" cy="290" rx="22" ry="10" fill="#4A7C3F" transform="rotate(-20 220 290)"/>
+  <ellipse cx="190" cy="310" rx="22" ry="10" fill="#6B9E5C" transform="rotate(-40 190 310)"/>
+  <ellipse cx="160" cy="340" rx="22" ry="10" fill="#4A7C3F" transform="rotate(-55 160 340)"/>
+  <ellipse cx="140" cy="380" rx="22" ry="10" fill="#6B9E5C" transform="rotate(-70 140 380)"/>
+  <!-- Right drooping branch -->
+  <ellipse cx="292" cy="290" rx="22" ry="10" fill="#6B9E5C" transform="rotate(20 292 290)"/>
+  <ellipse cx="322" cy="310" rx="22" ry="10" fill="#4A7C3F" transform="rotate(40 322 310)"/>
+  <ellipse cx="352" cy="340" rx="22" ry="10" fill="#6B9E5C" transform="rotate(55 352 340)"/>
+  <ellipse cx="372" cy="380" rx="22" ry="10" fill="#4A7C3F" transform="rotate(70 372 380)"/>
+  <!-- Center upright branch -->
+  <ellipse cx="256" cy="280" rx="22" ry="10" fill="#4A7C3F" transform="rotate(0 256 280)"/>
+  <ellipse cx="256" cy="255" rx="22" ry="10" fill="#6B9E5C" transform="rotate(5 256 255)"/>
+  <ellipse cx="258" cy="230" rx="22" ry="10" fill="#4A7C3F" transform="rotate(-5 258 230)"/>
+  <!-- Pink/red flowers at tips -->
+  <circle cx="140" cy="395" r="12" fill="#E85B7A"/>
+  <circle cx="140" cy="395" r="7" fill="#F08CA0"/>
+  <circle cx="372" cy="395" r="12" fill="#E85B7A"/>
+  <circle cx="372" cy="395" r="7" fill="#F08CA0"/>
+  <circle cx="258" cy="218" r="12" fill="#E85B7A"/>
+  <circle cx="258" cy="218" r="7" fill="#F08CA0"/>
+</svg>

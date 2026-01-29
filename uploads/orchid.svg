@@ -1,0 +1,27 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <rect width="512" height="512" fill="white"/>
+  <!-- Pot -->
+  <path d="M 196 370 L 316 370 L 300 450 L 212 450 Z" fill="#A67563"/>
+  <rect x="190" y="358" width="132" height="16" rx="3" fill="#B88A7A"/>
+  <!-- Broad leaves at base -->
+  <ellipse cx="230" cy="345" rx="50" ry="14" fill="#4A7C3F" transform="rotate(-15 230 345)"/>
+  <ellipse cx="282" cy="345" rx="50" ry="14" fill="#6B9E5C" transform="rotate(15 282 345)"/>
+  <ellipse cx="220" cy="360" rx="48" ry="12" fill="#6B9E5C" transform="rotate(-8 220 360)"/>
+  <ellipse cx="292" cy="360" rx="48" ry="12" fill="#4A7C3F" transform="rotate(8 292 360)"/>
+  <!-- Tall flower stem -->
+  <path d="M 256 340 C 256 300 260 250 270 200 C 280 160 295 130 310 110" stroke="#4A7C3F" stroke-width="4" fill="none" stroke-linecap="round"/>
+  <!-- Support stake -->
+  <line x1="258" y1="340" x2="280" y2="130" stroke="#C4A56C" stroke-width="3" stroke-linecap="round"/>
+  <!-- Orchid flowers -->
+  <ellipse cx="310" cy="105" rx="22" ry="16" fill="#E8B0D4"/>
+  <ellipse cx="310" cy="105" rx="14" ry="10" fill="#D480B0"/>
+  <circle cx="310" cy="105" r="5" fill="#E8D040"/>
+  <ellipse cx="290" cy="145" rx="20" ry="14" fill="#E8B0D4"/>
+  <ellipse cx="290" cy="145" rx="12" ry="9" fill="#D480B0"/>
+  <circle cx="290" cy="145" r="4" fill="#E8D040"/>
+  <ellipse cx="278" cy="185" rx="18" ry="13" fill="#E8B0D4"/>
+  <ellipse cx="278" cy="185" rx="11" ry="8" fill="#D480B0"/>
+  <circle cx="278" cy="185" r="4" fill="#E8D040"/>
+  <!-- Bud -->
+  <ellipse cx="318" cy="78" rx="8" ry="6" fill="#E8B0D4"/>
+</svg>

@@ -1,0 +1,27 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <rect width="512" height="512" fill="white"/>
+  <!-- Pot -->
+  <path d="M 190 340 L 322 340 L 302 420 L 210 420 Z" fill="#A67563"/>
+  <rect x="182" y="328" width="148" height="16" rx="3" fill="#B88A7A"/>
+  <!-- Trailing vines -->
+  <path d="M 240 340 C 220 370 190 400 170 440" stroke="#3D7A32" stroke-width="4" fill="none" stroke-linecap="round"/>
+  <path d="M 270 340 C 300 370 330 400 350 430" stroke="#3D7A32" stroke-width="4" fill="none" stroke-linecap="round"/>
+  <path d="M 255 340 C 255 380 250 420 240 460" stroke="#3D7A32" stroke-width="4" fill="none" stroke-linecap="round"/>
+  <!-- Upright vine -->
+  <path d="M 250 340 C 240 300 230 250 225 200" stroke="#3D7A32" stroke-width="4" fill="none" stroke-linecap="round"/>
+  <path d="M 262 340 C 275 290 288 240 295 190" stroke="#3D7A32" stroke-width="4" fill="none" stroke-linecap="round"/>
+  <!-- Thick waxy oval leaves -->
+  <ellipse cx="225" cy="200" rx="25" ry="18" fill="#4A7C3F" transform="rotate(-10 225 200)"/>
+  <ellipse cx="295" cy="190" rx="25" ry="18" fill="#6B9E5C" transform="rotate(15 295 190)"/>
+  <ellipse cx="210" cy="260" rx="22" ry="16" fill="#6B9E5C" transform="rotate(-20 210 260)"/>
+  <ellipse cx="285" cy="250" rx="22" ry="16" fill="#4A7C3F" transform="rotate(20 285 250)"/>
+  <ellipse cx="170" cy="430" rx="22" ry="16" fill="#4A7C3F" transform="rotate(-40 170 430)"/>
+  <ellipse cx="350" cy="420" rx="22" ry="16" fill="#6B9E5C" transform="rotate(35 350 420)"/>
+  <ellipse cx="240" cy="450" rx="20" ry="15" fill="#4A7C3F" transform="rotate(-5 240 450)"/>
+  <!-- Small flower cluster -->
+  <circle cx="248" cy="170" r="5" fill="#F5C6D0"/>
+  <circle cx="240" cy="176" r="5" fill="#F5C6D0"/>
+  <circle cx="256" cy="176" r="5" fill="#F5C6D0"/>
+  <circle cx="244" cy="182" r="5" fill="#F5C6D0"/>
+  <circle cx="252" cy="182" r="5" fill="#F5C6D0"/>
+</svg>

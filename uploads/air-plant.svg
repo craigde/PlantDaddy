@@ -1,0 +1,19 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <rect width="512" height="512" fill="white"/>
+  <!-- No pot - air plants don't need soil -->
+  <!-- Small decorative holder/wire -->
+  <circle cx="256" cy="310" r="40" fill="none" stroke="#B88A7A" stroke-width="4"/>
+  <path d="M 256 270 L 256 240" stroke="#B88A7A" stroke-width="4" stroke-linecap="round"/>
+  <path d="M 240 240 L 256 240 L 272 240" stroke="#B88A7A" stroke-width="4" stroke-linecap="round"/>
+  <!-- Curving spiky leaves radiating from center -->
+  <path d="M 256 300 C 250 260 230 200 200 140" stroke="#6B9E5C" stroke-width="8" fill="none" stroke-linecap="round"/>
+  <path d="M 256 300 C 262 260 282 200 312 140" stroke="#4A7C3F" stroke-width="8" fill="none" stroke-linecap="round"/>
+  <path d="M 256 300 C 240 270 200 240 150 220" stroke="#4A7C3F" stroke-width="7" fill="none" stroke-linecap="round"/>
+  <path d="M 256 300 C 272 270 312 240 362 220" stroke="#6B9E5C" stroke-width="7" fill="none" stroke-linecap="round"/>
+  <path d="M 256 300 C 245 255 220 210 180 170" stroke="#6B9E5C" stroke-width="6" fill="none" stroke-linecap="round"/>
+  <path d="M 256 300 C 267 255 292 210 332 170" stroke="#4A7C3F" stroke-width="6" fill="none" stroke-linecap="round"/>
+  <path d="M 256 300 C 256 260 256 200 256 130" stroke="#3D6B30" stroke-width="7" fill="none" stroke-linecap="round"/>
+  <!-- Slight curl at tips -->
+  <path d="M 200 140 C 195 130 198 120 205 118" stroke="#6B9E5C" stroke-width="5" fill="none" stroke-linecap="round"/>
+  <path d="M 312 140 C 317 130 314 120 307 118" stroke="#4A7C3F" stroke-width="5" fill="none" stroke-linecap="round"/>
+</svg>

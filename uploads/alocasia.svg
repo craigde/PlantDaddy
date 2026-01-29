@@ -1,0 +1,21 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <rect width="512" height="512" fill="white"/>
+  <!-- Pot -->
+  <path d="M 190 380 L 322 380 L 302 460 L 210 460 Z" fill="#A67563"/>
+  <rect x="182" y="368" width="148" height="16" rx="3" fill="#B88A7A"/>
+  <!-- Tall stems -->
+  <path d="M 240 370 C 230 320 215 260 200 190" stroke="#3D7A32" stroke-width="6" fill="none" stroke-linecap="round"/>
+  <path d="M 272 370 C 280 310 295 250 310 180" stroke="#3D7A32" stroke-width="6" fill="none" stroke-linecap="round"/>
+  <path d="M 256 370 C 256 310 256 240 256 170" stroke="#3D7A32" stroke-width="6" fill="none" stroke-linecap="round"/>
+  <!-- Arrow/shield-shaped leaves -->
+  <path d="M 200 190 L 160 140 L 170 100 L 200 60 L 220 100 L 240 140 Z" fill="#4A7C3F"/>
+  <path d="M 200 190 L 170 160 L 200 60 L 230 160 Z" fill="#3D6B30" opacity="0.3"/>
+  <path d="M 310 180 L 270 130 L 280 90 L 310 50 L 330 90 L 350 130 Z" fill="#6B9E5C"/>
+  <path d="M 310 180 L 280 150 L 310 50 L 340 150 Z" fill="#3D6B30" opacity="0.3"/>
+  <path d="M 256 170 L 216 120 L 226 80 L 256 40 L 276 80 L 296 120 Z" fill="#4A7C3F"/>
+  <path d="M 256 170 L 226 140 L 256 40 L 286 140 Z" fill="#3D6B30" opacity="0.3"/>
+  <!-- Prominent veins -->
+  <line x1="200" y1="60" x2="200" y2="190" stroke="white" stroke-width="2" opacity="0.4"/>
+  <line x1="310" y1="50" x2="310" y2="180" stroke="white" stroke-width="2" opacity="0.4"/>
+  <line x1="256" y1="40" x2="256" y2="170" stroke="white" stroke-width="2" opacity="0.4"/>
+</svg>
