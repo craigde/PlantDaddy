@@ -1635,13 +1635,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // R2 Storage serving endpoint - redirects to presigned URLs
+  // R2 image serving endpoint - redirects to presigned URLs
+  // Note: Get userId from req.user directly since AsyncLocalStorage context may not be set
   app.get("/r2/*", isAuthenticated, async (req, res) => {
     if (!isR2Configured()) {
       return res.status(503).json({ error: "R2 storage is not configured" });
     }
 
-    const userId = getCurrentUserId();
+    const userId = (req.user as any)?.id ?? null;
     if (!userId) {
       return res.sendStatus(401);
     }
