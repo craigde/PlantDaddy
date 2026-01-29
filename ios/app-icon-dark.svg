@@ -1,0 +1,48 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <!-- Dark mode - same composition, dark background, lighter greens -->
+  <rect width="1024" height="1024" fill="#1A2B1A" rx="180"/>
+
+  <!-- Pot -->
+  <path d="M 380 710 L 644 710 L 614 880 L 410 880 Z" fill="#A67563"/>
+  <rect x="368" y="690" width="288" height="28" rx="4" fill="#B88A7A"/>
+
+  <!-- Stems -->
+  <path d="M 490 690 C 480 620 440 550 400 470" stroke="#5A9E48" stroke-width="12" fill="none" stroke-linecap="round"/>
+  <path d="M 530 690 C 540 600 570 520 600 440" stroke="#5A9E48" stroke-width="12" fill="none" stroke-linecap="round"/>
+  <path d="M 512 690 C 512 640 512 560 512 480" stroke="#5A9E48" stroke-width="12" fill="none" stroke-linecap="round"/>
+
+  <!-- Back left leaf -->
+  <path d="M 400 470 C 370 400 280 340 260 280
+           C 240 220 280 160 340 160
+           C 400 160 420 220 400 280
+           C 380 340 400 420 400 470 Z"
+        fill="#7DB86A"/>
+  <ellipse cx="325" cy="260" rx="18" ry="28" fill="#1A2B1A" transform="rotate(-15 325 260)"/>
+  <ellipse cx="370" cy="210" rx="14" ry="22" fill="#1A2B1A" transform="rotate(10 370 210)"/>
+
+  <!-- Back right leaf -->
+  <path d="M 600 440 C 620 370 700 310 720 250
+           C 740 190 700 130 640 130
+           C 580 130 560 190 580 250
+           C 600 310 600 390 600 440 Z"
+        fill="#7DB86A"/>
+  <ellipse cx="675" cy="230" rx="18" ry="28" fill="#1A2B1A" transform="rotate(15 675 230)"/>
+  <ellipse cx="625" cy="185" rx="14" ry="22" fill="#1A2B1A" transform="rotate(-10 625 185)"/>
+
+  <!-- Front center leaf -->
+  <path d="M 512 480 C 490 400 420 320 390 240
+           C 360 160 400 90 470 80
+           C 512 74 512 74 512 74
+           C 512 74 512 74 554 80
+           C 624 90 664 160 634 240
+           C 604 320 534 400 512 480 Z"
+        fill="#5C9249"/>
+  <ellipse cx="445" cy="220" rx="22" ry="32" fill="#1A2B1A" transform="rotate(-15 445 220)"/>
+  <ellipse cx="480" cy="150" rx="16" ry="24" fill="#1A2B1A" transform="rotate(-5 480 150)"/>
+  <ellipse cx="579" cy="220" rx="22" ry="32" fill="#1A2B1A" transform="rotate(15 579 220)"/>
+  <ellipse cx="544" cy="150" rx="16" ry="24" fill="#1A2B1A" transform="rotate(5 544 150)"/>
+
+  <!-- Water droplet -->
+  <path d="M 714 400 Q 714 378 728 360 Q 742 378 742 400 Q 742 416 728 420 Q 714 416 714 400 Z"
+        fill="#5BA8D4"/>
+</svg>
