@@ -151,26 +151,33 @@ export async function sendWelcomeNotification(): Promise<boolean> {
   return success;
 }
 
-export async function sendTestNotification(): Promise<{pushover: boolean, email: boolean}> {
+export async function sendTestNotification(): Promise<{pushover: boolean, email: boolean, apns: boolean}> {
   const settings = await storage.getNotificationSettings();
-  const result = { pushover: false, email: false };
-  
+  const result = { pushover: false, email: false, apns: false };
+
   // Send test Pushover notification if enabled
   if (settings?.pushoverEnabled && settings?.pushoverAppToken && settings?.pushoverUserKey) {
     const title = '🪴 PlantDaddy: Test Notification';
     const message = 'This is a test notification from PlantDaddy. If you received this, your Pushover notifications are configured correctly!';
     result.pushover = await sendPushoverNotification(title, message, 0);
   }
-  
+
   // Send test email notification if enabled
   if (settings?.emailEnabled && settings?.emailAddress && settings?.sendgridApiKey) {
-    // Configure email service with API key
     configureEmailService(settings.sendgridApiKey);
-    
-    // Send test email
     result.email = await sendTestEmail(settings.emailAddress);
   }
-  
+
+  // Send test APNs push notification
+  if (isApnsConfigured() && settings?.userId) {
+    const sent = await sendApnsNotification(
+      settings.userId,
+      '🪴 PlantDaddy: Test Notification',
+      'Push notifications are working! You\'ll receive alerts when your plants need water.'
+    );
+    result.apns = sent > 0;
+  }
+
   return result;
 }
 
