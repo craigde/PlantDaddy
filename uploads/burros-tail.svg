@@ -1,0 +1,40 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <rect width="512" height="512" fill="white"/>
+  <!-- Hanging pot -->
+  <path d="M 206 130 L 306 130 L 290 200 L 222 200 Z" fill="#A67563"/>
+  <rect x="200" y="118" width="112" height="14" rx="3" fill="#B88A7A"/>
+  <!-- Hanger -->
+  <path d="M 210 118 L 256 70 L 302 118" stroke="#B88A7A" stroke-width="4" fill="none" stroke-linecap="round"/>
+  <!-- Trailing strands of beads -->
+  <path d="M 230 200 C 225 250 218 300 210 350 C 205 380 200 410 198 440" stroke="#6B9E5C" stroke-width="3" fill="none"/>
+  <path d="M 256 200 C 256 260 256 320 256 380 C 256 410 256 440 256 470" stroke="#6B9E5C" stroke-width="3" fill="none"/>
+  <path d="M 282 200 C 287 250 294 300 302 350 C 307 380 312 410 314 440" stroke="#6B9E5C" stroke-width="3" fill="none"/>
+  <path d="M 243 200 C 238 260 230 320 222 380 C 218 410 215 440 214 460" stroke="#6B9E5C" stroke-width="3" fill="none"/>
+  <path d="M 269 200 C 274 260 282 320 290 380 C 294 410 297 440 298 460" stroke="#6B9E5C" stroke-width="3" fill="none"/>
+  <!-- Bead-like leaves along strands -->
+  <!-- Strand 1 (left) -->
+  <ellipse cx="228" cy="220" rx="9" ry="12" fill="#7CAF8B"/>
+  <ellipse cx="225" cy="255" rx="9" ry="12" fill="#6B9E5C"/>
+  <ellipse cx="222" cy="290" rx="9" ry="12" fill="#7CAF8B"/>
+  <ellipse cx="218" cy="325" rx="9" ry="12" fill="#6B9E5C"/>
+  <ellipse cx="213" cy="360" rx="9" ry="12" fill="#7CAF8B"/>
+  <ellipse cx="208" cy="395" rx="9" ry="12" fill="#6B9E5C"/>
+  <ellipse cx="202" cy="430" rx="8" ry="11" fill="#7CAF8B"/>
+  <!-- Strand 2 (center) -->
+  <ellipse cx="256" cy="225" rx="9" ry="12" fill="#6B9E5C"/>
+  <ellipse cx="256" cy="260" rx="9" ry="12" fill="#7CAF8B"/>
+  <ellipse cx="256" cy="295" rx="9" ry="12" fill="#6B9E5C"/>
+  <ellipse cx="256" cy="330" rx="9" ry="12" fill="#7CAF8B"/>
+  <ellipse cx="256" cy="365" rx="9" ry="12" fill="#6B9E5C"/>
+  <ellipse cx="256" cy="400" rx="9" ry="12" fill="#7CAF8B"/>
+  <ellipse cx="256" cy="435" rx="9" ry="12" fill="#6B9E5C"/>
+  <ellipse cx="256" cy="465" rx="8" ry="11" fill="#7CAF8B"/>
+  <!-- Strand 3 (right) -->
+  <ellipse cx="284" cy="220" rx="9" ry="12" fill="#7CAF8B"/>
+  <ellipse cx="287" cy="255" rx="9" ry="12" fill="#6B9E5C"/>
+  <ellipse cx="290" cy="290" rx="9" ry="12" fill="#7CAF8B"/>
+  <ellipse cx="294" cy="325" rx="9" ry="12" fill="#6B9E5C"/>
+  <ellipse cx="299" cy="360" rx="9" ry="12" fill="#7CAF8B"/>
+  <ellipse cx="304" cy="395" rx="9" ry="12" fill="#6B9E5C"/>
+  <ellipse cx="310" cy="430" rx="8" ry="11" fill="#7CAF8B"/>
+</svg>

@@ -1,0 +1,23 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <rect width="512" height="512" fill="white"/>
+  <!-- Pot -->
+  <path d="M 190 340 L 322 340 L 302 430 L 210 430 Z" fill="#A67563"/>
+  <rect x="182" y="328" width="148" height="16" rx="3" fill="#B88A7A"/>
+  <!-- Trailing stems -->
+  <path d="M 240 340 C 220 380 180 400 160 440" stroke="#3D7A32" stroke-width="5" fill="none" stroke-linecap="round"/>
+  <path d="M 270 340 C 290 380 320 410 340 440" stroke="#3D7A32" stroke-width="5" fill="none" stroke-linecap="round"/>
+  <path d="M 250 340 C 230 400 200 440 180 480" stroke="#3D7A32" stroke-width="5" fill="none" stroke-linecap="round"/>
+  <!-- Upright stems -->
+  <path d="M 240 340 C 230 300 220 260 210 220" stroke="#3D7A32" stroke-width="5" fill="none" stroke-linecap="round"/>
+  <path d="M 270 340 C 280 290 290 250 300 210" stroke="#3D7A32" stroke-width="5" fill="none" stroke-linecap="round"/>
+  <!-- Heart-shaped leaves (upright) -->
+  <path d="M 210 220 C 190 200 170 170 190 150 C 200 140 210 145 210 155 C 210 145 220 140 230 150 C 250 170 230 200 210 220 Z" fill="#4A7C3F"/>
+  <path d="M 300 210 C 280 190 260 160 280 140 C 290 130 300 135 300 145 C 300 135 310 130 320 140 C 340 160 320 190 300 210 Z" fill="#6B9E5C"/>
+  <!-- Heart-shaped leaves (trailing) -->
+  <path d="M 160 440 C 140 420 120 390 140 370 C 150 360 160 365 160 375 C 160 365 170 360 180 370 C 200 390 180 420 160 440 Z" fill="#6B9E5C"/>
+  <path d="M 340 440 C 320 420 300 390 320 370 C 330 360 340 365 340 375 C 340 365 350 360 360 370 C 380 390 360 420 340 440 Z" fill="#4A7C3F"/>
+  <path d="M 180 480 C 160 460 140 430 160 410 C 170 400 180 405 180 415 C 180 405 190 400 200 410 C 220 430 200 460 180 480 Z" fill="#4A7C3F"/>
+  <!-- Small accent leaves -->
+  <path d="M 230 280 C 215 265 205 245 220 235 C 228 230 232 234 230 240 C 232 234 238 230 244 238 C 255 252 240 268 230 280 Z" fill="#6B9E5C"/>
+  <path d="M 280 270 C 265 255 255 235 270 225 C 278 220 282 224 280 230 C 282 224 288 220 294 228 C 305 242 290 258 280 270 Z" fill="#4A7C3F"/>
+</svg>

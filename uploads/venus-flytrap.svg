@@ -1,0 +1,31 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <rect width="512" height="512" fill="white"/>
+  <!-- Pot (shallow) -->
+  <path d="M 186 360 L 326 360 L 310 420 L 202 420 Z" fill="#A67563"/>
+  <rect x="180" y="348" width="152" height="16" rx="3" fill="#B88A7A"/>
+  <!-- Low rosette stems -->
+  <path d="M 256 350 C 230 330 200 300 180 270" stroke="#6B9E5C" stroke-width="6" fill="none" stroke-linecap="round"/>
+  <path d="M 256 350 C 280 330 310 300 330 270" stroke="#6B9E5C" stroke-width="6" fill="none" stroke-linecap="round"/>
+  <path d="M 256 350 C 256 320 256 280 256 240" stroke="#6B9E5C" stroke-width="6" fill="none" stroke-linecap="round"/>
+  <path d="M 256 350 C 240 320 220 290 200 260" stroke="#6B9E5C" stroke-width="5" fill="none" stroke-linecap="round"/>
+  <path d="M 256 350 C 272 320 292 290 312 260" stroke="#6B9E5C" stroke-width="5" fill="none" stroke-linecap="round"/>
+  <!-- Trap leaves (open) -->
+  <path d="M 180 270 C 160 250 145 235 155 220 C 165 210 180 215 180 225 L 180 270 Z" fill="#4A7C3F"/>
+  <path d="M 180 270 C 160 290 145 305 155 320 C 165 330 180 325 180 315 L 180 270 Z" fill="#7CB86A"/>
+  <!-- Teeth on trap -->
+  <path d="M 155 245 L 162 255 L 168 248 L 175 258 L 180 250" stroke="#4A7C3F" stroke-width="2" fill="none"/>
+  <path d="M 155 295 L 162 285 L 168 292 L 175 282 L 180 290" stroke="#7CB86A" stroke-width="2" fill="none"/>
+  <!-- Pink/red interior -->
+  <ellipse cx="168" cy="270" rx="10" ry="14" fill="#D46060" opacity="0.6"/>
+
+  <path d="M 330 270 C 350 250 365 235 355 220 C 345 210 330 215 330 225 L 330 270 Z" fill="#4A7C3F"/>
+  <path d="M 330 270 C 350 290 365 305 355 320 C 345 330 330 325 330 315 L 330 270 Z" fill="#7CB86A"/>
+  <path d="M 355 245 L 348 255 L 342 248 L 335 258 L 330 250" stroke="#4A7C3F" stroke-width="2" fill="none"/>
+  <path d="M 355 295 L 348 285 L 342 292 L 335 282 L 330 290" stroke="#7CB86A" stroke-width="2" fill="none"/>
+  <ellipse cx="342" cy="270" rx="10" ry="14" fill="#D46060" opacity="0.6"/>
+
+  <!-- Center trap (closed/closing) -->
+  <path d="M 256 240 C 240 220 230 210 238 198 C 245 190 256 195 256 205 L 256 240 Z" fill="#4A7C3F"/>
+  <path d="M 256 240 C 272 220 282 210 274 198 C 267 190 256 195 256 205 L 256 240 Z" fill="#7CB86A"/>
+  <ellipse cx="256" cy="220" rx="8" ry="12" fill="#D46060" opacity="0.5"/>
+</svg>

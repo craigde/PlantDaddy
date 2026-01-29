@@ -1,0 +1,21 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <rect width="512" height="512" fill="white"/>
+  <!-- Pot (hanging) -->
+  <path d="M 206 160 L 306 160 L 290 230 L 222 230 Z" fill="#A67563"/>
+  <rect x="200" y="148" width="112" height="14" rx="3" fill="#B88A7A"/>
+  <!-- Hanger -->
+  <path d="M 210 148 L 256 100 L 302 148" stroke="#B88A7A" stroke-width="4" fill="none" stroke-linecap="round"/>
+  <!-- Trailing vines -->
+  <path d="M 240 230 C 220 280 190 320 160 370 C 140 400 130 430 140 460" stroke="#3D7A32" stroke-width="4" fill="none" stroke-linecap="round"/>
+  <path d="M 272 230 C 290 280 320 320 350 370 C 370 400 375 430 365 460" stroke="#3D7A32" stroke-width="4" fill="none" stroke-linecap="round"/>
+  <path d="M 256 230 C 256 290 250 340 240 400 C 230 440 225 470 230 490" stroke="#3D7A32" stroke-width="4" fill="none" stroke-linecap="round"/>
+  <!-- Ivy-shaped leaves (3-pointed) along vines -->
+  <path d="M 225 270 L 210 255 L 218 268 L 205 270 L 220 275 L 210 288 L 225 278 L 240 288 L 230 275 L 245 270 L 232 268 L 240 255 Z" fill="#4A7C3F"/>
+  <path d="M 185 340 L 170 325 L 178 338 L 165 340 L 180 345 L 170 358 L 185 348 L 200 358 L 190 345 L 205 340 L 192 338 L 200 325 Z" fill="#6B9E5C"/>
+  <path d="M 155 400 L 140 385 L 148 398 L 135 400 L 150 405 L 140 418 L 155 408 L 170 418 L 160 405 L 175 400 L 162 398 L 170 385 Z" fill="#4A7C3F"/>
+  <path d="M 290 270 L 275 255 L 283 268 L 270 270 L 285 275 L 275 288 L 290 278 L 305 288 L 295 275 L 310 270 L 297 268 L 305 255 Z" fill="#6B9E5C"/>
+  <path d="M 330 340 L 315 325 L 323 338 L 310 340 L 325 345 L 315 358 L 330 348 L 345 358 L 335 345 L 350 340 L 337 338 L 345 325 Z" fill="#4A7C3F"/>
+  <path d="M 355 400 L 340 385 L 348 398 L 335 400 L 350 405 L 340 418 L 355 408 L 370 418 L 360 405 L 375 400 L 362 398 L 370 385 Z" fill="#6B9E5C"/>
+  <path d="M 250 340 L 235 325 L 243 338 L 230 340 L 245 345 L 235 358 L 250 348 L 265 358 L 255 345 L 270 340 L 257 338 L 265 325 Z" fill="#4A7C3F"/>
+  <path d="M 240 420 L 225 405 L 233 418 L 220 420 L 235 425 L 225 438 L 240 428 L 255 438 L 245 425 L 260 420 L 247 418 L 255 405 Z" fill="#6B9E5C"/>
+</svg>

@@ -1,0 +1,26 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <rect width="512" height="512" fill="white"/>
+  <!-- Pot -->
+  <path d="M 190 370 L 322 370 L 302 450 L 210 450 Z" fill="#A67563"/>
+  <rect x="182" y="358" width="148" height="16" rx="3" fill="#B88A7A"/>
+  <!-- Climbing stems -->
+  <path d="M 250 360 C 240 310 220 260 200 200" stroke="#3D7A32" stroke-width="5" fill="none" stroke-linecap="round"/>
+  <path d="M 265 360 C 275 300 295 240 310 180" stroke="#3D7A32" stroke-width="5" fill="none" stroke-linecap="round"/>
+  <!-- Heart-shaped leaves with holes -->
+  <path d="M 200 200 C 170 170 150 130 175 100 C 188 85 200 95 200 105 C 200 95 212 85 225 100 C 250 130 230 170 200 200 Z" fill="#4A7C3F"/>
+  <ellipse cx="188" cy="140" rx="8" ry="12" fill="white"/>
+  <ellipse cx="210" cy="130" rx="7" ry="10" fill="white"/>
+  <ellipse cx="195" cy="165" rx="6" ry="9" fill="white"/>
+
+  <path d="M 310 180 C 280 150 260 110 285 80 C 298 65 310 75 310 85 C 310 75 322 65 335 80 C 360 110 340 150 310 180 Z" fill="#6B9E5C"/>
+  <ellipse cx="298" cy="120" rx="8" ry="12" fill="white"/>
+  <ellipse cx="320" cy="110" rx="7" ry="10" fill="white"/>
+  <ellipse cx="305" cy="145" rx="6" ry="9" fill="white"/>
+
+  <!-- Smaller leaves -->
+  <path d="M 220 280 C 200 260 190 235 205 220 C 212 213 218 218 216 224 C 218 218 225 213 232 220 C 245 235 232 258 220 280 Z" fill="#6B9E5C"/>
+  <ellipse cx="214" cy="248" rx="5" ry="7" fill="white"/>
+
+  <path d="M 290 270 C 270 250 260 225 275 210 C 282 203 288 208 286 214 C 288 208 295 203 302 210 C 315 225 302 248 290 270 Z" fill="#4A7C3F"/>
+  <ellipse cx="284" cy="238" rx="5" ry="7" fill="white"/>
+</svg>

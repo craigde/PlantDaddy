@@ -1,0 +1,34 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <rect width="512" height="512" fill="white"/>
+  <!-- Pot -->
+  <path d="M 190 380 L 322 380 L 302 460 L 210 460 Z" fill="#A67563"/>
+  <rect x="182" y="368" width="148" height="16" rx="3" fill="#B88A7A"/>
+  <!-- Base paddle -->
+  <ellipse cx="256" cy="320" rx="55" ry="70" fill="#4A7C3F"/>
+  <!-- Left paddle -->
+  <ellipse cx="205" cy="220" rx="42" ry="58" fill="#6B9E5C" transform="rotate(-15 205 220)"/>
+  <!-- Right paddle -->
+  <ellipse cx="310" cy="230" rx="40" ry="55" fill="#6B9E5C" transform="rotate(12 310 230)"/>
+  <!-- Top paddle -->
+  <ellipse cx="256" cy="155" rx="38" ry="52" fill="#4A7C3F"/>
+  <!-- Small top-right paddle -->
+  <ellipse cx="325" cy="160" rx="28" ry="38" fill="#4A7C3F" transform="rotate(20 325 160)"/>
+  <!-- Spines (small dots) -->
+  <circle cx="256" cy="290" r="3" fill="#F5F2EC"/>
+  <circle cx="240" cy="310" r="3" fill="#F5F2EC"/>
+  <circle cx="272" cy="310" r="3" fill="#F5F2EC"/>
+  <circle cx="256" cy="340" r="3" fill="#F5F2EC"/>
+  <circle cx="205" cy="195" r="3" fill="#F5F2EC"/>
+  <circle cx="195" cy="220" r="3" fill="#F5F2EC"/>
+  <circle cx="215" cy="245" r="3" fill="#F5F2EC"/>
+  <circle cx="310" cy="205" r="3" fill="#F5F2EC"/>
+  <circle cx="300" cy="230" r="3" fill="#F5F2EC"/>
+  <circle cx="320" cy="255" r="3" fill="#F5F2EC"/>
+  <circle cx="256" cy="130" r="3" fill="#F5F2EC"/>
+  <circle cx="245" cy="155" r="3" fill="#F5F2EC"/>
+  <circle cx="267" cy="155" r="3" fill="#F5F2EC"/>
+  <circle cx="256" cy="180" r="3" fill="#F5F2EC"/>
+  <!-- Small fruit on top -->
+  <ellipse cx="256" cy="105" rx="10" ry="8" fill="#E8A530"/>
+  <ellipse cx="230" cy="115" rx="8" ry="6" fill="#D4442A"/>
+</svg>

@@ -1,0 +1,35 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <rect width="512" height="512" fill="white"/>
+  <!-- Pot -->
+  <path d="M 190 380 L 322 380 L 302 460 L 210 460 Z" fill="#A67563"/>
+  <rect x="182" y="368" width="148" height="16" rx="3" fill="#B88A7A"/>
+  <!-- Thin stems -->
+  <path d="M 240 370 C 235 320 225 250 220 180" stroke="#3D7A32" stroke-width="5" fill="none" stroke-linecap="round"/>
+  <path d="M 260 370 C 265 310 275 240 280 170" stroke="#3D7A32" stroke-width="5" fill="none" stroke-linecap="round"/>
+  <path d="M 250 370 C 250 310 250 240 250 160" stroke="#3D7A32" stroke-width="5" fill="none" stroke-linecap="round"/>
+  <!-- Palm fronds (left stem) -->
+  <path d="M 220 180 C 180 150 140 140 100 150" stroke="#4A7C3F" stroke-width="3" fill="none"/>
+  <path d="M 220 180 C 190 160 150 155 120 170" stroke="#6B9E5C" stroke-width="3" fill="none"/>
+  <path d="M 220 180 C 200 140 180 100 160 70" stroke="#4A7C3F" stroke-width="3" fill="none"/>
+  <path d="M 220 180 C 210 145 195 110 175 85" stroke="#6B9E5C" stroke-width="3" fill="none"/>
+  <!-- Leaflets on left fronds -->
+  <ellipse cx="150" cy="145" rx="20" ry="8" fill="#6B9E5C" transform="rotate(-20 150 145)"/>
+  <ellipse cx="120" cy="160" rx="18" ry="7" fill="#4A7C3F" transform="rotate(-10 120 160)"/>
+  <ellipse cx="175" cy="110" rx="18" ry="7" fill="#6B9E5C" transform="rotate(-40 175 110)"/>
+  <ellipse cx="165" cy="80" rx="16" ry="6" fill="#4A7C3F" transform="rotate(-50 165 80)"/>
+  <!-- Palm fronds (right stem) -->
+  <path d="M 280 170 C 320 140 360 130 400 140" stroke="#4A7C3F" stroke-width="3" fill="none"/>
+  <path d="M 280 170 C 310 150 350 145 380 160" stroke="#6B9E5C" stroke-width="3" fill="none"/>
+  <path d="M 280 170 C 300 130 320 90 340 60" stroke="#4A7C3F" stroke-width="3" fill="none"/>
+  <path d="M 280 170 C 290 135 305 100 325 75" stroke="#6B9E5C" stroke-width="3" fill="none"/>
+  <!-- Leaflets on right fronds -->
+  <ellipse cx="360" cy="135" rx="20" ry="8" fill="#6B9E5C" transform="rotate(20 360 135)"/>
+  <ellipse cx="390" cy="150" rx="18" ry="7" fill="#4A7C3F" transform="rotate(10 390 150)"/>
+  <ellipse cx="330" cy="100" rx="18" ry="7" fill="#6B9E5C" transform="rotate(40 330 100)"/>
+  <ellipse cx="335" cy="70" rx="16" ry="6" fill="#4A7C3F" transform="rotate(50 335 70)"/>
+  <!-- Center fronds -->
+  <path d="M 250 160 C 240 110 230 70 225 30" stroke="#4A7C3F" stroke-width="3" fill="none"/>
+  <path d="M 250 160 C 260 110 270 70 275 30" stroke="#6B9E5C" stroke-width="3" fill="none"/>
+  <ellipse cx="230" cy="60" rx="16" ry="6" fill="#6B9E5C" transform="rotate(-10 230 60)"/>
+  <ellipse cx="270" cy="55" rx="16" ry="6" fill="#4A7C3F" transform="rotate(10 270 55)"/>
+</svg>

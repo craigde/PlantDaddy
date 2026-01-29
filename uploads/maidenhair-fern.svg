@@ -1,0 +1,33 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <rect width="512" height="512" fill="white"/>
+  <!-- Pot -->
+  <path d="M 196 360 L 316 360 L 300 440 L 212 440 Z" fill="#A67563"/>
+  <rect x="190" y="348" width="132" height="16" rx="3" fill="#B88A7A"/>
+  <!-- Thin dark stems -->
+  <path d="M 240 355 C 225 310 200 260 180 200" stroke="#2D1810" stroke-width="2" fill="none"/>
+  <path d="M 256 355 C 256 300 256 240 256 170" stroke="#2D1810" stroke-width="2" fill="none"/>
+  <path d="M 272 355 C 287 310 312 260 332 200" stroke="#2D1810" stroke-width="2" fill="none"/>
+  <path d="M 248 355 C 230 320 210 280 190 240" stroke="#2D1810" stroke-width="2" fill="none"/>
+  <path d="M 264 355 C 282 320 302 280 322 240" stroke="#2D1810" stroke-width="2" fill="none"/>
+  <!-- Fan-shaped leaflets (small, delicate) -->
+  <circle cx="180" cy="195" r="14" fill="#6B9E5C" opacity="0.9"/>
+  <circle cx="170" cy="220" r="12" fill="#4A7C3F" opacity="0.9"/>
+  <circle cx="195" cy="230" r="13" fill="#6B9E5C" opacity="0.9"/>
+  <circle cx="160" cy="245" r="11" fill="#6B9E5C" opacity="0.8"/>
+  <circle cx="256" cy="165" r="14" fill="#4A7C3F" opacity="0.9"/>
+  <circle cx="245" cy="185" r="12" fill="#6B9E5C" opacity="0.9"/>
+  <circle cx="267" cy="185" r="12" fill="#6B9E5C" opacity="0.9"/>
+  <circle cx="240" cy="210" r="13" fill="#4A7C3F" opacity="0.9"/>
+  <circle cx="272" cy="210" r="13" fill="#4A7C3F" opacity="0.9"/>
+  <circle cx="256" cy="200" r="11" fill="#6B9E5C" opacity="0.8"/>
+  <circle cx="332" cy="195" r="14" fill="#6B9E5C" opacity="0.9"/>
+  <circle cx="342" cy="220" r="12" fill="#4A7C3F" opacity="0.9"/>
+  <circle cx="317" cy="230" r="13" fill="#6B9E5C" opacity="0.9"/>
+  <circle cx="352" cy="245" r="11" fill="#6B9E5C" opacity="0.8"/>
+  <circle cx="190" cy="255" r="12" fill="#4A7C3F" opacity="0.9"/>
+  <circle cx="210" cy="265" r="11" fill="#6B9E5C" opacity="0.8"/>
+  <circle cx="322" cy="255" r="12" fill="#4A7C3F" opacity="0.9"/>
+  <circle cx="302" cy="265" r="11" fill="#6B9E5C" opacity="0.8"/>
+  <circle cx="230" cy="240" r="12" fill="#6B9E5C" opacity="0.9"/>
+  <circle cx="282" cy="240" r="12" fill="#6B9E5C" opacity="0.9"/>
+</svg>
