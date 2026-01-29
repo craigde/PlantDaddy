@@ -28,11 +28,13 @@ struct PlantCardView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             // Plant Image (with species image fallback)
-            let displayImageUrl = plant.fullImageUrl ?? speciesImageUrl
+            let primaryUrl = plant.fullImageUrl
+            let hasAnyImageUrl = primaryUrl != nil || speciesImageUrl != nil
 
-            if let imageUrl = displayImageUrl {
+            if hasAnyImageUrl {
                 AuthenticatedImage(
-                    url: imageUrl,
+                    url: primaryUrl ?? speciesImageUrl,
+                    fallbackUrl: primaryUrl != nil ? speciesImageUrl : nil,
                     loadingPlaceholder: {
                         Rectangle()
                             .fill(Color.gray.opacity(0.2))

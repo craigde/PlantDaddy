@@ -11,19 +11,23 @@ import SwiftUI
 /// R2 images require JWT auth and redirect to presigned URLs
 struct AuthenticatedImage<LoadingPlaceholder: View, FailurePlaceholder: View>: View {
     let url: String?
+    let fallbackUrl: String?
     let loadingPlaceholder: () -> LoadingPlaceholder
     let failurePlaceholder: () -> FailurePlaceholder
 
     @State private var loadedImage: UIImage?
     @State private var isLoading = false
     @State private var loadFailed = false
+    @State private var triedFallback = false
 
     init(
         url: String?,
+        fallbackUrl: String? = nil,
         @ViewBuilder loadingPlaceholder: @escaping () -> LoadingPlaceholder,
         @ViewBuilder failurePlaceholder: @escaping () -> FailurePlaceholder
     ) {
         self.url = url
+        self.fallbackUrl = fallbackUrl
         self.loadingPlaceholder = loadingPlaceholder
         self.failurePlaceholder = failurePlaceholder
     }
@@ -46,6 +50,7 @@ struct AuthenticatedImage<LoadingPlaceholder: View, FailurePlaceholder: View>: V
             // Reset and reload when URL changes
             loadedImage = nil
             loadFailed = false
+            triedFallback = false
             loadImageIfNeeded()
         }
     }
@@ -54,11 +59,16 @@ struct AuthenticatedImage<LoadingPlaceholder: View, FailurePlaceholder: View>: V
         guard !isLoading, loadedImage == nil, !loadFailed else { return }
         guard let urlString = url, !urlString.isEmpty else {
             print("🖼️ [AuthenticatedImage] No URL provided")
+            // No primary URL - try fallback immediately if available
+            tryFallbackOrFail()
             return
         }
 
         print("🖼️ [AuthenticatedImage] Loading URL: \(urlString)")
+        loadUrl(urlString)
+    }
 
+    private func loadUrl(_ urlString: String) {
         // Check if this is an R2 URL that needs authentication
         if urlString.contains("/r2/") {
             print("🖼️ [AuthenticatedImage] Detected R2 URL, using authenticated loading")
@@ -68,6 +78,20 @@ struct AuthenticatedImage<LoadingPlaceholder: View, FailurePlaceholder: View>: V
             loadRegularImage(imageUrl)
         } else {
             print("🖼️ [AuthenticatedImage] Invalid URL: \(urlString)")
+            tryFallbackOrFail()
+        }
+    }
+
+    private func tryFallbackOrFail() {
+        // If we haven't tried the fallback yet and one exists, try it
+        if !triedFallback, let fallback = fallbackUrl, !fallback.isEmpty {
+            print("🖼️ [AuthenticatedImage] Primary failed, trying fallback URL: \(fallback)")
+            triedFallback = true
+            loadUrl(fallback)
+        } else {
+            // No fallback or fallback already tried - mark as failed
+            loadFailed = true
+            isLoading = false
         }
     }
 
@@ -88,7 +112,7 @@ struct AuthenticatedImage<LoadingPlaceholder: View, FailurePlaceholder: View>: V
         guard let url = URL(string: fullUrlString) else {
             print("🖼️ [AuthenticatedImage] Failed to create URL from: \(fullUrlString)")
             isLoading = false
-            loadFailed = true
+            tryFallbackOrFail()
             return
         }
 
@@ -128,22 +152,22 @@ struct AuthenticatedImage<LoadingPlaceholder: View, FailurePlaceholder: View>: V
                             print("🖼️ [AuthenticatedImage] Response body: \(responseText)")
                         }
                         await MainActor.run {
-                            self.loadFailed = true
                             self.isLoading = false
+                            self.tryFallbackOrFail()
                         }
                     }
                 } else {
                     print("🖼️ [AuthenticatedImage] Not an HTTP response")
                     await MainActor.run {
-                        self.loadFailed = true
                         self.isLoading = false
+                        self.tryFallbackOrFail()
                     }
                 }
             } catch {
                 print("🖼️ [AuthenticatedImage] Error: \(error)")
                 await MainActor.run {
-                    self.loadFailed = true
                     self.isLoading = false
+                    self.tryFallbackOrFail()
                 }
             }
         }
@@ -162,15 +186,15 @@ struct AuthenticatedImage<LoadingPlaceholder: View, FailurePlaceholder: View>: V
                     }
                 } else {
                     await MainActor.run {
-                        self.loadFailed = true
                         self.isLoading = false
+                        self.tryFallbackOrFail()
                     }
                 }
             } catch {
                 print("Failed to load image: \(error)")
                 await MainActor.run {
-                    self.loadFailed = true
                     self.isLoading = false
+                    self.tryFallbackOrFail()
                 }
             }
         }
@@ -189,16 +213,17 @@ struct AuthenticatedImage<LoadingPlaceholder: View, FailurePlaceholder: View>: V
 
 // Convenience initializer with same placeholder for both states (backward compatibility)
 extension AuthenticatedImage where LoadingPlaceholder == FailurePlaceholder {
-    init(url: String?, @ViewBuilder placeholder: @escaping () -> LoadingPlaceholder) {
-        self.init(url: url, loadingPlaceholder: placeholder, failurePlaceholder: placeholder)
+    init(url: String?, fallbackUrl: String? = nil, @ViewBuilder placeholder: @escaping () -> LoadingPlaceholder) {
+        self.init(url: url, fallbackUrl: fallbackUrl, loadingPlaceholder: placeholder, failurePlaceholder: placeholder)
     }
 }
 
 // Convenience initializer with default placeholders
 extension AuthenticatedImage where LoadingPlaceholder == AnyView, FailurePlaceholder == AnyView {
-    init(url: String?) {
+    init(url: String?, fallbackUrl: String? = nil) {
         self.init(
             url: url,
+            fallbackUrl: fallbackUrl,
             loadingPlaceholder: {
                 AnyView(
                     Rectangle()

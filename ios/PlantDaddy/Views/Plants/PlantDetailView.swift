@@ -106,19 +106,23 @@ struct PlantDetailView: View {
     // MARK: - View Components
 
     private func plantImageSection(_ plant: Plant) -> some View {
-        let displayImageUrl = plant.fullImageUrl ?? speciesImageUrl(for: plant)
+        // Use plant's custom photo as primary, species image as fallback
+        let primaryUrl = plant.fullImageUrl
+        let fallbackUrl = speciesImageUrl(for: plant)
+        let hasAnyImageUrl = primaryUrl != nil || fallbackUrl != nil
 
         return ZStack(alignment: .bottomTrailing) {
-            if let imageUrl = displayImageUrl {
+            if hasAnyImageUrl {
                 AuthenticatedImage(
-                    url: imageUrl,
+                    url: primaryUrl ?? fallbackUrl,
+                    fallbackUrl: primaryUrl != nil ? fallbackUrl : nil,
                     loadingPlaceholder: {
                         Rectangle()
                             .fill(Color.gray.opacity(0.2))
                             .overlay(ProgressView())
                     },
                     failurePlaceholder: {
-                        // Show nice fallback on failure (same as no-photo state)
+                        // Show nice fallback on failure (both plant photo and species failed)
                         Rectangle()
                             .fill(LinearGradient(
                                 colors: [.green.opacity(0.3), .green.opacity(0.1)],
