@@ -1692,12 +1692,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   const httpServer = createServer(app);
   
-  // Send welcome notification on startup
+  // Send welcome notification on startup (only if credentials are configured)
   sendWelcomeNotification().then(sent => {
     if (sent) {
       console.log("PlantDaddy welcome notification sent successfully");
-    } else {
-      console.warn("Failed to send PlantDaddy welcome notification");
     }
   });
   

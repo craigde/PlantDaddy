@@ -181,8 +181,16 @@ app.use((req, res, next) => {
     reusePort: true,
   }, () => {
     log(`serving on port ${port}`);
-    
+
     // Start plant notification scheduler
     startScheduler();
+  });
+
+  // Graceful shutdown on SIGTERM (Railway sends this during redeploys)
+  process.on("SIGTERM", () => {
+    log("SIGTERM received, shutting down gracefully...");
+    server.close(() => {
+      pool.end().then(() => process.exit(0));
+    });
   });
 })();

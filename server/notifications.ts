@@ -31,15 +31,6 @@ export async function sendPushoverNotification(
   const pushoverAppToken = settings?.pushoverAppToken || ENV_PUSHOVER_APP_TOKEN;
   const pushoverUserKey = settings?.pushoverUserKey || ENV_PUSHOVER_USER_KEY;
   
-  // Debug: Print token length and first/last characters (partial for security)
-  if (pushoverAppToken) {
-    console.log(`PUSHOVER_APP_TOKEN: ${pushoverAppToken.substr(0, 3)}...${pushoverAppToken.substr(-3)} (${pushoverAppToken.length} chars)`);
-  }
-  
-  if (pushoverUserKey) {
-    console.log(`PUSHOVER_USER_KEY: ${pushoverUserKey.substr(0, 3)}...${pushoverUserKey.substr(-3)} (${pushoverUserKey.length} chars)`);
-  }
-  
   // If notifications are disabled or credentials are missing, don't send notification
   if (!pushoverEnabled) {
     console.log('Notifications are disabled in settings. Skipping notification.');
@@ -47,7 +38,6 @@ export async function sendPushoverNotification(
   }
   
   if (!pushoverAppToken || !pushoverUserKey) {
-    console.warn('Cannot send notification: Pushover credentials missing');
     return false;
   }
 
