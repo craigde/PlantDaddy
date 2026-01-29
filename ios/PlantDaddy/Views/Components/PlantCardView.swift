@@ -28,18 +28,28 @@ struct PlantCardView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             // Plant Image (with species image fallback)
-            let displayImageUrl = plant.fullImageUrl ?? speciesImageUrl
+            let primaryUrl = plant.fullImageUrl
+            let hasAnyImageUrl = primaryUrl != nil || speciesImageUrl != nil
 
-            if let imageUrl = displayImageUrl {
-                AuthenticatedImage(url: imageUrl) {
-                    Rectangle()
-                        .fill(Color.gray.opacity(0.2))
-                        .overlay(
-                            Image(systemName: "leaf.fill")
-                                .font(.largeTitle)
-                                .foregroundColor(.green.opacity(0.3))
-                        )
-                }
+            if hasAnyImageUrl {
+                AuthenticatedImage(
+                    url: primaryUrl ?? speciesImageUrl,
+                    fallbackUrl: primaryUrl != nil ? speciesImageUrl : nil,
+                    loadingPlaceholder: {
+                        Rectangle()
+                            .fill(Color.gray.opacity(0.2))
+                            .overlay(ProgressView())
+                    },
+                    failurePlaceholder: {
+                        Rectangle()
+                            .fill(Color.gray.opacity(0.2))
+                            .overlay(
+                                Image(systemName: "leaf.fill")
+                                    .font(.largeTitle)
+                                    .foregroundColor(.green.opacity(0.3))
+                            )
+                    }
+                )
                 .aspectRatio(contentMode: .fill)
                 .frame(height: 200)
                 .clipShape(RoundedRectangle(cornerRadius: 12))

@@ -106,17 +106,40 @@ struct PlantDetailView: View {
     // MARK: - View Components
 
     private func plantImageSection(_ plant: Plant) -> some View {
-        let displayImageUrl = plant.fullImageUrl ?? speciesImageUrl(for: plant)
+        // Use plant's custom photo as primary, species image as fallback
+        let primaryUrl = plant.fullImageUrl
+        let fallbackUrl = speciesImageUrl(for: plant)
+        let hasAnyImageUrl = primaryUrl != nil || fallbackUrl != nil
 
         return ZStack(alignment: .bottomTrailing) {
-            if let imageUrl = displayImageUrl {
-                AuthenticatedImage(url: imageUrl) {
-                    Rectangle()
-                        .fill(Color.gray.opacity(0.2))
-                        .overlay(
-                            ProgressView()
-                        )
-                }
+            if hasAnyImageUrl {
+                AuthenticatedImage(
+                    url: primaryUrl ?? fallbackUrl,
+                    fallbackUrl: primaryUrl != nil ? fallbackUrl : nil,
+                    loadingPlaceholder: {
+                        Rectangle()
+                            .fill(Color.gray.opacity(0.2))
+                            .overlay(ProgressView())
+                    },
+                    failurePlaceholder: {
+                        // Show nice fallback on failure (both plant photo and species failed)
+                        Rectangle()
+                            .fill(LinearGradient(
+                                colors: [.green.opacity(0.3), .green.opacity(0.1)],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            ))
+                            .overlay(
+                                VStack {
+                                    Image(systemName: "leaf.fill")
+                                        .font(.system(size: 80))
+                                        .foregroundColor(.green.opacity(0.4))
+                                    Text("No Photo")
+                                        .foregroundColor(.secondary)
+                                }
+                            )
+                    }
+                )
                 .aspectRatio(contentMode: .fill)
                 .frame(maxWidth: .infinity, maxHeight: 300)
                 .clipped()
