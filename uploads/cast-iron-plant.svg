@@ -1,5 +1,4 @@
 <svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
-  <rect width="512" height="512" fill="white"/>
   <!-- Pot -->
   <path d="M 170 370 L 342 370 L 318 460 L 194 460 Z" fill="#A67563"/>
   <rect x="162" y="358" width="188" height="16" rx="3" fill="#B88A7A"/>
