@@ -19,6 +19,7 @@ struct AuthenticatedImage<LoadingPlaceholder: View, FailurePlaceholder: View>: V
     @State private var isLoading = false
     @State private var loadFailed = false
     @State private var triedFallback = false
+    @State private var currentLoadId: UUID = UUID()
 
     init(
         url: String?,
@@ -48,7 +49,10 @@ struct AuthenticatedImage<LoadingPlaceholder: View, FailurePlaceholder: View>: V
         }
         .onChange(of: url) { newUrl in
             // Reset and reload when URL changes
+            // Generate new load ID to invalidate any in-flight loads
+            currentLoadId = UUID()
             loadedImage = nil
+            isLoading = false
             loadFailed = false
             triedFallback = false
             loadImageIfNeeded()
@@ -97,6 +101,7 @@ struct AuthenticatedImage<LoadingPlaceholder: View, FailurePlaceholder: View>: V
 
     private func loadAuthenticatedImage(_ urlString: String) {
         isLoading = true
+        let loadId = currentLoadId  // Capture current load ID
 
         // Construct full URL if needed
         let fullUrlString: String
@@ -134,6 +139,12 @@ struct AuthenticatedImage<LoadingPlaceholder: View, FailurePlaceholder: View>: V
             do {
                 let (data, response) = try await session.data(for: request)
 
+                // Check if this load is still current before updating state
+                guard loadId == currentLoadId else {
+                    print("🖼️ [AuthenticatedImage] Load cancelled (stale loadId)")
+                    return
+                }
+
                 if let httpResponse = response as? HTTPURLResponse {
                     print("🖼️ [AuthenticatedImage] Response status: \(httpResponse.statusCode)")
                     print("🖼️ [AuthenticatedImage] Response URL: \(httpResponse.url?.absoluteString ?? "nil")")
@@ -143,6 +154,7 @@ struct AuthenticatedImage<LoadingPlaceholder: View, FailurePlaceholder: View>: V
                        let image = UIImage(data: data) {
                         print("🖼️ [AuthenticatedImage] Successfully loaded image!")
                         await MainActor.run {
+                            guard loadId == self.currentLoadId else { return }
                             self.loadedImage = image
                             self.isLoading = false
                         }
@@ -152,6 +164,7 @@ struct AuthenticatedImage<LoadingPlaceholder: View, FailurePlaceholder: View>: V
                             print("🖼️ [AuthenticatedImage] Response body: \(responseText)")
                         }
                         await MainActor.run {
+                            guard loadId == self.currentLoadId else { return }
                             self.isLoading = false
                             self.tryFallbackOrFail()
                         }
@@ -159,6 +172,7 @@ struct AuthenticatedImage<LoadingPlaceholder: View, FailurePlaceholder: View>: V
                 } else {
                     print("🖼️ [AuthenticatedImage] Not an HTTP response")
                     await MainActor.run {
+                        guard loadId == self.currentLoadId else { return }
                         self.isLoading = false
                         self.tryFallbackOrFail()
                     }
@@ -166,6 +180,7 @@ struct AuthenticatedImage<LoadingPlaceholder: View, FailurePlaceholder: View>: V
             } catch {
                 print("🖼️ [AuthenticatedImage] Error: \(error)")
                 await MainActor.run {
+                    guard loadId == self.currentLoadId else { return }
                     self.isLoading = false
                     self.tryFallbackOrFail()
                 }
@@ -175,17 +190,27 @@ struct AuthenticatedImage<LoadingPlaceholder: View, FailurePlaceholder: View>: V
 
     private func loadRegularImage(_ url: URL) {
         isLoading = true
+        let loadId = currentLoadId  // Capture current load ID
 
         Task {
             do {
                 let (data, _) = try await URLSession.shared.data(from: url)
+
+                // Check if this load is still current before updating state
+                guard loadId == currentLoadId else {
+                    print("🖼️ [AuthenticatedImage] Load cancelled (stale loadId)")
+                    return
+                }
+
                 if let image = UIImage(data: data) {
                     await MainActor.run {
+                        guard loadId == self.currentLoadId else { return }
                         self.loadedImage = image
                         self.isLoading = false
                     }
                 } else {
                     await MainActor.run {
+                        guard loadId == self.currentLoadId else { return }
                         self.isLoading = false
                         self.tryFallbackOrFail()
                     }
@@ -193,6 +218,7 @@ struct AuthenticatedImage<LoadingPlaceholder: View, FailurePlaceholder: View>: V
             } catch {
                 print("Failed to load image: \(error)")
                 await MainActor.run {
+                    guard loadId == self.currentLoadId else { return }
                     self.isLoading = false
                     self.tryFallbackOrFail()
                 }
