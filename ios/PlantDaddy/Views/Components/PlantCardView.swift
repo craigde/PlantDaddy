@@ -31,12 +31,7 @@ struct PlantCardView: View {
             let displayImageUrl = plant.fullImageUrl ?? speciesImageUrl
 
             if let imageUrl = displayImageUrl {
-                let _ = print("🖼️ PlantCardView loading image: \(imageUrl)")
-                AsyncImage(url: URL(string: imageUrl)) { image in
-                    image
-                        .resizable()
-                        .aspectRatio(contentMode: .fill)
-                } placeholder: {
+                AuthenticatedImage(url: imageUrl) {
                     Rectangle()
                         .fill(Color.gray.opacity(0.2))
                         .overlay(
@@ -45,6 +40,7 @@ struct PlantCardView: View {
                                 .foregroundColor(.green.opacity(0.3))
                         )
                 }
+                .aspectRatio(contentMode: .fill)
                 .frame(height: 200)
                 .clipShape(RoundedRectangle(cornerRadius: 12))
             } else {
