@@ -823,10 +823,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const imageUrl = r2Service.keyToInternalUrl(key);
       console.log("[R2 Upload] Image URL:", imageUrl);
 
+      // If plantId was provided, update the plant's imageUrl in the database
+      let updatedPlant = null;
+      if (plantId) {
+        console.log("[R2 Upload] Updating plant", plantId, "with imageUrl");
+        // Use userContextStorage to ensure proper user context for the update
+        updatedPlant = await userContextStorage.run({ userId }, async () => {
+          return await dbStorage.updatePlant(plantId, { imageUrl });
+        });
+        console.log("[R2 Upload] Plant updated successfully");
+      }
+
       res.json({
         success: true,
         imageUrl,
-        key
+        key,
+        plant: updatedPlant
       });
     } catch (error: any) {
       console.error("[R2 Upload] Failed:", error);
