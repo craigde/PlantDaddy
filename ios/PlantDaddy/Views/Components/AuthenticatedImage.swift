@@ -44,14 +44,22 @@ struct AuthenticatedImage<Placeholder: View>: View {
 
     private func loadImageIfNeeded() {
         guard !isLoading, loadedImage == nil, !loadFailed else { return }
-        guard let urlString = url, !urlString.isEmpty else { return }
+        guard let urlString = url, !urlString.isEmpty else {
+            print("🖼️ [AuthenticatedImage] No URL provided")
+            return
+        }
+
+        print("🖼️ [AuthenticatedImage] Loading URL: \(urlString)")
 
         // Check if this is an R2 URL that needs authentication
         if urlString.contains("/r2/") {
+            print("🖼️ [AuthenticatedImage] Detected R2 URL, using authenticated loading")
             loadAuthenticatedImage(urlString)
         } else if let imageUrl = URL(string: urlString) {
-            // Regular URL - load directly
+            print("🖼️ [AuthenticatedImage] Regular URL, loading directly")
             loadRegularImage(imageUrl)
+        } else {
+            print("🖼️ [AuthenticatedImage] Invalid URL: \(urlString)")
         }
     }
 
@@ -67,7 +75,10 @@ struct AuthenticatedImage<Placeholder: View>: View {
             fullUrlString = baseURL + urlString
         }
 
+        print("🖼️ [AuthenticatedImage] Full URL: \(fullUrlString)")
+
         guard let url = URL(string: fullUrlString) else {
+            print("🖼️ [AuthenticatedImage] Failed to create URL from: \(fullUrlString)")
             isLoading = false
             loadFailed = true
             return
@@ -79,6 +90,9 @@ struct AuthenticatedImage<Placeholder: View>: View {
         // Add JWT auth header
         if let token = KeychainService.shared.getToken() {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+            print("🖼️ [AuthenticatedImage] Added auth token")
+        } else {
+            print("🖼️ [AuthenticatedImage] WARNING: No auth token available!")
         }
 
         // Create session that follows redirects
@@ -88,21 +102,37 @@ struct AuthenticatedImage<Placeholder: View>: View {
             do {
                 let (data, response) = try await session.data(for: request)
 
-                if let httpResponse = response as? HTTPURLResponse,
-                   (200...299).contains(httpResponse.statusCode),
-                   let image = UIImage(data: data) {
-                    await MainActor.run {
-                        self.loadedImage = image
-                        self.isLoading = false
+                if let httpResponse = response as? HTTPURLResponse {
+                    print("🖼️ [AuthenticatedImage] Response status: \(httpResponse.statusCode)")
+                    print("🖼️ [AuthenticatedImage] Response URL: \(httpResponse.url?.absoluteString ?? "nil")")
+                    print("🖼️ [AuthenticatedImage] Data size: \(data.count) bytes")
+
+                    if (200...299).contains(httpResponse.statusCode),
+                       let image = UIImage(data: data) {
+                        print("🖼️ [AuthenticatedImage] Successfully loaded image!")
+                        await MainActor.run {
+                            self.loadedImage = image
+                            self.isLoading = false
+                        }
+                    } else {
+                        print("🖼️ [AuthenticatedImage] Failed to create UIImage from data")
+                        if let responseText = String(data: data.prefix(500), encoding: .utf8) {
+                            print("🖼️ [AuthenticatedImage] Response body: \(responseText)")
+                        }
+                        await MainActor.run {
+                            self.loadFailed = true
+                            self.isLoading = false
+                        }
                     }
                 } else {
+                    print("🖼️ [AuthenticatedImage] Not an HTTP response")
                     await MainActor.run {
                         self.loadFailed = true
                         self.isLoading = false
                     }
                 }
             } catch {
-                print("Failed to load authenticated image: \(error)")
+                print("🖼️ [AuthenticatedImage] Error: \(error)")
                 await MainActor.run {
                     self.loadFailed = true
                     self.isLoading = false
