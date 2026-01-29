@@ -28,7 +28,7 @@ struct ContentView: View {
                 MainTabView()
                     .task {
                         // Request notification permission when user is authenticated
-                        await NotificationService.shared.requestAuthorization()
+                        _ = await NotificationService.shared.requestAuthorization()
                     }
             } else {
                 LoginView()
