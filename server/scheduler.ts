@@ -3,6 +3,7 @@ import { plants, notificationSettings, users } from '@shared/schema';
 import { eq, and } from 'drizzle-orm';
 import { isOverdue } from '../client/src/lib/date-utils';
 import { sendPlantWateringNotification, sendPushoverNotification } from './notifications';
+import { sendApnsNotification, isApnsConfigured } from './apns-service';
 import { userContextStorage } from './user-context';
 
 // Time in milliseconds
@@ -83,11 +84,13 @@ async function checkPlantsTask() {
 
           // Send summary if multiple plants need attention
           if (overduePlants.length > 1) {
-            await sendPushoverNotification(
-              '🪴 PlantDaddy Daily Summary',
-              `You have ${overduePlants.length} plants that need watering today.`,
-              0
-            );
+            const summaryTitle = '🪴 PlantDaddy Daily Summary';
+            const summaryBody = `You have ${overduePlants.length} plants that need watering today.`;
+            await sendPushoverNotification(summaryTitle, summaryBody, 0);
+
+            if (isApnsConfigured()) {
+              await sendApnsNotification(userId, summaryTitle, summaryBody);
+            }
           }
         } catch (err) {
           console.error(`[scheduler] Error checking plants for user ${userId}:`, err);

@@ -22,7 +22,8 @@ import {
   type PlantHealthRecord,
   type InsertPlantHealthRecord,
   type CareActivity,
-  type InsertCareActivity
+  type InsertCareActivity,
+  type DeviceToken
 } from "@shared/schema";
 
 export interface IStorage {

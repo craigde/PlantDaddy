@@ -2,12 +2,13 @@ import fetch from 'node-fetch';
 import { Plant } from '@shared/schema';
 import { daysUntilWatering, isOverdue } from '../client/src/lib/date-utils';
 import { storage } from './storage';
-import { 
-  configureEmailService, 
-  sendPlantWateringEmail, 
-  sendWelcomeEmail, 
-  sendTestEmail 
+import {
+  configureEmailService,
+  sendPlantWateringEmail,
+  sendWelcomeEmail,
+  sendTestEmail
 } from './email-service';
+import { sendApnsNotification, isApnsConfigured } from './apns-service';
 
 // Pushover API endpoint
 const PUSHOVER_API_URL = 'https://api.pushover.net/1/messages.json';
@@ -102,14 +103,22 @@ export async function sendPlantWateringNotification(plant: Plant): Promise<boole
   
   // Send email notification if enabled
   if (settings?.emailEnabled && settings?.emailAddress && settings?.sendgridApiKey) {
-    // Configure email service with API key
     configureEmailService(settings.sendgridApiKey);
-    
-    // Send email notification
     const emailSent = await sendPlantWateringEmail(plant, settings.emailAddress);
     if (emailSent) success = true;
   }
-  
+
+  // Send APNs push notification
+  if (isApnsConfigured() && plant.userId) {
+    const apnsSent = await sendApnsNotification(
+      plant.userId,
+      title,
+      message,
+      { plantId: plant.id, threadId: `plant-${plant.id}` }
+    );
+    if (apnsSent > 0) success = true;
+  }
+
   return success;
 }
 

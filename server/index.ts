@@ -84,6 +84,15 @@ async function initializeDatabase() {
       last_updated TIMESTAMP DEFAULT NOW()
     );
 
+    CREATE TABLE IF NOT EXISTS device_tokens (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id),
+      token TEXT NOT NULL UNIQUE,
+      environment TEXT NOT NULL DEFAULT 'production',
+      created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+      last_used TIMESTAMP DEFAULT NOW()
+    );
+
     CREATE TABLE IF NOT EXISTS plant_health_records (
       id SERIAL PRIMARY KEY,
       plant_id INTEGER NOT NULL REFERENCES plants(id),

@@ -6,6 +6,7 @@ import {
   locations, type Location, type InsertLocation,
   plantSpecies, type PlantSpecies, type InsertPlantSpecies,
   notificationSettings, type NotificationSettings, type InsertNotificationSettings,
+  deviceTokens, type DeviceToken,
   plantHealthRecords,
   careActivities
 } from "@shared/schema";
@@ -47,6 +48,11 @@ export interface IStorage {
   // Notification settings methods
   getNotificationSettings(): Promise<NotificationSettings | undefined>;
   updateNotificationSettings(settings: Partial<InsertNotificationSettings>): Promise<NotificationSettings>;
+
+  // Device token methods
+  registerDeviceToken(userId: number, token: string, environment: string): Promise<DeviceToken>;
+  removeDeviceToken(token: string): Promise<boolean>;
+  getDeviceTokensForUser(userId: number): Promise<DeviceToken[]>;
 }
 
 export class DatabaseStorage implements IStorage {

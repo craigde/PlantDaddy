@@ -7,6 +7,7 @@ import multer from "multer";
 import path from "path";
 import fs from "fs";
 import { sendPlantWateringNotification, sendWelcomeNotification, checkPlantsAndSendNotifications, sendPushoverNotification, sendTestNotification } from "./notifications";
+import { isApnsConfigured } from "./apns-service";
 import { setupAuth, hashPassword, jwtAuthMiddleware, comparePasswords } from "./auth";
 import passport from "passport";
 import { setUserContext, getCurrentUserId, userContextStorage } from "./user-context";
@@ -970,6 +971,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       const errorMessage = error?.message || "Failed to send plant notification";
       res.status(500).json({ success: false, message: errorMessage });
+    }
+  });
+
+  // Device token registration for APNs push notifications
+  apiRouter.post("/device-tokens", async (req: Request, res: Response) => {
+    try {
+      const userId = getCurrentUserId();
+      if (!userId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      const { token, environment } = req.body;
+      if (!token || typeof token !== "string") {
+        return res.status(400).json({ message: "Device token is required" });
+      }
+
+      const env = environment === "sandbox" ? "sandbox" : "production";
+      const deviceToken = await dbStorage.registerDeviceToken(userId, token, env);
+      res.json({ success: true, id: deviceToken.id });
+    } catch (error: any) {
+      console.error("Failed to register device token:", error);
+      res.status(500).json({ message: "Failed to register device token" });
+    }
+  });
+
+  apiRouter.delete("/device-tokens", async (req: Request, res: Response) => {
+    try {
+      const { token } = req.body;
+      if (!token || typeof token !== "string") {
+        return res.status(400).json({ message: "Device token is required" });
+      }
+
+      await dbStorage.removeDeviceToken(token);
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("Failed to remove device token:", error);
+      res.status(500).json({ message: "Failed to remove device token" });
     }
   });
 
