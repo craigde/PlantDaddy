@@ -47,6 +47,7 @@ enum APIEndpoint {
     case plantImageUpload(id: Int)
     case uploadImage
     case r2UploadUrl
+    case r2Upload
 
     // Notification Settings
     case notificationSettings
@@ -90,6 +91,8 @@ enum APIEndpoint {
             return "/upload-image"
         case .r2UploadUrl:
             return "/r2/upload-url"
+        case .r2Upload:
+            return "/r2/upload"
         case .notificationSettings:
             return "/notification-settings"
         case .testNotification:

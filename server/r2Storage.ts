@@ -116,6 +116,63 @@ export class R2StorageService {
   }
 
   /**
+   * Upload a file directly to R2 from the server
+   * @param userId - The user's ID for path scoping
+   * @param plantId - Optional plant ID for organizing uploads
+   * @param data - The file data as a Buffer
+   * @param contentType - The content type of the file
+   * @returns The object key
+   */
+  async uploadFile(
+    userId: number,
+    data: Buffer,
+    contentType: string = "image/jpeg",
+    plantId?: number
+  ): Promise<string> {
+    const objectId = randomUUID();
+
+    // User-scoped path to organize uploads and prevent collisions
+    const key = plantId
+      ? `users/${userId}/plants/${plantId}/${objectId}`
+      : `users/${userId}/uploads/${objectId}`;
+
+    console.log("[R2StorageService] uploadFile called:", {
+      userId,
+      plantId,
+      contentType,
+      dataSize: data?.length,
+      bucket: this.bucket,
+      key
+    });
+
+    const command = new PutObjectCommand({
+      Bucket: this.bucket,
+      Key: key,
+      Body: data,
+      ContentType: contentType,
+    });
+
+    try {
+      const result = await this.client.send(command);
+      console.log("[R2StorageService] Upload successful:", {
+        key,
+        httpStatusCode: result.$metadata?.httpStatusCode,
+        requestId: result.$metadata?.requestId
+      });
+      return key;
+    } catch (error: any) {
+      console.error("[R2StorageService] Upload failed:", {
+        key,
+        errorName: error?.name,
+        errorMessage: error?.message,
+        httpStatusCode: error?.$metadata?.httpStatusCode,
+        requestId: error?.$metadata?.requestId
+      });
+      throw error;
+    }
+  }
+
+  /**
    * Delete an object from R2
    * @param key - The object key to delete
    */
