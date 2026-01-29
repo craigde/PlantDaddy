@@ -447,6 +447,8 @@ struct PlantDetailView: View {
                 _ = try await imageUploadService.uploadPlantImage(image, for: plantId)
                 // Reload plant to get updated image URL
                 plant = try await plantService.fetchPlant(id: plantId)
+                // Also refresh the shared plants array so PlantListView updates
+                await plantService.fetchPlants()
             } catch {
                 print("Error uploading image: \(error)")
             }
@@ -464,6 +466,8 @@ struct PlantDetailView: View {
                 )
                 // Reload plant — imageUrl will be null, so species default shows
                 plant = try await plantService.fetchPlant(id: plantId)
+                // Also refresh the shared plants array so PlantListView updates
+                await plantService.fetchPlants()
             } catch {
                 print("Error removing photo: \(error)")
             }
