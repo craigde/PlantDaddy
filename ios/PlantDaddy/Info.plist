@@ -36,10 +36,21 @@
 	<!-- Network Security Settings -->
 	<key>NSAppTransportSecurity</key>
 	<dict>
-		<!-- DEVELOPMENT ONLY: Allow connections through Zscaler proxy -->
-		<!-- For production, install Zscaler certificate in iOS or remove this -->
+		<!-- Allow HTTPS to Railway domain -->
 		<key>NSAllowsArbitraryLoads</key>
-		<true/>
+		<false/>
+		<key>NSExceptionDomains</key>
+		<dict>
+			<key>railway.app</key>
+			<dict>
+				<key>NSIncludesSubdomains</key>
+				<true/>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<false/>
+				<key>NSExceptionMinimumTLSVersion</key>
+				<string>TLSv1.2</string>
+			</dict>
+		</dict>
 	</dict>
 </dict>
 </plist>
