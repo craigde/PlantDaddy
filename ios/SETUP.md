@@ -358,17 +358,96 @@ UNUserNotificationCenter.current().requestAuthorization(...)
 
 ### Submit to TestFlight
 
-1. **Archive:**
-   - `Product → Archive`
+#### Prerequisites
 
-2. **Upload:**
-   - Window → Organizer
-   - Select archive → **Distribute App**
-   - Follow wizard
+- **Apple Developer Program membership** ($99/year) - required for TestFlight
+- **App Store Connect app record** - create one at [App Store Connect](https://appstoreconnect.apple.com)
 
-3. **Add Testers:**
-   - App Store Connect → TestFlight
-   - Add internal/external testers
+#### Fix "No devices" / Provisioning Profile Errors
+
+If you see errors like:
+- *"Your team has no devices from which to generate a provisioning profile"*
+- *"No profiles for 'com.craigde.PlantDaddy' were found"*
+
+This means Xcode is trying to use an **iOS App Development** profile (which
+requires registered devices) instead of an **App Store Distribution** profile
+(which does not). Fix it with these steps:
+
+1. **Set the Archive scheme to use Release configuration:**
+   - `Product → Scheme → Edit Scheme...` (or `Cmd + Shift + <`)
+   - Select **Archive** in the left sidebar
+   - Set **Build Configuration** to **Release**
+   - Click **Close**
+
+2. **Configure Release signing for Distribution:**
+   - Select your project in the Navigator (blue icon at top)
+   - Select the **PlantDaddy** target
+   - Go to **Signing & Capabilities** tab
+   - Under **Release** configuration:
+     - Check **"Automatically manage signing"**
+     - Select your **Team** (your Apple Developer account)
+   - Xcode should now show an **App Store** provisioning profile, not a
+     Development one
+
+3. **If automatic signing still fails, use manual signing:**
+   - Uncheck "Automatically manage signing" for the Release configuration
+   - Go to [Apple Developer Portal → Certificates, Identifiers & Profiles](https://developer.apple.com/account/resources/profiles/list)
+   - Create a new **App Store Distribution** provisioning profile:
+     - Type: **App Store Connect**
+     - App ID: `com.craigde.PlantDaddy`
+     - Certificate: Your **Apple Distribution** certificate
+   - Download and double-click the profile to install it
+   - Back in Xcode, select that profile under Release signing
+
+#### Archive and Upload
+
+1. **Select destination:**
+   - In the device selector (top toolbar), choose **Any iOS Device (arm64)**
+   - Do NOT select a simulator — simulators cannot produce archives
+
+2. **Archive:**
+   - `Product → Archive` (or `Cmd + Shift + Archive`)
+   - Wait for the build to complete
+
+3. **Distribute:**
+   - The Organizer window opens automatically
+   - Select your archive → click **Distribute App**
+   - Choose **App Store Connect**
+   - Choose **Upload** (sends to TestFlight)
+   - Click through the options (defaults are fine)
+   - Click **Upload**
+
+4. **Add Testers:**
+   - Go to [App Store Connect](https://appstoreconnect.apple.com) → Your App → TestFlight
+   - Add internal testers (up to 25, no review needed)
+   - Or add external testers (up to 10,000, requires beta review)
+
+#### Command-Line Archive (Alternative)
+
+You can also archive and export from the terminal using the included
+`ExportOptions.plist`:
+
+```bash
+# Archive
+xcodebuild archive \
+  -project PlantDaddy/PlantDaddy.xcodeproj \
+  -scheme PlantDaddy \
+  -configuration Release \
+  -archivePath build/PlantDaddy.xcarchive
+
+# Export for App Store / TestFlight
+xcodebuild -exportArchive \
+  -archivePath build/PlantDaddy.xcarchive \
+  -exportPath build/export \
+  -exportOptionsPlist ExportOptions.plist
+
+# Upload to App Store Connect (requires app-specific password)
+xcrun altool --upload-app \
+  -f build/export/PlantDaddy.ipa \
+  -t ios \
+  -u your@apple.id \
+  -p @keychain:AC_PASSWORD
+```
 
 ## Resources
 
