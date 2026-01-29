@@ -34,7 +34,7 @@ struct AuthenticatedImage<Placeholder: View>: View {
         .onAppear {
             loadImageIfNeeded()
         }
-        .onChange(of: url) { _, newUrl in
+        .onChange(of: url) { newUrl in
             // Reset and reload when URL changes
             loadedImage = nil
             loadFailed = false
