@@ -974,6 +974,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Test APNs push notification (sends to a specific user by username)
+  apiRouter.post("/test-push/:username", async (req: Request, res: Response) => {
+    try {
+      const { username } = req.params;
+      const user = await dbStorage.getUserByUsername(username);
+      if (!user) {
+        return res.status(404).json({ message: `User '${username}' not found` });
+      }
+
+      if (!isApnsConfigured()) {
+        return res.status(503).json({ message: "APNs is not configured on this server" });
+      }
+
+      const { sendApnsNotification } = await import("./apns-service");
+      const sent = await sendApnsNotification(
+        user.id,
+        "🪴 PlantDaddy: Test Push",
+        "If you see this, APNs push notifications are working!"
+      );
+
+      if (sent > 0) {
+        res.json({ success: true, message: `Push sent to ${sent} device(s)` });
+      } else {
+        res.json({ success: false, message: "No device tokens registered for this user" });
+      }
+    } catch (error: any) {
+      console.error("Test push failed:", error);
+      res.status(500).json({ message: error?.message || "Failed to send test push" });
+    }
+  });
+
   // Device token registration for APNs push notifications
   apiRouter.post("/device-tokens", async (req: Request, res: Response) => {
     try {
@@ -1648,24 +1679,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const results = await sendTestNotification();
       
-      if (results.pushover || results.email) {
-        // Construct detailed message about which notifications were sent
-        let message = "Test notification ";
+      if (results.pushover || results.email || results.apns) {
         const successTypes = [];
+        if (results.apns) successTypes.push("Push Notification");
         if (results.pushover) successTypes.push("Pushover");
         if (results.email) successTypes.push("Email");
-        
-        message += `sent successfully via ${successTypes.join(" and ")}.`;
-        
-        res.json({ 
-          success: true, 
+
+        const message = `Test notification sent via ${successTypes.join(" and ")}.`;
+
+        res.json({
+          success: true,
           message,
           results
         });
       } else {
-        res.status(500).json({ 
-          success: false, 
-          message: "Failed to send test notifications. Ensure notification settings are properly configured.",
+        res.status(500).json({
+          success: false,
+          message: "Failed to send test notification. Make sure the app has notification permissions enabled.",
           results
         });
       }
