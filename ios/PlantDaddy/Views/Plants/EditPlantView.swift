@@ -37,7 +37,7 @@ struct EditPlantView: View {
                     if !useCustomSpecies && !plantService.plantSpecies.isEmpty {
                         Picker("Species", selection: $selectedSpecies) {
                             Text("No species").tag(nil as PlantSpecies?)
-                            ForEach(plantService.plantSpecies) { species in
+                            ForEach(plantService.plantSpecies.sorted { $0.name < $1.name }) { species in
                                 HStack {
                                     Text(species.name)
                                     Text(species.careLevel.emoji)

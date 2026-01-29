@@ -1,4 +1,4 @@
-import { and, eq, sql, or, isNull } from "drizzle-orm";
+import { and, eq, sql, or, isNull, asc } from "drizzle-orm";
 import {
   users, type User, type InsertUser,
   plants, type Plant, type InsertPlant,
@@ -310,7 +310,7 @@ export class MultiUserStorage implements IStorage {
 
     // If no user is logged in, return only global species
     if (!userId) {
-      return await db.select().from(plantSpecies).where(isNull(plantSpecies.userId));
+      return await db.select().from(plantSpecies).where(isNull(plantSpecies.userId)).orderBy(asc(plantSpecies.name));
     }
 
     // Return global species + user's custom species
@@ -319,7 +319,7 @@ export class MultiUserStorage implements IStorage {
         isNull(plantSpecies.userId), // Global species
         eq(plantSpecies.userId, userId) // User's custom species
       )
-    );
+    ).orderBy(asc(plantSpecies.name));
   }
 
   async getPlantSpecies(id: number): Promise<PlantSpecies | undefined> {

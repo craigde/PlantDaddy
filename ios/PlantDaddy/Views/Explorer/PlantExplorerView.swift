@@ -28,7 +28,7 @@ struct PlantExplorerView: View {
             result = result.filter { $0.careLevel == level }
         }
 
-        return result
+        return result.sorted { $0.name < $1.name }
     }
 
     var body: some View {
