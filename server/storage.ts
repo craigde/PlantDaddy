@@ -922,7 +922,7 @@ export class MemStorage implements IStorage {
   }
   
   async getAllPlantSpecies(): Promise<PlantSpecies[]> {
-    return Array.from(this.plantSpeciesCatalog.values());
+    return Array.from(this.plantSpeciesCatalog.values()).sort((a, b) => a.name.localeCompare(b.name));
   }
 
   async getPlantSpecies(id: number): Promise<PlantSpecies | undefined> {
@@ -999,7 +999,7 @@ export class MemStorage implements IStorage {
         (species.careLevel && species.careLevel.toLowerCase().includes(lowerQuery)) ||
         (species.family && species.family.toLowerCase().includes(lowerQuery))
       );
-    });
+    }).sort((a, b) => a.name.localeCompare(b.name));
   }
   
   // Notification settings methods
