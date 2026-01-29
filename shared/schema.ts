@@ -108,6 +108,22 @@ export const insertNotificationSettingsSchema = notificationSettingsSchema.omit(
 export type NotificationSettings = typeof notificationSettings.$inferSelect;
 export type InsertNotificationSettings = z.infer<typeof insertNotificationSettingsSchema>;
 
+// Device tokens for APNs push notifications
+export const deviceTokens = pgTable("device_tokens", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id).notNull(),
+  token: text("token").notNull().unique(),
+  environment: text("environment").notNull().default("production"), // "sandbox" or "production"
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  lastUsed: timestamp("last_used").defaultNow(),
+});
+
+export const deviceTokenSchema = createInsertSchema(deviceTokens);
+export const insertDeviceTokenSchema = deviceTokenSchema.omit({ id: true, createdAt: true, lastUsed: true });
+
+export type DeviceToken = typeof deviceTokens.$inferSelect;
+export type InsertDeviceToken = z.infer<typeof insertDeviceTokenSchema>;
+
 // Plant Health Records - Track health status over time with photos
 export const plantHealthRecords = pgTable("plant_health_records", {
   id: serial("id").primaryKey(),

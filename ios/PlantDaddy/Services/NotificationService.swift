@@ -26,12 +26,18 @@ class NotificationService: ObservableObject {
 
     // MARK: - Authorization
 
-    /// Request notification permission from user
+    /// Request notification permission and register for remote notifications
     func requestAuthorization() async -> Bool {
         do {
             let options: UNAuthorizationOptions = [.alert, .badge, .sound]
             let granted = try await notificationCenter.requestAuthorization(options: options)
             isAuthorized = granted
+
+            if granted {
+                // Register for remote (APNs) push notifications
+                UIApplication.shared.registerForRemoteNotifications()
+            }
+
             return granted
         } catch {
             print("Notification authorization error: \(error)")
@@ -43,6 +49,42 @@ class NotificationService: ObservableObject {
     func checkAuthorizationStatus() async {
         let settings = await notificationCenter.notificationSettings()
         isAuthorized = settings.authorizationStatus == .authorized
+    }
+
+    // MARK: - Remote Notification Token
+
+    /// Send device token to server for APNs push notifications
+    func registerDeviceToken(_ deviceToken: Data) {
+        let token = deviceToken.map { String(format: "%02x", $0) }.joined()
+        print("APNs device token: \(token)")
+
+        #if DEBUG
+        let environment = "sandbox"
+        #else
+        let environment = "production"
+        #endif
+
+        Task {
+            do {
+                struct TokenRequest: Encodable {
+                    let token: String
+                    let environment: String
+                }
+
+                struct TokenResponse: Decodable {
+                    let success: Bool
+                }
+
+                let _: TokenResponse = try await APIClient.shared.request(
+                    endpoint: .deviceTokens,
+                    method: .post,
+                    body: TokenRequest(token: token, environment: environment)
+                )
+                print("Device token registered with server")
+            } catch {
+                print("Failed to register device token: \(error)")
+            }
+        }
     }
 
     // MARK: - Local Notifications

@@ -5,6 +5,7 @@ import {
   locations, type Location, type InsertLocation,
   plantSpecies, type PlantSpecies, type InsertPlantSpecies,
   notificationSettings, type NotificationSettings, type InsertNotificationSettings,
+  deviceTokens, type DeviceToken,
   plantHealthRecords, type PlantHealthRecord, type InsertPlantHealthRecord,
   careActivities, type CareActivity, type InsertCareActivity
 } from "@shared/schema";
@@ -506,6 +507,36 @@ export class MultiUserStorage implements IStorage {
       
       return newSettings;
     }
+  }
+
+  // Device token methods
+  async registerDeviceToken(userId: number, token: string, environment: string): Promise<DeviceToken> {
+    // Upsert: update userId/environment if token already exists, otherwise insert
+    const [existing] = await db.select().from(deviceTokens).where(eq(deviceTokens.token, token));
+
+    if (existing) {
+      const [updated] = await db
+        .update(deviceTokens)
+        .set({ userId, environment, lastUsed: new Date() })
+        .where(eq(deviceTokens.token, token))
+        .returning();
+      return updated;
+    }
+
+    const [created] = await db
+      .insert(deviceTokens)
+      .values({ userId, token, environment })
+      .returning();
+    return created;
+  }
+
+  async removeDeviceToken(token: string): Promise<boolean> {
+    const result = await db.delete(deviceTokens).where(eq(deviceTokens.token, token)).returning();
+    return result.length > 0;
+  }
+
+  async getDeviceTokensForUser(userId: number): Promise<DeviceToken[]> {
+    return await db.select().from(deviceTokens).where(eq(deviceTokens.userId, userId));
   }
 
   // Import/restore methods

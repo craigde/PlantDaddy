@@ -53,6 +53,9 @@ enum APIEndpoint {
     case notificationSettings
     case testNotification
 
+    // Device Tokens (APNs)
+    case deviceTokens
+
     var path: String {
         switch self {
         case .login:
@@ -97,6 +100,8 @@ enum APIEndpoint {
             return "/notification-settings"
         case .testNotification:
             return "/notification-settings/test"
+        case .deviceTokens:
+            return "/device-tokens"
         }
     }
 
