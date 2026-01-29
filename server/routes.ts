@@ -1456,9 +1456,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   }
 
   // Import user data backup from ZIP file
+  // Note: multer's async multipart parsing can break AsyncLocalStorage context,
+  // so we get userId directly from req.user instead of getCurrentUserId()
   apiRouter.post("/import", isAuthenticated, handleImportUpload, async (req: Request, res: Response) => {
-    // Ensure user context is available - verify user authentication
-    const currentUserId = getCurrentUserId();
+    // Get user ID directly from req.user (multer breaks AsyncLocalStorage context)
+    const currentUserId = (req.user as any)?.id ?? null;
     if (!currentUserId) {
       return res.status(401).json({
         success: false,
