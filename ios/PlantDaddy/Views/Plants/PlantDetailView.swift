@@ -110,17 +110,14 @@ struct PlantDetailView: View {
 
         return ZStack(alignment: .bottomTrailing) {
             if let imageUrl = displayImageUrl {
-                AsyncImage(url: URL(string: imageUrl)) { image in
-                    image
-                        .resizable()
-                        .aspectRatio(contentMode: .fill)
-                } placeholder: {
+                AuthenticatedImage(url: imageUrl) {
                     Rectangle()
                         .fill(Color.gray.opacity(0.2))
                         .overlay(
                             ProgressView()
                         )
                 }
+                .aspectRatio(contentMode: .fill)
                 .frame(maxWidth: .infinity, maxHeight: 300)
                 .clipped()
                 .clipShape(RoundedRectangle(cornerRadius: 16))
