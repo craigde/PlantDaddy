@@ -771,6 +771,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // R2 Storage endpoints
 
   // Upload image to R2 via server (avoids CORS issues with presigned URLs)
+  // Note: multer's async multipart parsing can break AsyncLocalStorage context,
+  // so we get userId directly from req.user instead of getCurrentUserId()
   apiRouter.post("/r2/upload", isAuthenticated, r2Upload.single('image'), async (req: Request, res: Response) => {
     console.log("[R2 Upload] Request received");
 
@@ -782,10 +784,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       console.log("[R2 Upload] R2 is configured");
 
-      // Check user authentication
-      const userId = getCurrentUserId();
+      // Get user ID directly from req.user (multer breaks AsyncLocalStorage context)
+      const userId = (req.user as any)?.id ?? null;
       if (!userId) {
-        console.log("[R2 Upload] User not authenticated");
+        console.log("[R2 Upload] User not authenticated, req.user:", req.user);
         return res.status(401).json({ message: "User not authenticated" });
       }
       console.log("[R2 Upload] User authenticated:", userId);
