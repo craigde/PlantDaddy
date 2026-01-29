@@ -50,6 +50,10 @@
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>PlantDaddy needs photo library access to choose photos of your plants</string>
 
+	<!-- App uses only standard OS-provided encryption (HTTPS/TLS) -->
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
+
 	<!-- Network Security Settings -->
 	<key>NSAppTransportSecurity</key>
 	<dict>
