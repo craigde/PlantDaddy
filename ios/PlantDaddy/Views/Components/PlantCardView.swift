@@ -30,6 +30,8 @@ struct PlantCardView: View {
             // Plant Image (with species image fallback)
             let primaryUrl = plant.fullImageUrl
             let hasAnyImageUrl = primaryUrl != nil || speciesImageUrl != nil
+            // Create a stable ID that changes when the image URL changes
+            let imageId = primaryUrl ?? speciesImageUrl ?? "no-image-\(plant.id)"
 
             if hasAnyImageUrl {
                 AuthenticatedImage(
@@ -50,6 +52,7 @@ struct PlantCardView: View {
                             )
                     }
                 )
+                .id(imageId)  // Force view recreation when URL changes
                 .aspectRatio(contentMode: .fill)
                 .frame(height: 200)
                 .clipShape(RoundedRectangle(cornerRadius: 12))
