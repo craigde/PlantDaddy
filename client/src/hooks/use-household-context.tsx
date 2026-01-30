@@ -67,8 +67,13 @@ export function HouseholdProvider({ children }: { children: ReactNode }) {
       setActiveHousehold(null);
       setHasLoaded(false);
       localStorage.removeItem(ACTIVE_HOUSEHOLD_KEY);
+      // Remove cached query data so isFetched resets to false.
+      // Without this, re-login finds stale cached data where isFetched
+      // is already true, so the sync effect never re-fires and
+      // hasLoaded stays false — causing an infinite spinner.
+      queryClient.removeQueries({ queryKey: ["/api/households"] });
     }
-  }, [user]);
+  }, [user, queryClient]);
 
   const switchHousehold = useCallback(
     (household: Household) => {
