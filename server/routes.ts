@@ -100,7 +100,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   apiRouter.post("/register", async (req: Request, res: Response) => {
     try {
       const userData = insertUserSchema.parse(req.body);
-      
+
+      // Validate password length
+      if (!userData.password || userData.password.length < 6) {
+        return res.status(400).json({ error: "Password must be at least 6 characters" });
+      }
+
+      // Validate username length
+      if (!userData.username || userData.username.length < 3) {
+        return res.status(400).json({ error: "Username must be at least 3 characters" });
+      }
+
       // Check if user already exists
       const existingUser = await dbStorage.getUserByUsername(userData.username);
       if (existingUser) {
@@ -266,6 +276,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   apiRouter.post("/token-register", async (req: Request, res: Response) => {
     try {
       const userData = insertUserSchema.parse(req.body);
+
+      // Validate password length
+      if (!userData.password || userData.password.length < 6) {
+        return res.status(400).json({ error: "Password must be at least 6 characters" });
+      }
+
+      // Validate username length
+      if (!userData.username || userData.username.length < 3) {
+        return res.status(400).json({ error: "Username must be at least 3 characters" });
+      }
 
       // Check if user already exists
       const existingUser = await dbStorage.getUserByUsername(userData.username);
@@ -648,7 +668,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!name) return res.status(400).json({ error: "Household name is required" });
 
       const household = await dbStorage.createHousehold(name, userId);
-      res.status(201).json(household);
+      res.status(201).json({ ...household, role: "owner" });
     } catch (error) {
       res.status(500).json({ message: "Failed to create household" });
     }
@@ -676,7 +696,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const updated = await dbStorage.updateHousehold(householdId, name.trim());
       if (!updated) return res.status(404).json({ error: "Household not found" });
 
-      res.json(updated);
+      res.json({ ...updated, role: "owner" });
     } catch (error) {
       res.status(500).json({ message: "Failed to update household" });
     }
@@ -726,7 +746,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await dbStorage.addHouseholdMember(household.id, userId, "member");
 
       const userHouseholds = await dbStorage.getUserHouseholds(userId);
-      res.json({ household, households: userHouseholds });
+      res.json({ household: { ...household, role: "member" }, households: userHouseholds });
     } catch (error) {
       res.status(500).json({ message: "Failed to join household" });
     }
@@ -748,7 +768,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const updated = await dbStorage.regenerateInviteCode(householdId);
-      res.json(updated);
+      res.json({ ...updated, role: "owner" });
     } catch (error) {
       res.status(500).json({ message: "Failed to regenerate invite code" });
     }
