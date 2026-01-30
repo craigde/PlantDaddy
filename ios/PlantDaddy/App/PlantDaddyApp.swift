@@ -161,15 +161,23 @@ struct PlantDaddyApp: App {
 
 struct ContentView: View {
     @EnvironmentObject var authService: AuthService
+    @ObservedObject private var householdService = HouseholdService.shared
 
     var body: some View {
         ZStack {
             if authService.isAuthenticated {
-                MainTabView()
-                    .task {
-                        // Request notification permission when user is authenticated
-                        _ = await NotificationService.shared.requestAuthorization()
-                    }
+                if !householdService.hasLoaded {
+                    // Still loading households — show a brief loading state
+                    ProgressView()
+                } else if householdService.households.isEmpty {
+                    HouseholdOnboardingView()
+                } else {
+                    MainTabView()
+                        .task {
+                            // Request notification permission when user is authenticated
+                            _ = await NotificationService.shared.requestAuthorization()
+                        }
+                }
             } else {
                 LoginView()
             }

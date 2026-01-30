@@ -58,6 +58,7 @@ export interface IStorage {
 
   // Household methods
   createHousehold(name: string, userId: number): Promise<Household>;
+  updateHousehold(id: number, name: string): Promise<Household | undefined>;
   getHousehold(id: number): Promise<Household | undefined>;
   getHouseholdByInviteCode(code: string): Promise<Household | undefined>;
   getUserHouseholds(userId: number): Promise<(Household & { role: string })[]>;

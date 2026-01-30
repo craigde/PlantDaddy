@@ -125,14 +125,14 @@ struct SettingsView: View {
                         JoinHouseholdView()
                     } label: {
                         HStack {
-                            Image(systemName: "person.badge.plus")
-                            Text("Join a Household")
+                            Image(systemName: "plus.circle")
+                            Text("Add Household")
                         }
                     }
                 } header: {
                     Text("Household")
                 } footer: {
-                    Text("Share your household with family members or housesitters so they can help care for your plants.")
+                    Text("Create additional households for different locations (e.g., vacation home) or join one with an invite code.")
                 }
 
                 Section {

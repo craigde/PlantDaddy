@@ -13,6 +13,8 @@ struct HouseholdDetailView: View {
     @ObservedObject private var householdService = HouseholdService.shared
     @State private var showShareSheet = false
     @State private var showRegenerateAlert = false
+    @State private var showRenameAlert = false
+    @State private var renameText = ""
     @State private var alertMessage = ""
     @State private var showAlert = false
 
@@ -35,6 +37,17 @@ struct HouseholdDetailView: View {
                         Spacer()
                         Text(household.role.capitalized)
                             .foregroundColor(.secondary)
+                    }
+                    if isOwner {
+                        Button {
+                            renameText = household.name
+                            showRenameAlert = true
+                        } label: {
+                            HStack {
+                                Image(systemName: "pencil")
+                                Text("Rename Household")
+                            }
+                        }
                     }
                 }
 
@@ -162,6 +175,26 @@ struct HouseholdDetailView: View {
         .alert(alertMessage, isPresented: $showAlert) {
             Button("OK", role: .cancel) { }
         }
+        .alert("Rename Household", isPresented: $showRenameAlert) {
+            TextField("Household name", text: $renameText)
+            Button("Cancel", role: .cancel) { }
+            Button("Save") {
+                let newName = renameText.trimmingCharacters(in: .whitespacesAndNewlines)
+                guard !newName.isEmpty else { return }
+                Task {
+                    do {
+                        try await householdService.renameHousehold(name: newName)
+                        alertMessage = "Household renamed"
+                        showAlert = true
+                    } catch {
+                        alertMessage = "Failed to rename household"
+                        showAlert = true
+                    }
+                }
+            }
+        } message: {
+            Text("Enter a new name for this household.")
+        }
     }
 }
 
@@ -212,7 +245,9 @@ struct JoinHouseholdView: View {
     @ObservedObject private var householdService = HouseholdService.shared
     @ObservedObject private var plantService = PlantService.shared
     @State private var inviteCode = ""
+    @State private var newHouseholdName = ""
     @State private var isJoining = false
+    @State private var isCreating = false
     @State private var alertTitle = ""
     @State private var alertMessage = ""
     @State private var showAlert = false
@@ -249,21 +284,33 @@ struct JoinHouseholdView: View {
             }
 
             Section {
+                TextField("Household name", text: $newHouseholdName)
+                    .autocorrectionDisabled()
+
                 Button {
                     Task { await createNewHousehold() }
                 } label: {
                     HStack {
-                        Image(systemName: "plus.circle")
-                        Text("Create New Household")
+                        Spacer()
+                        if isCreating {
+                            ProgressView()
+                        } else {
+                            HStack {
+                                Image(systemName: "plus.circle")
+                                Text("Create Household")
+                            }
+                        }
+                        Spacer()
                     }
                 }
+                .disabled(newHouseholdName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isCreating)
             } header: {
-                Text("Or")
+                Text("Or Create New")
             } footer: {
                 Text("Create a new household if you want to manage a separate set of plants (e.g., a vacation home).")
             }
         }
-        .navigationTitle("Join Household")
+        .navigationTitle("Add Household")
         .navigationBarTitleDisplayMode(.inline)
         .alert(alertTitle, isPresented: $showAlert) {
             Button("OK", role: .cancel) { }
@@ -292,19 +339,157 @@ struct JoinHouseholdView: View {
     }
 
     private func createNewHousehold() async {
+        isCreating = true
         do {
-            let household = try await householdService.createHousehold(name: "\(AuthService.shared.currentUser?.username ?? "My")'s Home")
+            let name = newHouseholdName.trimmingCharacters(in: .whitespacesAndNewlines)
+            let household = try await householdService.createHousehold(name: name)
             householdService.switchHousehold(to: household)
             await plantService.fetchPlants()
             await plantService.fetchLocations()
             alertTitle = "Created!"
             alertMessage = "New household '\(household.name)' created"
             showAlert = true
+            newHouseholdName = ""
         } catch {
             alertTitle = "Error"
             alertMessage = error.localizedDescription
             showAlert = true
         }
+        isCreating = false
+    }
+}
+
+// MARK: - Household Onboarding (shown after registration)
+
+struct HouseholdOnboardingView: View {
+    @ObservedObject private var householdService = HouseholdService.shared
+    @ObservedObject private var plantService = PlantService.shared
+    @State private var householdName = ""
+    @State private var inviteCode = ""
+    @State private var isLoading = false
+    @State private var alertTitle = ""
+    @State private var alertMessage = ""
+    @State private var showAlert = false
+
+    private var defaultName: String {
+        "\(AuthService.shared.currentUser?.username ?? "My")'s Home"
+    }
+
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 32) {
+                Spacer()
+
+                Image(systemName: "house.and.flag.fill")
+                    .font(.system(size: 60))
+                    .foregroundColor(.green)
+
+                Text("Welcome to PlantDaddy")
+                    .font(.title.bold())
+
+                Text("Set up your household to start tracking your plants, or join an existing one.")
+                    .font(.body)
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 32)
+
+                VStack(spacing: 16) {
+                    TextField("Household name", text: $householdName)
+                        .padding()
+                        .background(Color(.systemGray6))
+                        .cornerRadius(12)
+                        .onAppear {
+                            householdName = defaultName
+                        }
+
+                    Button {
+                        Task { await createHousehold() }
+                    } label: {
+                        HStack {
+                            Image(systemName: "plus.circle.fill")
+                            Text("Create My Household")
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(householdName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? Color.gray.opacity(0.3) : Color.green)
+                        .foregroundColor(.white)
+                        .cornerRadius(12)
+                    }
+                    .disabled(householdName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isLoading)
+
+                    Text("or")
+                        .foregroundColor(.secondary)
+
+                    VStack(spacing: 12) {
+                        TextField("Enter invite code", text: $inviteCode)
+                            .textInputAutocapitalization(.characters)
+                            .autocorrectionDisabled()
+                            .font(.system(.body, design: .monospaced))
+                            .padding()
+                            .background(Color(.systemGray6))
+                            .cornerRadius(12)
+
+                        Button {
+                            Task { await joinHousehold() }
+                        } label: {
+                            HStack {
+                                Image(systemName: "person.badge.plus")
+                                Text("Join Household")
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(inviteCode.isEmpty ? Color.gray.opacity(0.3) : Color.blue)
+                            .foregroundColor(.white)
+                            .cornerRadius(12)
+                        }
+                        .disabled(inviteCode.isEmpty || isLoading)
+                    }
+                }
+                .padding(.horizontal, 32)
+
+                if isLoading {
+                    ProgressView()
+                }
+
+                Spacer()
+            }
+        }
+        .alert(alertTitle, isPresented: $showAlert) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text(alertMessage)
+        }
+    }
+
+    private func createHousehold() async {
+        isLoading = true
+        do {
+            let name = householdName.trimmingCharacters(in: .whitespacesAndNewlines)
+            let household = try await householdService.createHousehold(name: name)
+            householdService.switchHousehold(to: household)
+            await plantService.fetchPlants()
+            await plantService.fetchLocations()
+        } catch {
+            alertTitle = "Error"
+            alertMessage = error.localizedDescription
+            showAlert = true
+        }
+        isLoading = false
+    }
+
+    private func joinHousehold() async {
+        isLoading = true
+        do {
+            let household = try await householdService.joinHousehold(inviteCode: inviteCode)
+            householdService.switchHousehold(to: household)
+            await plantService.fetchPlants()
+            await plantService.fetchLocations()
+        } catch {
+            alertTitle = "Error"
+            alertMessage = error.localizedDescription
+            showAlert = true
+        }
+        isLoading = false
     }
 }
 
