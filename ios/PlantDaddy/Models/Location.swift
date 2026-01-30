@@ -18,3 +18,7 @@ struct CreateLocationRequest: Codable {
     let name: String
     let isDefault: Bool?
 }
+
+struct UpdateLocationRequest: Codable {
+    let name: String
+}
