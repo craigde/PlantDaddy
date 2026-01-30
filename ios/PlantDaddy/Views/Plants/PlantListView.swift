@@ -85,7 +85,7 @@ struct PlantListView: View {
                 if !plantsNeedingWater.isEmpty {
                     HStack {
                         Image(systemName: "exclamationmark.triangle.fill")
-                        Text("\(plantsNeedingWater.count) plant\(plantsNeedingWater.count == 1 ? "" : "s") need watering")
+                        Text("\(plantsNeedingWater.count) plant\(plantsNeedingWater.count == 1 ? " needs" : "s need") watering")
                         Spacer()
                     }
                     .padding()
