@@ -22,7 +22,6 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Image } from "lucide-react";
-import { PlantHealthTracker } from "@/components/ui/plant-health-tracker";
 import { PlantCareTimeline } from "@/components/ui/plant-care-timeline";
 
 export default function PlantDetails() {
@@ -255,8 +254,6 @@ export default function PlantDetails() {
 
         {/* Unified Care Timeline */}
         <PlantCareTimeline plantId={plantId} plantName={plant.name} />
-
-        <PlantHealthTracker plantId={plantId} plantName={plant.name} />
 
         <div className="flex justify-center">
           <AlertDialog>

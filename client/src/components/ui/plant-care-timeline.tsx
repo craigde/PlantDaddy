@@ -1,21 +1,37 @@
-import React from "react";
+import React, { useState } from "react";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useCareActivities } from "@/hooks/use-care-activities";
 import { useHealthRecords } from "@/hooks/use-health-records";
+import { useToast } from "@/hooks/use-toast";
 import { formatDate, formatTime, formatDistanceToNow } from "@/lib/date-utils";
 import { CareActivity, PlantHealthRecord } from "@shared/schema";
-import { 
-  Droplets, 
-  Scissors, 
-  Leaf, 
-  RotateCcw, 
-  Sprout, 
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { R2ImageUploader } from "@/components/R2ImageUploader";
+import {
+  Droplets,
+  Scissors,
+  Leaf,
+  RotateCcw,
+  Sprout,
   Sparkles,
   Heart,
   AlertTriangle,
-  X
+  X,
+  Plus,
+  Loader2,
+  Camera,
+  Trash2,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 
 interface TimelineEvent {
@@ -33,6 +49,14 @@ interface PlantCareTimelineProps {
   plantId: number;
   plantName: string;
 }
+
+const healthRecordSchema = z.object({
+  status: z.enum(["thriving", "struggling", "sick"]),
+  notes: z.string().optional(),
+  imageUrl: z.string().nullable().optional(),
+});
+
+type HealthRecordForm = z.infer<typeof healthRecordSchema>;
 
 const getActivityIcon = (activityType: string) => {
   switch (activityType) {
@@ -79,23 +103,50 @@ const getHealthBadgeColor = (status: string) => {
   }
 };
 
+const getStatusText = (status: string) => {
+  switch (status) {
+    case "thriving":
+      return "Thriving";
+    case "struggling":
+      return "Struggling";
+    case "sick":
+      return "Sick";
+    default:
+      return "Unknown";
+  }
+};
+
 export function PlantCareTimeline({ plantId, plantName }: PlantCareTimelineProps) {
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [uploadedImageUrl, setUploadedImageUrl] = useState<string | null>(null);
+  const [expandedEventId, setExpandedEventId] = useState<string | null>(null);
+
+  const { toast } = useToast();
   const { useGetPlantCareActivities } = useCareActivities();
-  const { useGetPlantHealthRecords } = useHealthRecords();
-  
+  const { useGetPlantHealthRecords, createHealthRecord, deleteHealthRecord } = useHealthRecords();
+
   const { data: careActivities = [], isLoading: isLoadingCare } = useGetPlantCareActivities(plantId);
   const { data: healthRecords = [], isLoading: isLoadingHealth } = useGetPlantHealthRecords(plantId);
-  
+
   // Type assertions for API responses
   const typedCareActivities = careActivities as CareActivity[];
   const typedHealthRecords = healthRecords as PlantHealthRecord[];
-  
+
   const isLoading = isLoadingCare || isLoadingHealth;
+
+  const form = useForm<HealthRecordForm>({
+    resolver: zodResolver(healthRecordSchema),
+    defaultValues: {
+      status: "thriving",
+      notes: "",
+      imageUrl: null,
+    },
+  });
 
   // Combine and sort timeline events
   const timelineEvents: TimelineEvent[] = React.useMemo(() => {
     const events: TimelineEvent[] = [];
-    
+
     // Add care activities
     typedCareActivities.forEach((activity: CareActivity) => {
       const timestamp = new Date(activity.performedAt);
@@ -110,7 +161,7 @@ export function PlantCareTimeline({ plantId, plantName }: PlantCareTimelineProps
         });
       }
     });
-    
+
     // Add health records
     typedHealthRecords.forEach((record: PlantHealthRecord) => {
       const timestamp = new Date(record.recordedAt);
@@ -127,10 +178,53 @@ export function PlantCareTimeline({ plantId, plantName }: PlantCareTimelineProps
         });
       }
     });
-    
+
     // Sort by timestamp (most recent first)
     return events.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
   }, [typedCareActivities, typedHealthRecords]);
+
+  const onSubmit = async (data: HealthRecordForm) => {
+    try {
+      await createHealthRecord.mutateAsync({
+        plantId,
+        data: {
+          ...data,
+          imageUrl: uploadedImageUrl,
+        },
+      });
+
+      toast({
+        title: "Health record logged!",
+        description: `${plantName}'s health has been recorded as ${getStatusText(data.status)}.`,
+      });
+
+      form.reset();
+      setUploadedImageUrl(null);
+      setIsDialogOpen(false);
+    } catch (error) {
+      toast({
+        title: "Failed to log health record",
+        description: "Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDeleteRecord = async (recordId: number) => {
+    try {
+      await deleteHealthRecord.mutateAsync({ id: recordId, plantId });
+      toast({
+        title: "Health record deleted",
+        description: "The health record has been removed.",
+      });
+    } catch (error) {
+      toast({
+        title: "Failed to delete record",
+        description: "Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
 
   if (isLoading) {
     return (
@@ -159,80 +253,247 @@ export function PlantCareTimeline({ plantId, plantName }: PlantCareTimelineProps
       <CardContent className="p-4">
         <div className="flex justify-between items-center mb-3">
           <h2 className="text-lg font-semibold font-heading">Care Timeline</h2>
-          <span className="text-sm text-gray-500">
-            {timelineEvents.length} {timelineEvents.length === 1 ? 'entry' : 'entries'}
-          </span>
-        </div>
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-gray-500">
+              {timelineEvents.length} {timelineEvents.length === 1 ? 'entry' : 'entries'}
+            </span>
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline" size="sm" data-testid="button-log-health">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Log Health
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                  <DialogTitle data-testid="dialog-title">Log Health Status</DialogTitle>
+                  <DialogDescription>
+                    Record the current health status of {plantName} with optional notes and photos.
+                  </DialogDescription>
+                </DialogHeader>
 
-        <div className="space-y-4">
-          {timelineEvents.length > 0 ? (
-            timelineEvents.map((event, index) => (
-              <div key={event.id} className="flex gap-3" data-testid={`timeline-event-${event.id}`}>
-                {/* Timeline connector */}
-                <div className="flex flex-col items-center">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white border-2 border-gray-200">
-                    {event.type === 'care' 
-                      ? getActivityIcon((event.data as CareActivity).activityType)
-                      : getHealthIcon(event.status || 'unknown')
-                    }
-                  </div>
-                  {index < timelineEvents.length - 1 && (
-                    <div className="w-px h-6 bg-gray-200 mt-2" />
-                  )}
-                </div>
+                <Form {...form}>
+                  <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                    <FormField
+                      control={form.control}
+                      name="status"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Health Status</FormLabel>
+                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl>
+                              <SelectTrigger data-testid="select-health-status">
+                                <SelectValue placeholder="Select health status" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="thriving" data-testid="option-thriving">
+                                <div className="flex items-center space-x-2">
+                                  <Heart className="h-4 w-4 text-green-600" />
+                                  <span>Thriving</span>
+                                </div>
+                              </SelectItem>
+                              <SelectItem value="struggling" data-testid="option-struggling">
+                                <div className="flex items-center space-x-2">
+                                  <AlertTriangle className="h-4 w-4 text-yellow-600" />
+                                  <span>Struggling</span>
+                                </div>
+                              </SelectItem>
+                              <SelectItem value="sick" data-testid="option-sick">
+                                <div className="flex items-center space-x-2">
+                                  <AlertTriangle className="h-4 w-4 text-red-600" />
+                                  <span>Sick</span>
+                                </div>
+                              </SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
 
-                {/* Event content */}
-                <div className="flex-1 pb-4">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <h3 className="font-medium text-sm" data-testid={`event-title-${event.id}`}>
-                          {event.title}
-                        </h3>
-                        {event.status && (
-                          <Badge 
-                            variant="outline" 
-                            className={`text-xs ${getHealthBadgeColor(event.status)}`}
-                            data-testid={`event-status-${event.id}`}
+                    <FormField
+                      control={form.control}
+                      name="notes"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Notes (Optional)</FormLabel>
+                          <FormControl>
+                            <Textarea
+                              placeholder="Describe what you observed about your plant's health..."
+                              className="resize-none"
+                              {...field}
+                              data-testid="input-health-notes"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <div className="space-y-2">
+                      <FormLabel>Photo (Optional)</FormLabel>
+                      <div className="border-2 border-dashed border-gray-300 rounded-lg p-4">
+                        {uploadedImageUrl ? (
+                          <div className="relative">
+                            <img
+                              src={uploadedImageUrl}
+                              alt="Health record"
+                              className="w-full h-32 object-cover rounded"
+                              data-testid="img-uploaded-health"
+                            />
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="mt-2"
+                              onClick={() => setUploadedImageUrl(null)}
+                              data-testid="button-remove-image"
+                            >
+                              Remove Image
+                            </Button>
+                          </div>
+                        ) : (
+                          <R2ImageUploader
+                            onUpload={(imageUrl: string) => setUploadedImageUrl(imageUrl)}
+                            className="w-full"
                           >
-                            {event.status}
-                          </Badge>
+                            <div className="text-center py-4">
+                              <Camera className="h-8 w-8 mx-auto mb-2 text-gray-400" />
+                              <p className="text-sm text-gray-600">Click to upload health photo</p>
+                            </div>
+                          </R2ImageUploader>
                         )}
                       </div>
-                      
-                      {event.description && (
-                        <p className="text-sm text-gray-600 mb-2" data-testid={`event-description-${event.id}`}>
-                          {event.description}
-                        </p>
-                      )}
-                      
-                      {event.imageUrl && (
-                        <div className="mb-2">
-                          <img 
-                            src={event.imageUrl} 
+                    </div>
+
+                    <DialogFooter>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setIsDialogOpen(false)}
+                        data-testid="button-cancel"
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        type="submit"
+                        disabled={createHealthRecord.isPending}
+                        data-testid="button-save-health"
+                      >
+                        {createHealthRecord.isPending ? (
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        ) : null}
+                        Save Record
+                      </Button>
+                    </DialogFooter>
+                  </form>
+                </Form>
+              </DialogContent>
+            </Dialog>
+          </div>
+        </div>
+
+        <div className="space-y-0">
+          {timelineEvents.length > 0 ? (
+            timelineEvents.map((event, index) => {
+              const hasDetails = event.description || event.imageUrl;
+              const isExpanded = expandedEventId === event.id;
+
+              return (
+                <div key={event.id} className="flex gap-3" data-testid={`timeline-event-${event.id}`}>
+                  {/* Timeline connector */}
+                  <div className="flex flex-col items-center">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white border-2 border-gray-200">
+                      {event.type === 'care'
+                        ? getActivityIcon((event.data as CareActivity).activityType)
+                        : getHealthIcon(event.status || 'unknown')
+                      }
+                    </div>
+                    {index < timelineEvents.length - 1 && (
+                      <div className="w-px flex-1 bg-gray-200 mt-2 min-h-[16px]" />
+                    )}
+                  </div>
+
+                  {/* Event content */}
+                  <div className="flex-1 pb-4">
+                    <div
+                      className={`flex items-start justify-between ${hasDetails ? "cursor-pointer" : ""}`}
+                      onClick={() => hasDetails && setExpandedEventId(isExpanded ? null : event.id)}
+                    >
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <h3 className="font-medium text-sm" data-testid={`event-title-${event.id}`}>
+                            {event.title}
+                          </h3>
+                          {event.status && (
+                            <Badge
+                              variant="outline"
+                              className={`text-xs ${getHealthBadgeColor(event.status)}`}
+                              data-testid={`event-status-${event.id}`}
+                            >
+                              {event.status}
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-1 ml-4 flex-shrink-0">
+                        <div className="text-right">
+                          <p className="text-sm font-medium text-gray-900" data-testid={`event-date-${event.id}`}>
+                            {formatDate(event.timestamp)}
+                          </p>
+                          <p className="text-xs text-gray-500" data-testid={`event-time-${event.id}`}>
+                            {formatTime(event.timestamp)}
+                          </p>
+                          <p className="text-xs text-gray-400" data-testid={`event-relative-time-${event.id}`}>
+                            {formatDistanceToNow(event.timestamp)}
+                          </p>
+                        </div>
+                        {event.type === 'health' && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteRecord((event.data as PlantHealthRecord).id);
+                            }}
+                            disabled={deleteHealthRecord.isPending}
+                            className="text-gray-400 hover:text-red-500 ml-1"
+                            data-testid={`button-delete-${event.id}`}
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        )}
+                        {hasDetails && (
+                          isExpanded
+                            ? <ChevronUp className="h-4 w-4 text-gray-400" />
+                            : <ChevronDown className="h-4 w-4 text-gray-400" />
+                        )}
+                      </div>
+                    </div>
+
+                    {isExpanded && (
+                      <div className="mt-2 space-y-2" data-testid={`event-details-${event.id}`}>
+                        {event.imageUrl && (
+                          <img
+                            src={event.imageUrl}
                             alt="Health record photo"
-                            className="w-16 h-16 object-cover rounded-md border"
+                            className="w-full max-h-64 object-contain rounded border"
                             data-testid={`event-image-${event.id}`}
                           />
-                        </div>
-                      )}
-                    </div>
-                    
-                    <div className="text-right ml-4">
-                      <p className="text-sm font-medium text-gray-900" data-testid={`event-date-${event.id}`}>
-                        {formatDate(event.timestamp)}
-                      </p>
-                      <p className="text-xs text-gray-500" data-testid={`event-time-${event.id}`}>
-                        {formatTime(event.timestamp)}
-                      </p>
-                      <p className="text-xs text-gray-400 mt-1" data-testid={`event-relative-time-${event.id}`}>
-                        {formatDistanceToNow(event.timestamp)}
-                      </p>
-                    </div>
+                        )}
+                        {event.description && (
+                          <p className="text-sm text-gray-600" data-testid={`event-description-${event.id}`}>
+                            {event.description}
+                          </p>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
-              </div>
-            ))
+              );
+            })
           ) : (
             <div className="text-center py-8">
               <Leaf className="h-12 w-12 text-gray-300 mx-auto mb-3" />
