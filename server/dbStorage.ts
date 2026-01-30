@@ -7,6 +7,8 @@ import {
   plantSpecies, type PlantSpecies, type InsertPlantSpecies,
   notificationSettings, type NotificationSettings, type InsertNotificationSettings,
   deviceTokens, type DeviceToken,
+  households, type Household,
+  householdMembers, type HouseholdMember,
   plantHealthRecords,
   careActivities
 } from "@shared/schema";
@@ -53,6 +55,17 @@ export interface IStorage {
   registerDeviceToken(userId: number, token: string, environment: string): Promise<DeviceToken>;
   removeDeviceToken(token: string): Promise<boolean>;
   getDeviceTokensForUser(userId: number): Promise<DeviceToken[]>;
+
+  // Household methods
+  createHousehold(name: string, userId: number): Promise<Household>;
+  getHousehold(id: number): Promise<Household | undefined>;
+  getHouseholdByInviteCode(code: string): Promise<Household | undefined>;
+  getUserHouseholds(userId: number): Promise<(Household & { role: string })[]>;
+  getHouseholdMembers(householdId: number): Promise<(HouseholdMember & { username: string })[]>;
+  addHouseholdMember(householdId: number, userId: number, role: string): Promise<HouseholdMember>;
+  updateHouseholdMemberRole(householdId: number, userId: number, role: string): Promise<HouseholdMember | undefined>;
+  removeHouseholdMember(householdId: number, userId: number): Promise<boolean>;
+  regenerateInviteCode(householdId: number): Promise<Household>;
 }
 
 export class DatabaseStorage implements IStorage {

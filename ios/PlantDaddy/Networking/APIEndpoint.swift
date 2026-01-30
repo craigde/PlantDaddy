@@ -59,6 +59,13 @@ enum APIEndpoint {
     // Batch watering
     case waterOverdue
 
+    // Households
+    case households
+    case household(id: Int)
+    case householdJoin
+    case householdInvite(id: Int)
+    case householdMember(householdId: Int, userId: Int)
+
     var path: String {
         switch self {
         case .login:
@@ -107,6 +114,16 @@ enum APIEndpoint {
             return "/device-tokens"
         case .waterOverdue:
             return "/plants/water-overdue"
+        case .households:
+            return "/households"
+        case .household(let id):
+            return "/households/\(id)"
+        case .householdJoin:
+            return "/households/join"
+        case .householdInvite(let id):
+            return "/households/\(id)/invite"
+        case .householdMember(let householdId, let userId):
+            return "/households/\(householdId)/members/\(userId)"
         }
     }
 

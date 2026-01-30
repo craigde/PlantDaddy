@@ -45,6 +45,11 @@ class AuthService: ObservableObject {
         // Update current user
         currentUser = response.user
         isAuthenticated = true
+
+        // Set households from login response
+        if let households = response.households {
+            HouseholdService.shared.setHouseholds(households)
+        }
     }
 
     func register(username: String, password: String) async throws {
@@ -63,6 +68,11 @@ class AuthService: ObservableObject {
         // Update current user
         currentUser = response.user
         isAuthenticated = true
+
+        // Set households from register response
+        if let households = response.households {
+            HouseholdService.shared.setHouseholds(households)
+        }
     }
 
     func logout() {
@@ -72,6 +82,9 @@ class AuthService: ObservableObject {
         // Clear current user
         currentUser = nil
         isAuthenticated = false
+
+        // Clear household data
+        HouseholdService.shared.clear()
     }
 
     func loadCurrentUser() async {
@@ -83,6 +96,9 @@ class AuthService: ObservableObject {
 
             currentUser = user
             isAuthenticated = true
+
+            // Fetch households on token restore
+            await HouseholdService.shared.fetchHouseholds()
         } catch {
             // Token might be expired or invalid
             logout()

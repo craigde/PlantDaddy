@@ -6,12 +6,15 @@ import {
   plantSpecies, type PlantSpecies, type InsertPlantSpecies,
   notificationSettings, type NotificationSettings, type InsertNotificationSettings,
   deviceTokens, type DeviceToken,
+  households, type Household,
+  householdMembers, type HouseholdMember,
   plantHealthRecords, type PlantHealthRecord, type InsertPlantHealthRecord,
   careActivities, type CareActivity, type InsertCareActivity
 } from "@shared/schema";
 import { db } from "./db";
-import { getCurrentUserId, requireAuth } from "./user-context";
+import { getCurrentUserId, requireAuth, getHouseholdId } from "./user-context";
 import { IStorage } from "./dbStorage";
+import crypto from "crypto";
 
 export class MultiUserStorage implements IStorage {
   // User methods
@@ -27,29 +30,32 @@ export class MultiUserStorage implements IStorage {
 
   async createUser(insertUser: InsertUser): Promise<User> {
     const [user] = await db.insert(users).values(insertUser).returning();
-    
-    // Create default locations for the new user
-    await this.createDefaultLocationsForUser(user.id);
-    
+
+    // Create a default household for the new user
+    const household = await this.createHousehold(`${user.username}'s Home`, user.id);
+
+    // Create default locations for the new user (associated with their household)
+    await this.createDefaultLocationsForUser(user.id, household.id);
+
     // Create default notification settings for the new user
     await this.createDefaultNotificationSettingsForUser(user.id);
-    
+
     return user;
   }
   
   // Helper method to create default locations for a new user
-  private async createDefaultLocationsForUser(userId: number): Promise<void> {
+  private async createDefaultLocationsForUser(userId: number, householdId?: number): Promise<void> {
     // First check if the user already has locations (to avoid duplicate creation)
     const existingLocations = await db
       .select()
       .from(locations)
       .where(eq(locations.userId, userId));
-    
+
     if (existingLocations.length > 0) {
       console.log(`User ${userId} already has ${existingLocations.length} locations, skipping default location creation`);
       return;
     }
-    
+
     const defaultLocations = [
       { name: "Living Room", isDefault: true },
       { name: "Bedroom", isDefault: true },
@@ -62,16 +68,15 @@ export class MultiUserStorage implements IStorage {
       { name: "Porch", isDefault: true },
       { name: "Patio", isDefault: true }
     ];
-    
-    // Use bulk insert for better performance and atomicity
+
     try {
       const valuesToInsert = defaultLocations.map(loc => ({
         name: loc.name,
         userId: userId,
+        householdId: householdId ?? null,
         isDefault: true
       }));
-      
-      // Bulk insert all locations at once
+
       await db.insert(locations).values(valuesToInsert);
       console.log(`Successfully created ${defaultLocations.length} default locations for user ${userId}`);
     } catch (error) {
@@ -106,63 +111,80 @@ export class MultiUserStorage implements IStorage {
     }
   }
 
-  // Plant methods
+  // Plant methods — scoped by household
   async getAllPlants(): Promise<Plant[]> {
-    const userId = getCurrentUserId();
-    
-    if (userId === null) {
-      return []; // No plants for unauthenticated users
+    const householdId = await getHouseholdId();
+
+    if (householdId === null) {
+      // Fallback: use userId for backward compat (no household yet)
+      const userId = getCurrentUserId();
+      if (userId === null) return [];
+      return await db.select().from(plants).where(eq(plants.userId, userId));
     }
-    
+
     return await db
       .select()
       .from(plants)
-      .where(eq(plants.userId, userId));
+      .where(eq(plants.householdId, householdId));
   }
 
   async getPlant(id: number): Promise<Plant | undefined> {
-    const userId = getCurrentUserId();
-    
-    if (userId === null) {
-      return undefined;
+    const householdId = await getHouseholdId();
+
+    if (householdId === null) {
+      const userId = getCurrentUserId();
+      if (userId === null) return undefined;
+      const [plant] = await db.select().from(plants)
+        .where(and(eq(plants.id, id), eq(plants.userId, userId)));
+      return plant || undefined;
     }
-    
+
     const [plant] = await db
       .select()
       .from(plants)
-      .where(and(eq(plants.id, id), eq(plants.userId, userId)));
-    
+      .where(and(eq(plants.id, id), eq(plants.householdId, householdId)));
+
     return plant || undefined;
   }
 
   async createPlant(insertPlant: InsertPlant): Promise<Plant> {
     const userId = requireAuth();
-    
+    const householdId = await getHouseholdId();
+
     const [plant] = await db
       .insert(plants)
       .values({
         ...insertPlant,
-        userId
+        userId,
+        householdId,
       })
       .returning();
-    
+
     return plant;
   }
 
   async updatePlant(id: number, plantUpdate: Partial<InsertPlant>): Promise<Plant | undefined> {
-    const userId = requireAuth();
-    
+    requireAuth();
+
+    // Verify access via getPlant (household-scoped)
+    const existing = await this.getPlant(id);
+    if (!existing) return undefined;
+
     const [updatedPlant] = await db
       .update(plants)
       .set(plantUpdate)
-      .where(and(eq(plants.id, id), eq(plants.userId, userId)))
+      .where(eq(plants.id, id))
       .returning();
-    
+
     return updatedPlant || undefined;
   }
 
   async deletePlant(id: number): Promise<boolean> {
-    const userId = requireAuth();
+    requireAuth();
+
+    // Verify access via getPlant (household-scoped)
+    const existing = await this.getPlant(id);
+    if (!existing) return false;
 
     // Delete child records first to avoid foreign key constraint violations
     await db.delete(plantHealthRecords).where(eq(plantHealthRecords.plantId, id));
@@ -172,135 +194,113 @@ export class MultiUserStorage implements IStorage {
 
     const result = await db
       .delete(plants)
-      .where(and(eq(plants.id, id), eq(plants.userId, userId)))
+      .where(eq(plants.id, id))
       .returning();
 
     return result.length > 0;
   }
 
-  // Location methods
+  // Location methods — scoped by household
   async getAllLocations(): Promise<Location[]> {
-    const userId = getCurrentUserId();
-    
-    // If not logged in, return empty array
-    if (userId === null) {
-      console.log("No user ID found, returning empty locations array");
-      return [];
+    const householdId = await getHouseholdId();
+
+    if (householdId === null) {
+      const userId = getCurrentUserId();
+      if (userId === null) return [];
+      return await db.select().from(locations).where(eq(locations.userId, userId));
     }
-    
-    // Get all locations for the current user
-    console.log(`Getting locations for user ID: ${userId}`);
-    const userLocations = await db
+
+    return await db
       .select()
       .from(locations)
-      .where(eq(locations.userId, userId));
-    
-    console.log(`Found ${userLocations.length} locations for user ${userId}`);
-    return userLocations;
+      .where(eq(locations.householdId, householdId));
   }
 
   async getLocation(id: number): Promise<Location | undefined> {
-    const userId = getCurrentUserId();
-    
-    if (userId === null) {
-      return undefined;
+    const householdId = await getHouseholdId();
+
+    if (householdId === null) {
+      const userId = getCurrentUserId();
+      if (userId === null) return undefined;
+      const [location] = await db.select().from(locations)
+        .where(and(eq(locations.id, id), eq(locations.userId, userId)));
+      return location || undefined;
     }
-    
+
     const [location] = await db
       .select()
       .from(locations)
-      .where(and(eq(locations.id, id), eq(locations.userId, userId)));
-    
+      .where(and(eq(locations.id, id), eq(locations.householdId, householdId)));
+
     return location || undefined;
   }
 
   async createLocation(insertLocation: InsertLocation): Promise<Location> {
     const userId = requireAuth();
-    
-    // Check if a location with the same name already exists for this user
-    const [existingLocation] = await db
-      .select()
-      .from(locations)
-      .where(
-        and(
-          eq(locations.name, insertLocation.name),
-          eq(locations.userId, userId)
-        )
-      );
-    
-    if (existingLocation) {
+    const householdId = await getHouseholdId();
+
+    // Check if a location with the same name already exists in the household
+    const allLocations = await this.getAllLocations();
+    const existing = allLocations.find(l => l.name === insertLocation.name);
+    if (existing) {
       throw new Error(`Location with name '${insertLocation.name}' already exists`);
     }
-    
+
     const [location] = await db
       .insert(locations)
       .values({
         ...insertLocation,
-        userId
+        userId,
+        householdId,
       })
       .returning();
-    
+
     return location;
   }
 
   async updateLocation(id: number, locationUpdate: Partial<InsertLocation>): Promise<Location | undefined> {
-    const userId = requireAuth();
-    
-    // If name is being updated, check if it already exists for this user
+    requireAuth();
+
+    const existing = await this.getLocation(id);
+    if (!existing) return undefined;
+
+    // If name is being updated, check for duplicates in household
     if (locationUpdate.name) {
-      const [nameExists] = await db
-        .select()
-        .from(locations)
-        .where(
-          and(
-            eq(locations.name, locationUpdate.name),
-            eq(locations.userId, userId)
-          )
-        );
-      
-      if (nameExists && nameExists.id !== id) {
+      const allLocations = await this.getAllLocations();
+      const nameConflict = allLocations.find(l => l.name === locationUpdate.name && l.id !== id);
+      if (nameConflict) {
         throw new Error(`Location with name '${locationUpdate.name}' already exists`);
       }
     }
-    
+
     const [updatedLocation] = await db
       .update(locations)
       .set(locationUpdate)
-      .where(and(eq(locations.id, id), eq(locations.userId, userId)))
+      .where(eq(locations.id, id))
       .returning();
-    
+
     return updatedLocation || undefined;
   }
 
   async deleteLocation(id: number): Promise<boolean> {
-    const userId = requireAuth();
-    
-    // Get the location to check its name
+    requireAuth();
+
     const location = await this.getLocation(id);
-    if (!location) {
-      return false;
-    }
-    
-    // Check if this location is used by any plants owned by this user
-    const plantsWithLocation = await db
-      .select()
-      .from(plants)
-      .where(
-        and(
-          eq(plants.location, location.name),
-          eq(plants.userId, userId)
-        )
-      );
-    
+    if (!location) return false;
+
+    // Check if this location is used by any plants in the household
+    const allPlants = await this.getAllPlants();
+    const plantsWithLocation = allPlants.filter(p => p.location === location.name);
+
     if (plantsWithLocation.length > 0) {
       throw new Error('Cannot delete location that is being used by plants');
     }
-    
+
     const result = await db
       .delete(locations)
-      .where(and(eq(locations.id, id), eq(locations.userId, userId)))
+      .where(eq(locations.id, id))
       .returning();
-    
+
     return result.length > 0;
   }
 
@@ -575,32 +575,27 @@ export class MultiUserStorage implements IStorage {
 
   async upsertLocationByName(name: string, isDefault: boolean = false): Promise<Location> {
     const userId = requireAuth();
-    
-    // Check if location already exists for this user
-    const [existingLocation] = await db
-      .select()
-      .from(locations)
-      .where(
-        and(
-          eq(locations.userId, userId),
-          sql`LOWER(${locations.name}) = LOWER(${name})`
-        )
-      );
-    
+    const householdId = await getHouseholdId();
+
+    // Check if location already exists in the household
+    const allLocations = await this.getAllLocations();
+    const existingLocation = allLocations.find(l => l.name.toLowerCase() === name.toLowerCase());
+
     if (existingLocation) {
       return existingLocation;
     }
-    
+
     // Create new location
     const [newLocation] = await db
       .insert(locations)
       .values({
         name,
         userId,
+        householdId,
         isDefault
       })
       .returning();
-    
+
     return newLocation;
   }
 
@@ -816,6 +811,136 @@ export class MultiUserStorage implements IStorage {
       );
     
     return result.rowCount > 0;
+  }
+
+  // Household methods
+
+  private generateInviteCode(): string {
+    const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    let code = "";
+    const bytes = crypto.randomBytes(8);
+    for (let i = 0; i < 8; i++) {
+      code += chars[bytes[i] % chars.length];
+    }
+    return code;
+  }
+
+  async createHousehold(name: string, userId: number): Promise<Household> {
+    // Generate unique invite code
+    let inviteCode: string;
+    let attempts = 0;
+    while (true) {
+      inviteCode = this.generateInviteCode();
+      const [existing] = await db.select().from(households)
+        .where(eq(households.inviteCode, inviteCode));
+      if (!existing) break;
+      attempts++;
+      if (attempts > 10) throw new Error("Failed to generate unique invite code");
+    }
+
+    const [household] = await db.insert(households).values({
+      name,
+      inviteCode,
+      createdBy: userId,
+    }).returning();
+
+    // Add creator as owner
+    await db.insert(householdMembers).values({
+      householdId: household.id,
+      userId,
+      role: "owner",
+    });
+
+    return household;
+  }
+
+  async getHousehold(id: number): Promise<Household | undefined> {
+    const [household] = await db.select().from(households).where(eq(households.id, id));
+    return household || undefined;
+  }
+
+  async getHouseholdByInviteCode(code: string): Promise<Household | undefined> {
+    const [household] = await db.select().from(households)
+      .where(eq(households.inviteCode, code.toUpperCase()));
+    return household || undefined;
+  }
+
+  async getUserHouseholds(userId: number): Promise<(Household & { role: string })[]> {
+    const memberships = await db.select().from(householdMembers)
+      .where(eq(householdMembers.userId, userId));
+
+    const result: (Household & { role: string })[] = [];
+    for (const m of memberships) {
+      const household = await this.getHousehold(m.householdId);
+      if (household) {
+        result.push({ ...household, role: m.role });
+      }
+    }
+    return result;
+  }
+
+  async getHouseholdMembers(householdId: number): Promise<(HouseholdMember & { username: string })[]> {
+    const members = await db.select().from(householdMembers)
+      .where(eq(householdMembers.householdId, householdId));
+
+    const result: (HouseholdMember & { username: string })[] = [];
+    for (const m of members) {
+      const user = await this.getUser(m.userId);
+      if (user) {
+        result.push({ ...m, username: user.username });
+      }
+    }
+    return result;
+  }
+
+  async addHouseholdMember(householdId: number, userId: number, role: string): Promise<HouseholdMember> {
+    const [member] = await db.insert(householdMembers).values({
+      householdId,
+      userId,
+      role,
+    }).returning();
+    return member;
+  }
+
+  async updateHouseholdMemberRole(householdId: number, userId: number, role: string): Promise<HouseholdMember | undefined> {
+    const [updated] = await db.update(householdMembers)
+      .set({ role })
+      .where(and(
+        eq(householdMembers.householdId, householdId),
+        eq(householdMembers.userId, userId)
+      ))
+      .returning();
+    return updated || undefined;
+  }
+
+  async removeHouseholdMember(householdId: number, userId: number): Promise<boolean> {
+    const result = await db.delete(householdMembers)
+      .where(and(
+        eq(householdMembers.householdId, householdId),
+        eq(householdMembers.userId, userId)
+      ))
+      .returning();
+    return result.length > 0;
+  }
+
+  async regenerateInviteCode(householdId: number): Promise<Household> {
+    let inviteCode: string;
+    let attempts = 0;
+    while (true) {
+      inviteCode = this.generateInviteCode();
+      const [existing] = await db.select().from(households)
+        .where(eq(households.inviteCode, inviteCode));
+      if (!existing) break;
+      attempts++;
+      if (attempts > 10) throw new Error("Failed to generate unique invite code");
+    }
+
+    const [updated] = await db.update(households)
+      .set({ inviteCode })
+      .where(eq(households.id, householdId))
+      .returning();
+
+    return updated;
   }
 }
 
