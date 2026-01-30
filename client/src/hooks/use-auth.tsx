@@ -87,7 +87,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
     onSuccess: (user: UserData) => {
       console.log("Login successful for user:", user);
-      
+
+      // Cancel any in-flight /api/user queries so a stale 401 response
+      // from before login doesn't overwrite the fresh user data
+      queryClient.cancelQueries({ queryKey: ["/api/user"] });
+
       // Update user data in cache
       queryClient.setQueryData(["/api/user"], user);
       
