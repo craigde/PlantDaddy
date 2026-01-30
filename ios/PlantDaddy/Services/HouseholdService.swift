@@ -15,6 +15,7 @@ class HouseholdService: ObservableObject {
     @Published var households: [Household] = []
     @Published var activeHousehold: Household?
     @Published var householdDetail: HouseholdDetail?
+    @Published var hasLoaded: Bool = false // true once we've fetched/set households at least once
 
     private let apiClient = APIClient.shared
     private let householdIdKey = "activeHouseholdId"
@@ -30,6 +31,7 @@ class HouseholdService: ObservableObject {
     /// Set households from login/register response
     func setHouseholds(_ households: [Household]) {
         self.households = households
+        self.hasLoaded = true
 
         // Restore last active household or default to first
         let savedId = UserDefaults.standard.object(forKey: householdIdKey) as? Int
@@ -45,6 +47,7 @@ class HouseholdService: ObservableObject {
         households = []
         activeHousehold = nil
         householdDetail = nil
+        hasLoaded = false
         UserDefaults.standard.removeObject(forKey: householdIdKey)
     }
 
@@ -65,6 +68,7 @@ class HouseholdService: ObservableObject {
                 method: .get
             )
             households = fetched
+            hasLoaded = true
 
             // Update active household if it still exists
             if let activeId = activeHouseholdId {
@@ -73,9 +77,12 @@ class HouseholdService: ObservableObject {
                 } else if let first = fetched.first {
                     switchHousehold(to: first)
                 }
+            } else if let first = fetched.first {
+                switchHousehold(to: first)
             }
         } catch {
             print("Failed to fetch households: \(error)")
+            hasLoaded = true
         }
     }
 

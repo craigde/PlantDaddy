@@ -308,6 +308,127 @@ struct JoinHouseholdView: View {
     }
 }
 
+// MARK: - Household Onboarding (shown after registration)
+
+struct HouseholdOnboardingView: View {
+    @ObservedObject private var householdService = HouseholdService.shared
+    @ObservedObject private var plantService = PlantService.shared
+    @State private var inviteCode = ""
+    @State private var isLoading = false
+    @State private var alertTitle = ""
+    @State private var alertMessage = ""
+    @State private var showAlert = false
+
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 32) {
+                Spacer()
+
+                Image(systemName: "house.and.flag.fill")
+                    .font(.system(size: 60))
+                    .foregroundColor(.green)
+
+                Text("Welcome to PlantDaddy")
+                    .font(.title.bold())
+
+                Text("Set up your household to start tracking your plants, or join an existing one.")
+                    .font(.body)
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 32)
+
+                VStack(spacing: 16) {
+                    Button {
+                        Task { await createHousehold() }
+                    } label: {
+                        HStack {
+                            Image(systemName: "plus.circle.fill")
+                            Text("Create My Household")
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(Color.green)
+                        .foregroundColor(.white)
+                        .cornerRadius(12)
+                    }
+                    .disabled(isLoading)
+
+                    Text("or")
+                        .foregroundColor(.secondary)
+
+                    VStack(spacing: 12) {
+                        TextField("Enter invite code", text: $inviteCode)
+                            .textInputAutocapitalization(.characters)
+                            .autocorrectionDisabled()
+                            .font(.system(.body, design: .monospaced))
+                            .padding()
+                            .background(Color(.systemGray6))
+                            .cornerRadius(12)
+
+                        Button {
+                            Task { await joinHousehold() }
+                        } label: {
+                            HStack {
+                                Image(systemName: "person.badge.plus")
+                                Text("Join Household")
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(inviteCode.isEmpty ? Color.gray.opacity(0.3) : Color.blue)
+                            .foregroundColor(.white)
+                            .cornerRadius(12)
+                        }
+                        .disabled(inviteCode.isEmpty || isLoading)
+                    }
+                }
+                .padding(.horizontal, 32)
+
+                if isLoading {
+                    ProgressView()
+                }
+
+                Spacer()
+            }
+        }
+        .alert(alertTitle, isPresented: $showAlert) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text(alertMessage)
+        }
+    }
+
+    private func createHousehold() async {
+        isLoading = true
+        do {
+            let name = "\(AuthService.shared.currentUser?.username ?? "My")'s Home"
+            let household = try await householdService.createHousehold(name: name)
+            householdService.switchHousehold(to: household)
+            await plantService.fetchPlants()
+            await plantService.fetchLocations()
+        } catch {
+            alertTitle = "Error"
+            alertMessage = error.localizedDescription
+            showAlert = true
+        }
+        isLoading = false
+    }
+
+    private func joinHousehold() async {
+        isLoading = true
+        do {
+            let household = try await householdService.joinHousehold(inviteCode: inviteCode)
+            householdService.switchHousehold(to: household)
+            await plantService.fetchPlants()
+            await plantService.fetchLocations()
+        } catch {
+            alertTitle = "Error"
+            alertMessage = error.localizedDescription
+            showAlert = true
+        }
+        isLoading = false
+    }
+}
+
 // MARK: - Share Sheet
 
 struct ShareSheet: UIViewControllerRepresentable {

@@ -31,14 +31,11 @@ export class MultiUserStorage implements IStorage {
   async createUser(insertUser: InsertUser): Promise<User> {
     const [user] = await db.insert(users).values(insertUser).returning();
 
-    // Create a default household for the new user
-    const household = await this.createHousehold(`${user.username}'s Home`, user.id);
-
-    // Create default locations for the new user (associated with their household)
-    await this.createDefaultLocationsForUser(user.id, household.id);
-
     // Create default notification settings for the new user
     await this.createDefaultNotificationSettingsForUser(user.id);
+
+    // No household is created here — the user chooses to create or join one
+    // after registration via the onboarding flow.
 
     return user;
   }
@@ -850,6 +847,9 @@ export class MultiUserStorage implements IStorage {
       userId,
       role: "owner",
     });
+
+    // Create default locations for the new household
+    await this.createDefaultLocationsForUser(userId, household.id);
 
     return household;
   }
