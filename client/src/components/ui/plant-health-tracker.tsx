@@ -14,7 +14,7 @@ import { z } from "zod";
 import { useHealthRecords } from "@/hooks/use-health-records";
 import { useToast } from "@/hooks/use-toast";
 import { formatDate, formatDistanceToNow } from "@/lib/date-utils";
-import { Loader2, Plus, Activity, Heart, AlertTriangle, Camera, Trash2 } from "lucide-react";
+import { Loader2, Plus, Activity, Heart, AlertTriangle, Camera, Trash2, ChevronDown, ChevronUp } from "lucide-react";
 import type { PlantHealthRecord } from "@shared/schema";
 import { R2ImageUploader } from "@/components/R2ImageUploader";
 
@@ -73,6 +73,7 @@ const getStatusText = (status: string) => {
 export function PlantHealthTracker({ plantId, plantName }: PlantHealthTrackerProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [uploadedImageUrl, setUploadedImageUrl] = useState<string | null>(null);
+  const [expandedRecordId, setExpandedRecordId] = useState<number | null>(null);
   
   const { toast } = useToast();
   const { useGetPlantHealthRecords, createHealthRecord, deleteHealthRecord } = useHealthRecords();
@@ -302,65 +303,91 @@ export function PlantHealthTracker({ plantId, plantName }: PlantHealthTrackerPro
           </div>
         ) : (
           <div className="space-y-3" data-testid="list-health-records">
-            {healthRecords.map((record: PlantHealthRecord) => (
-              <div
-                key={record.id}
-                className="flex items-start space-x-3 p-3 bg-gray-50 rounded-lg"
-                data-testid={`record-${record.id}`}
-              >
-                <div className="flex-shrink-0 mt-1">
-                  {getStatusIcon(record.status)}
-                </div>
-                
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between mb-2">
-                    <Badge
-                      variant="outline"
-                      className={getStatusColor(record.status)}
-                      data-testid={`badge-${record.status}`}
-                    >
-                      {getStatusText(record.status)}
-                    </Badge>
-                    <div className="flex items-center space-x-2">
-                      <span className="text-xs text-gray-500" data-testid={`date-${record.id}`}>
-                        {formatDistanceToNow(new Date(record.recordedAt))}
-                      </span>
+            {healthRecords.map((record: PlantHealthRecord) => {
+              const isExpanded = expandedRecordId === record.id;
+              const hasDetails = record.notes || record.imageUrl;
+              return (
+                <div
+                  key={record.id}
+                  className="bg-gray-50 rounded-lg overflow-hidden"
+                  data-testid={`record-${record.id}`}
+                >
+                  <div
+                    className={`flex items-center space-x-3 p-3 ${hasDetails ? "cursor-pointer hover:bg-gray-100 transition-colors" : ""}`}
+                    onClick={() => hasDetails && setExpandedRecordId(isExpanded ? null : record.id)}
+                    data-testid={`record-header-${record.id}`}
+                  >
+                    <div className="flex-shrink-0">
+                      {getStatusIcon(record.status)}
+                    </div>
+
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center space-x-2">
+                        <Badge
+                          variant="outline"
+                          className={getStatusColor(record.status)}
+                          data-testid={`badge-${record.status}`}
+                        >
+                          {getStatusText(record.status)}
+                        </Badge>
+                        <span className="text-xs text-gray-500" data-testid={`date-${record.id}`}>
+                          {formatDistanceToNow(new Date(record.recordedAt))}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center space-x-1 flex-shrink-0">
+                      {record.imageUrl && !isExpanded && (
+                        <Camera className="h-3.5 w-3.5 text-gray-400" />
+                      )}
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => handleDeleteRecord(record.id)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteRecord(record.id);
+                        }}
                         disabled={deleteHealthRecord.isPending}
                         className="text-gray-400 hover:text-red-500"
                         data-testid={`button-delete-${record.id}`}
                       >
                         <Trash2 className="h-3 w-3" />
                       </Button>
+                      {hasDetails && (
+                        isExpanded
+                          ? <ChevronUp className="h-4 w-4 text-gray-400" />
+                          : <ChevronDown className="h-4 w-4 text-gray-400" />
+                      )}
                     </div>
                   </div>
-                  
-                  {record.notes && (
-                    <p className="text-sm text-gray-700 mb-2" data-testid={`notes-${record.id}`}>
-                      {record.notes}
-                    </p>
-                  )}
-                  
-                  {record.imageUrl && (
-                    <div className="mt-2">
-                      <img
-                        src={record.imageUrl}
-                        alt="Health record"
-                        className="w-20 h-20 object-cover rounded border"
-                        data-testid={`img-record-${record.id}`}
-                      />
+
+                  {isExpanded && (
+                    <div className="px-3 pb-3 pt-0 space-y-2 border-t border-gray-200" data-testid={`record-details-${record.id}`}>
+                      {record.imageUrl && (
+                        <div className="mt-3">
+                          <img
+                            src={record.imageUrl}
+                            alt="Health record photo"
+                            className="w-full max-h-64 object-contain rounded border"
+                            data-testid={`img-record-${record.id}`}
+                          />
+                        </div>
+                      )}
+
+                      {record.notes && (
+                        <p className="text-sm text-gray-700" data-testid={`notes-${record.id}`}>
+                          {record.notes}
+                        </p>
+                      )}
+
+                      <p className="text-xs text-gray-500" data-testid={`timestamp-${record.id}`}>
+                        {formatDate(new Date(record.recordedAt))}
+                      </p>
                     </div>
                   )}
-                  
-                  <p className="text-xs text-gray-500 mt-1" data-testid={`timestamp-${record.id}`}>
-                    {formatDate(new Date(record.recordedAt))}
-                  </p>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </CardContent>
