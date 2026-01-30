@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -7,23 +7,33 @@ import { useToast } from "@/hooks/use-toast";
 import { useNotificationSettings, NotificationSettingsResponse } from "@/hooks/use-notification-settings";
 import { useExport } from "@/hooks/use-export";
 import { useImport, ImportMode } from "@/hooks/use-import";
-import { 
-  Loader2, 
-  PencilIcon, 
-  Trash2Icon, 
-  PlusIcon, 
-  SaveIcon, 
-  XIcon, 
-  Bell, 
+import { useHouseholds, useHouseholdDetail } from "@/hooks/use-households";
+import { useHouseholdContext } from "@/hooks/use-household-context";
+import { usePlants } from "@/hooks/use-plants";
+import {
+  Loader2,
+  PencilIcon,
+  Trash2Icon,
+  PlusIcon,
+  SaveIcon,
+  XIcon,
+  Bell,
   BellOff,
-  CheckCircle, 
+  CheckCircle,
   AlertCircle,
   BellRing,
   Download,
   Upload,
   Shield,
   FileUp,
-  RefreshCw
+  RefreshCw,
+  Home,
+  UserPlus,
+  Copy,
+  Users,
+  Crown,
+  ChevronRight,
+  LogOut
 } from "lucide-react";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { Switch } from "@/components/ui/switch";
@@ -46,6 +56,14 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 export default function Settings() {
   const { toast } = useToast();
@@ -62,6 +80,34 @@ export default function Settings() {
   
   const { exportData, isExporting } = useExport();
   const { importData, isImporting } = useImport();
+
+  const {
+    households,
+    activeHousehold,
+    activeHouseholdId,
+    switchHousehold,
+    refreshHouseholds,
+  } = useHouseholdContext();
+  const {
+    renameHousehold,
+    regenerateInviteCode,
+    createHousehold,
+    joinHousehold,
+    updateMemberRole,
+    removeMember,
+  } = useHouseholds();
+  const { detail: householdDetail, refetch: refetchDetail } = useHouseholdDetail(activeHouseholdId);
+  const { refetch: refetchPlants } = usePlants();
+
+  const isOwner = activeHousehold?.role === "owner";
+
+  // Household-related state
+  const [showRenameDialog, setShowRenameDialog] = useState(false);
+  const [renameText, setRenameText] = useState("");
+  const [showAddHouseholdDialog, setShowAddHouseholdDialog] = useState(false);
+  const [newHouseholdName, setNewHouseholdName] = useState("");
+  const [joinInviteCode, setJoinInviteCode] = useState("");
+  const [showSwitcherDialog, setShowSwitcherDialog] = useState(false);
 
   const [newLocation, setNewLocation] = useState("");
   const [editingLocation, setEditingLocation] = useState<{ id: number; name: string } | null>(null);
@@ -260,6 +306,254 @@ export default function Settings() {
         <h1 className="text-2xl font-bold font-heading">Settings</h1>
         <p className="text-muted-foreground">Customize your plant care preferences</p>
       </header>
+
+      {/* Household Section */}
+      <section className="mb-8">
+        <h2 className="text-lg font-semibold mb-3 font-heading">Household</h2>
+        <p className="text-sm text-muted-foreground mb-4">
+          Manage your household and invite family members or housesitters.
+        </p>
+
+        {/* Active Household */}
+        {activeHousehold && (
+          <Card className="mb-4">
+            <CardContent className="p-4 space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="font-medium flex items-center gap-2">
+                    <Home className="h-4 w-4" />
+                    {activeHousehold.name}
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    Your role: {activeHousehold.role.charAt(0).toUpperCase() + activeHousehold.role.slice(1)}
+                  </p>
+                </div>
+                {isOwner && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setRenameText(activeHousehold.name);
+                      setShowRenameDialog(true);
+                    }}
+                  >
+                    <PencilIcon className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
+
+              {/* Invite Code (owner only) */}
+              {isOwner && householdDetail && (
+                <div className="border-t pt-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium">Invite Code</p>
+                      <p className="font-mono text-lg tracking-wider">
+                        {householdDetail.inviteCode}
+                      </p>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          navigator.clipboard.writeText(householdDetail.inviteCode);
+                          toast({
+                            title: "Copied",
+                            description: "Invite code copied to clipboard",
+                          });
+                        }}
+                      >
+                        <Copy className="h-4 w-4 mr-1" />
+                        Copy
+                      </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="outline" size="sm">
+                            <RefreshCw className="h-4 w-4 mr-1" />
+                            Regenerate
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Regenerate Invite Code?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              The current invite code will stop working. Anyone who already joined will not be affected.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => {
+                                if (!activeHouseholdId) return;
+                                regenerateInviteCode.mutate(activeHouseholdId, {
+                                  onSuccess: async () => {
+                                    await refreshHouseholds();
+                                    refetchDetail();
+                                    toast({
+                                      title: "Code regenerated",
+                                      description: "A new invite code has been generated.",
+                                    });
+                                  },
+                                  onError: (error: Error) => {
+                                    toast({
+                                      title: "Failed",
+                                      description: error.message,
+                                      variant: "destructive",
+                                    });
+                                  },
+                                });
+                              }}
+                            >
+                              Regenerate
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Members */}
+              {householdDetail && householdDetail.members.length > 0 && (
+                <div className="border-t pt-3">
+                  <p className="text-sm font-medium mb-2 flex items-center gap-1">
+                    <Users className="h-4 w-4" />
+                    Members ({householdDetail.members.length})
+                  </p>
+                  <div className="space-y-2">
+                    {householdDetail.members.map((member) => (
+                      <div
+                        key={member.userId}
+                        className="flex items-center justify-between py-1.5 px-2 rounded-md bg-muted/50"
+                      >
+                        <div className="flex items-center gap-2">
+                          {member.role === "owner" && (
+                            <Crown className="h-3.5 w-3.5 text-amber-500" />
+                          )}
+                          <span className="text-sm">{member.username}</span>
+                          <span className="text-xs text-muted-foreground">
+                            ({member.role})
+                          </span>
+                        </div>
+                        {isOwner && member.role !== "owner" && (
+                          <div className="flex gap-1">
+                            <Select
+                              defaultValue={member.role}
+                              onValueChange={(role) => {
+                                if (!activeHouseholdId) return;
+                                updateMemberRole.mutate(
+                                  {
+                                    householdId: activeHouseholdId,
+                                    userId: member.userId,
+                                    role,
+                                  },
+                                  {
+                                    onSuccess: () => {
+                                      refetchDetail();
+                                      toast({
+                                        title: "Role updated",
+                                        description: `${member.username} is now a ${role}`,
+                                      });
+                                    },
+                                  }
+                                );
+                              }}
+                            >
+                              <SelectTrigger className="h-7 w-[110px] text-xs">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="member">Member</SelectItem>
+                                <SelectItem value="caretaker">Caretaker</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-red-500">
+                                  <LogOut className="h-3.5 w-3.5" />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Remove Member?</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Remove {member.username} from this household? They can rejoin with the invite code.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                  <AlertDialogAction
+                                    className="bg-red-500 hover:bg-red-600"
+                                    onClick={() => {
+                                      if (!activeHouseholdId) return;
+                                      removeMember.mutate(
+                                        {
+                                          householdId: activeHouseholdId,
+                                          userId: member.userId,
+                                        },
+                                        {
+                                          onSuccess: () => {
+                                            refetchDetail();
+                                            toast({
+                                              title: "Member removed",
+                                              description: `${member.username} has been removed.`,
+                                            });
+                                          },
+                                        }
+                                      );
+                                    }}
+                                  >
+                                    Remove
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Actions */}
+        <Card className="mb-8">
+          <CardContent className="p-4 space-y-2">
+            {households.length > 1 && (
+              <Button
+                variant="ghost"
+                className="w-full justify-between"
+                onClick={() => setShowSwitcherDialog(true)}
+              >
+                <span className="flex items-center gap-2">
+                  <ChevronRight className="h-4 w-4" />
+                  Switch Household
+                </span>
+                <span className="text-sm text-muted-foreground">
+                  {households.length} households
+                </span>
+              </Button>
+            )}
+            <Button
+              variant="ghost"
+              className="w-full justify-start gap-2"
+              onClick={() => {
+                setNewHouseholdName("");
+                setJoinInviteCode("");
+                setShowAddHouseholdDialog(true);
+              }}
+            >
+              <PlusIcon className="h-4 w-4" />
+              Add Household
+            </Button>
+          </CardContent>
+        </Card>
+      </section>
 
       <section className="mb-8">
         <h2 className="text-lg font-semibold mb-3 font-heading">Appearance</h2>
@@ -888,6 +1182,195 @@ export default function Settings() {
           </CardContent>
         </Card>
       </section>
+
+      {/* Rename Household Dialog */}
+      <Dialog open={showRenameDialog} onOpenChange={setShowRenameDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Rename Household</DialogTitle>
+            <DialogDescription>
+              Enter a new name for this household.
+            </DialogDescription>
+          </DialogHeader>
+          <Input
+            value={renameText}
+            onChange={(e) => setRenameText(e.target.value)}
+            placeholder="Household name"
+          />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowRenameDialog(false)}>
+              Cancel
+            </Button>
+            <Button
+              disabled={!renameText.trim() || renameHousehold.isPending}
+              onClick={() => {
+                if (!activeHouseholdId) return;
+                renameHousehold.mutate(
+                  { id: activeHouseholdId, name: renameText.trim() },
+                  {
+                    onSuccess: async () => {
+                      await refreshHouseholds();
+                      setShowRenameDialog(false);
+                      toast({
+                        title: "Household renamed",
+                        description: `Household is now "${renameText.trim()}"`,
+                      });
+                    },
+                    onError: (error: Error) => {
+                      toast({
+                        title: "Failed to rename",
+                        description: error.message,
+                        variant: "destructive",
+                      });
+                    },
+                  }
+                );
+              }}
+            >
+              {renameHousehold.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : null}
+              Save
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Switch Household Dialog */}
+      <Dialog open={showSwitcherDialog} onOpenChange={setShowSwitcherDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Switch Household</DialogTitle>
+            <DialogDescription>
+              Select a household to switch to.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            {households.map((h) => (
+              <Button
+                key={h.id}
+                variant={h.id === activeHouseholdId ? "default" : "outline"}
+                className="w-full justify-between"
+                onClick={async () => {
+                  switchHousehold(h);
+                  setShowSwitcherDialog(false);
+                  toast({
+                    title: "Switched household",
+                    description: `Now viewing ${h.name}`,
+                  });
+                }}
+              >
+                <span className="flex items-center gap-2">
+                  <Home className="h-4 w-4" />
+                  {h.name}
+                </span>
+                <span className="text-xs opacity-70">{h.role}</span>
+              </Button>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Household Dialog (Create or Join) */}
+      <Dialog open={showAddHouseholdDialog} onOpenChange={setShowAddHouseholdDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add Household</DialogTitle>
+            <DialogDescription>
+              Create a new household or join one with an invite code.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-6">
+            {/* Create */}
+            <div className="space-y-3">
+              <h4 className="text-sm font-medium">Create New Household</h4>
+              <Input
+                placeholder="Household name"
+                value={newHouseholdName}
+                onChange={(e) => setNewHouseholdName(e.target.value)}
+              />
+              <Button
+                className="w-full"
+                disabled={!newHouseholdName.trim() || createHousehold.isPending}
+                onClick={() => {
+                  createHousehold.mutate(newHouseholdName.trim(), {
+                    onSuccess: async (data: any) => {
+                      await refreshHouseholds();
+                      setShowAddHouseholdDialog(false);
+                      toast({
+                        title: "Household created",
+                        description: `"${newHouseholdName.trim()}" has been created.`,
+                      });
+                    },
+                    onError: (error: Error) => {
+                      toast({
+                        title: "Failed to create",
+                        description: error.message,
+                        variant: "destructive",
+                      });
+                    },
+                  });
+                }}
+              >
+                {createHousehold.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                ) : (
+                  <Home className="h-4 w-4 mr-2" />
+                )}
+                Create Household
+              </Button>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <div className="flex-1 border-t" />
+              <span className="text-xs text-muted-foreground">or</span>
+              <div className="flex-1 border-t" />
+            </div>
+
+            {/* Join */}
+            <div className="space-y-3">
+              <h4 className="text-sm font-medium">Join Existing Household</h4>
+              <Input
+                placeholder="Enter invite code"
+                value={joinInviteCode}
+                onChange={(e) => setJoinInviteCode(e.target.value.toUpperCase())}
+                className="font-mono tracking-wider"
+              />
+              <Button
+                variant="outline"
+                className="w-full"
+                disabled={!joinInviteCode.trim() || joinHousehold.isPending}
+                onClick={() => {
+                  joinHousehold.mutate(joinInviteCode.trim(), {
+                    onSuccess: async (data: any) => {
+                      await refreshHouseholds();
+                      setShowAddHouseholdDialog(false);
+                      toast({
+                        title: "Joined household",
+                        description: `You are now a member of ${data.household?.name ?? "the household"}.`,
+                      });
+                    },
+                    onError: (error: Error) => {
+                      toast({
+                        title: "Failed to join",
+                        description: error.message,
+                        variant: "destructive",
+                      });
+                    },
+                  });
+                }}
+              >
+                {joinHousehold.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                ) : (
+                  <UserPlus className="h-4 w-4 mr-2" />
+                )}
+                Join Household
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Replace Mode Confirmation Dialog */}
       <AlertDialog open={showReplaceConfirmation} onOpenChange={setShowReplaceConfirmation}>

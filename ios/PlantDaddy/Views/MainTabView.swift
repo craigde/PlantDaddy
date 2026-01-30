@@ -136,6 +136,25 @@ struct SettingsView: View {
                 }
 
                 Section {
+                    NavigationLink {
+                        LocationManagementView()
+                    } label: {
+                        HStack {
+                            Image(systemName: "mappin.and.ellipse")
+                                .foregroundColor(.blue)
+                            Text("Manage Locations")
+                            Spacer()
+                            Text("\(PlantService.shared.locations.count)")
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                } header: {
+                    Text("Locations")
+                } footer: {
+                    Text("Locations are the rooms or areas where you keep your plants.")
+                }
+
+                Section {
                     HStack {
                         Image(systemName: notificationService.isAuthorized ? "bell.badge.fill" : "bell.slash.fill")
                             .foregroundColor(notificationService.isAuthorized ? .green : .secondary)

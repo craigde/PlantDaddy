@@ -11,14 +11,17 @@ import Notifications from "@/pages/notifications";
 import Settings from "@/pages/settings";
 import PlantExplorer from "@/pages/plant-explorer";
 import AuthPage from "@/pages/auth-page";
+import HouseholdOnboarding from "@/pages/household-onboarding";
 import { NavBar } from "@/components/layout/nav-bar";
 import { Header } from "@/components/layout/header";
 import { usePlants } from "@/hooks/use-plants";
 import { getPlantStatus } from "@/lib/plant-utils";
 import { ThemeProvider, ThemeConsumer } from "@/components/theme-provider";
 import { AuthProvider } from "@/hooks/use-auth";
+import { HouseholdProvider, useHouseholdContext } from "@/hooks/use-household-context";
 import { ProtectedRoute } from "@/lib/protected-route";
 import { ViewModeProvider } from "@/hooks/use-view-mode";
+import { Loader2 } from "lucide-react";
 
 function AppNavBar() {
   const { plants, isLoading } = usePlants();
@@ -45,7 +48,21 @@ function AppLayout({ children }: { children: React.ReactNode }) {
   );
 }
 
-function ProtectedAppRoutes() {
+function HouseholdGate() {
+  const { households, isLoading, hasLoaded } = useHouseholdContext();
+
+  if (isLoading || !hasLoaded) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (households.length === 0) {
+    return <HouseholdOnboarding />;
+  }
+
   return (
     <AppLayout>
       <Switch>
@@ -62,6 +79,10 @@ function ProtectedAppRoutes() {
   );
 }
 
+function ProtectedAppRoutes() {
+  return <HouseholdGate />;
+}
+
 function Router() {
   return (
     <Switch>
@@ -76,14 +97,16 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <ThemeProvider defaultTheme="light">
         <AuthProvider>
-          <ViewModeProvider>
-            <ThemeConsumer>
-              <TooltipProvider>
-                <Toaster />
-                <Router />
-              </TooltipProvider>
-            </ThemeConsumer>
-          </ViewModeProvider>
+          <HouseholdProvider>
+            <ViewModeProvider>
+              <ThemeConsumer>
+                <TooltipProvider>
+                  <Toaster />
+                  <Router />
+                </TooltipProvider>
+              </ThemeConsumer>
+            </ViewModeProvider>
+          </HouseholdProvider>
         </AuthProvider>
       </ThemeProvider>
     </QueryClientProvider>

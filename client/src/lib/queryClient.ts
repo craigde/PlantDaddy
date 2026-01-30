@@ -1,4 +1,10 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
+import { getActiveHouseholdId } from "@/hooks/use-household-context";
+
+function getHouseholdHeaders(): Record<string, string> {
+  const id = getActiveHouseholdId();
+  return id ? { "X-Household-Id": String(id) } : {};
+}
 
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
@@ -76,6 +82,7 @@ export async function apiRequest(
     const res = await fetch(url, {
       ...fetchOptions,
       headers: {
+        ...getHouseholdHeaders(),
         ...fetchOptions.headers,
       },
       credentials: "include",
@@ -149,6 +156,9 @@ export const getQueryFn: <T>(options: {
     
     try {
       const res = await fetch(url, {
+        headers: {
+          ...getHouseholdHeaders(),
+        },
         credentials: "include",
       });
       

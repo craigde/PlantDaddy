@@ -179,6 +179,21 @@ class PlantService: ObservableObject {
         return location
     }
 
+    func updateLocation(id: Int, name: String) async throws -> Location {
+        let request = UpdateLocationRequest(name: name)
+
+        let location: Location = try await apiClient.request(
+            endpoint: .location(id: id),
+            method: .patch,
+            body: request
+        )
+
+        // Refresh locations list
+        await fetchLocations()
+
+        return location
+    }
+
     func deleteLocation(id: Int) async throws {
         try await apiClient.requestWithoutResponse(
             endpoint: .location(id: id),
