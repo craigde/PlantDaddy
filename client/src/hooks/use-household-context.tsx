@@ -32,9 +32,9 @@ export function HouseholdProvider({ children }: { children: ReactNode }) {
     enabled: !!user,
   });
 
-  // Sync active household when households data changes
+  // Sync active household when households data changes or user logs in
   useEffect(() => {
-    if (!isFetched) return;
+    if (!isFetched || !user) return;
 
     setHasLoaded(true);
 
@@ -59,7 +59,7 @@ export function HouseholdProvider({ children }: { children: ReactNode }) {
     // Default to first household
     setActiveHousehold(households[0]);
     localStorage.setItem(ACTIVE_HOUSEHOLD_KEY, String(households[0].id));
-  }, [households, isFetched]);
+  }, [households, isFetched, user]);
 
   // Clear state on logout
   useEffect(() => {
