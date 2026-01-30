@@ -22,6 +22,7 @@ struct PlantDetailView: View {
     @State private var selectedImage: UIImage?
     @State private var isUploadingImage = false
     @State private var showingEditSheet = false
+    @State private var expandedTimelineItemId: String?
     @Environment(\.dismiss) private var dismiss
 
     private let imageUploadService = ImageUploadService.shared
@@ -316,30 +317,77 @@ struct PlantDetailView: View {
                 let timeline = buildTimeline()
 
                 ForEach(timeline.prefix(15), id: \.id) { item in
-                    HStack(alignment: .top, spacing: 12) {
-                        // Icon based on type
-                        ZStack {
-                            Circle()
-                                .fill(item.color.opacity(0.2))
-                                .frame(width: 40, height: 40)
-                            Text(item.emoji)
-                                .font(.title3)
-                        }
+                    let isExpanded = expandedTimelineItemId == item.id
 
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(item.title)
-                                .font(.headline)
-                            Text(item.date, style: .date)
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                            if let notes = item.notes {
-                                Text(notes)
+                    VStack(spacing: 0) {
+                        HStack(alignment: .center, spacing: 12) {
+                            // Icon based on type
+                            ZStack {
+                                Circle()
+                                    .fill(item.color.opacity(0.2))
+                                    .frame(width: 40, height: 40)
+                                Text(item.emoji)
+                                    .font(.title3)
+                            }
+
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(item.title)
+                                    .font(.headline)
+                                Text(item.date, style: .date)
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+
+                            Spacer()
+
+                            if item.hasDetails {
+                                Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
                                     .font(.caption)
                                     .foregroundColor(.secondary)
                             }
                         }
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            guard item.hasDetails else { return }
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                expandedTimelineItemId = isExpanded ? nil : item.id
+                            }
+                        }
 
-                        Spacer()
+                        if isExpanded {
+                            VStack(alignment: .leading, spacing: 8) {
+                                if let imageUrl = item.imageUrl {
+                                    AuthenticatedImage(
+                                        url: imageUrl,
+                                        loadingPlaceholder: {
+                                            Rectangle()
+                                                .fill(Color.gray.opacity(0.2))
+                                                .overlay(ProgressView())
+                                        },
+                                        failurePlaceholder: {
+                                            Rectangle()
+                                                .fill(Color.gray.opacity(0.1))
+                                                .overlay(
+                                                    Image(systemName: "photo")
+                                                        .foregroundColor(.secondary)
+                                                )
+                                        }
+                                    )
+                                    .aspectRatio(contentMode: .fit)
+                                    .frame(maxHeight: 200)
+                                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                                }
+
+                                if let notes = item.notes {
+                                    Text(notes)
+                                        .font(.subheadline)
+                                        .foregroundColor(.secondary)
+                                }
+                            }
+                            .padding(.leading, 52)
+                            .padding(.top, 8)
+                            .transition(.opacity.combined(with: .move(edge: .top)))
+                        }
                     }
                     .padding(.vertical, 8)
                 }
@@ -356,6 +404,11 @@ struct PlantDetailView: View {
         let color: Color
         let date: Date
         let notes: String?
+        let imageUrl: String?
+
+        var hasDetails: Bool {
+            notes != nil || imageUrl != nil
+        }
     }
 
     private func buildTimeline() -> [TimelineItem] {
@@ -369,7 +422,8 @@ struct PlantDetailView: View {
                 emoji: activity.activityType.emoji,
                 color: .blue,
                 date: activity.performedAt,
-                notes: activity.notes
+                notes: activity.notes,
+                imageUrl: nil
             ))
         }
 
@@ -381,7 +435,8 @@ struct PlantDetailView: View {
                 emoji: record.status.emoji,
                 color: record.status == .thriving ? .green : record.status == .struggling ? .orange : .red,
                 date: record.recordedAt,
-                notes: record.notes
+                notes: record.notes,
+                imageUrl: record.fullImageUrl
             ))
         }
 
@@ -596,7 +651,7 @@ struct LogHealthView: View {
                 // Upload image first if one was selected
                 var imageUrl: String? = nil
                 if let image = selectedImage {
-                    imageUrl = try await imageUploadService.uploadGenericImage(image, plantId: plantId)
+                    imageUrl = try await imageUploadService.uploadGenericImage(image)
                 }
 
                 _ = try await plantService.createHealthRecord(
