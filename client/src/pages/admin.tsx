@@ -46,8 +46,7 @@ export default function AdminPage() {
 
   const deleteMutation = useMutation({
     mutationFn: async (userId: number) => {
-      const res = await apiRequest("DELETE", `/api/admin/users/${userId}`);
-      return res.json();
+      return await apiRequest("DELETE", `/api/admin/users/${userId}`);
     },
     onSuccess: (data) => {
       toast({ title: "User deleted", description: data.message });
