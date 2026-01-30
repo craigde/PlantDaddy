@@ -38,6 +38,7 @@ struct CareActivity: Codable, Identifiable {
     let notes: String?
     let performedAt: Date
     let userId: Int
+    let username: String?
 }
 
 struct CreateCareActivityRequest: Codable {

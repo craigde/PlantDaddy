@@ -42,6 +42,7 @@ interface TimelineEvent {
   description?: string;
   status?: string;
   imageUrl?: string;
+  username?: string;
   data: CareActivity | PlantHealthRecord;
 }
 
@@ -148,7 +149,7 @@ export function PlantCareTimeline({ plantId, plantName }: PlantCareTimelineProps
     const events: TimelineEvent[] = [];
 
     // Add care activities
-    typedCareActivities.forEach((activity: CareActivity) => {
+    typedCareActivities.forEach((activity: any) => {
       const timestamp = new Date(activity.performedAt);
       if (!isNaN(timestamp.getTime())) {
         events.push({
@@ -157,13 +158,14 @@ export function PlantCareTimeline({ plantId, plantName }: PlantCareTimelineProps
           timestamp,
           title: activity.activityType.charAt(0).toUpperCase() + activity.activityType.slice(1),
           description: activity.notes || undefined,
+          username: activity.username || undefined,
           data: activity,
         });
       }
     });
 
     // Add health records
-    typedHealthRecords.forEach((record: PlantHealthRecord) => {
+    typedHealthRecords.forEach((record: any) => {
       const timestamp = new Date(record.recordedAt);
       if (!isNaN(timestamp.getTime())) {
         events.push({
@@ -174,6 +176,7 @@ export function PlantCareTimeline({ plantId, plantName }: PlantCareTimelineProps
           description: record.notes || undefined,
           status: record.status,
           imageUrl: record.imageUrl || undefined,
+          username: record.username || undefined,
           data: record,
         });
       }
@@ -436,6 +439,11 @@ export function PlantCareTimeline({ plantId, plantName }: PlantCareTimelineProps
                             </Badge>
                           )}
                         </div>
+                        {event.username && (
+                          <p className="text-xs text-gray-500" data-testid={`event-user-${event.id}`}>
+                            by {event.username}
+                          </p>
+                        )}
                       </div>
 
                       <div className="flex items-center gap-1 ml-4 flex-shrink-0">

@@ -33,6 +33,7 @@ struct HealthRecord: Codable, Identifiable {
     let imageUrl: String?
     let recordedAt: Date
     let userId: Int
+    let username: String?
 
     // Full URL for the image (handles relative URLs from backend)
     var fullImageUrl: String? {

@@ -333,6 +333,11 @@ struct PlantDetailView: View {
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(item.title)
                                     .font(.headline)
+                                if let username = item.username {
+                                    Text("by \(username)")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
                                 Text(item.date, style: .date)
                                     .font(.caption)
                                     .foregroundColor(.secondary)
@@ -405,6 +410,7 @@ struct PlantDetailView: View {
         let date: Date
         let notes: String?
         let imageUrl: String?
+        let username: String?
 
         var hasDetails: Bool {
             notes != nil || imageUrl != nil
@@ -423,7 +429,8 @@ struct PlantDetailView: View {
                 color: .blue,
                 date: activity.performedAt,
                 notes: activity.notes,
-                imageUrl: nil
+                imageUrl: nil,
+                username: activity.username
             ))
         }
 
@@ -436,7 +443,8 @@ struct PlantDetailView: View {
                 color: record.status == .thriving ? .green : record.status == .struggling ? .orange : .red,
                 date: record.recordedAt,
                 notes: record.notes,
-                imageUrl: record.fullImageUrl
+                imageUrl: record.fullImageUrl,
+                username: record.username
             ))
         }
 
