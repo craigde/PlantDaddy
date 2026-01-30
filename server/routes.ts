@@ -2006,15 +2006,71 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ============================================================
+  // Admin routes — require authenticated admin user
+  // ============================================================
+
+  function isAdmin(req: Request, res: Response, next: NextFunction) {
+    if (!req.user) {
+      return res.status(401).json({ error: "Authentication required" });
+    }
+    if (!(req.user as any).isAdmin) {
+      return res.status(403).json({ error: "Admin access required" });
+    }
+    next();
+  }
+
+  apiRouter.get("/admin/users", isAuthenticated, isAdmin, async (req: Request, res: Response) => {
+    try {
+      const allUsers = await dbStorage.getAllUsersAdmin();
+      // Fetch stats for each user
+      const usersWithStats = await Promise.all(
+        allUsers.map(async (u) => {
+          const stats = await dbStorage.getUserStatsAdmin(u.id);
+          return { ...u, ...stats };
+        })
+      );
+      res.json(usersWithStats);
+    } catch (error) {
+      console.error("Admin list users error:", error);
+      res.status(500).json({ error: "Failed to list users" });
+    }
+  });
+
+  apiRouter.delete("/admin/users/:id", isAuthenticated, isAdmin, async (req: Request, res: Response) => {
+    const userId = parseInt(req.params.id);
+    if (isNaN(userId)) {
+      return res.status(400).json({ error: "Invalid user ID" });
+    }
+
+    // Prevent deleting yourself
+    if ((req.user as any).id === userId) {
+      return res.status(400).json({ error: "Cannot delete your own account" });
+    }
+
+    try {
+      const user = await dbStorage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      await dbStorage.deleteUserCompletely(userId);
+      res.json({ message: `User "${user.username}" and all associated data deleted` });
+    } catch (error) {
+      console.error("Admin delete user error:", error);
+      res.status(500).json({ error: "Failed to delete user" });
+    }
+  });
+
   // Add API router to app
   // Apply user context middleware before API routes to make user data available
   app.use(setUserContext);
-  
+
   // Health check endpoint for Railway/deployment monitoring
   app.get("/api/health", (req: Request, res: Response) => {
     res.status(200).json({ status: "ok", timestamp: new Date().toISOString() });
   });
-  
+
   // Mount API routes
   app.use("/api", apiRouter);
 

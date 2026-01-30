@@ -11,6 +11,7 @@ import Notifications from "@/pages/notifications";
 import Settings from "@/pages/settings";
 import PlantExplorer from "@/pages/plant-explorer";
 import AuthPage from "@/pages/auth-page";
+import AdminPage from "@/pages/admin";
 import HouseholdOnboarding from "@/pages/household-onboarding";
 import { NavBar } from "@/components/layout/nav-bar";
 import { Header } from "@/components/layout/header";
@@ -87,6 +88,7 @@ function Router() {
   return (
     <Switch>
       <Route path="/auth" component={AuthPage} />
+      <ProtectedRoute path="/admin" component={AdminPage} />
       <ProtectedRoute path="/*" component={ProtectedAppRoutes} />
     </Switch>
   );
