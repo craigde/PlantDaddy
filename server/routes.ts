@@ -16,6 +16,7 @@ import { generateToken } from "./jwt";
 import { R2StorageService, isR2Configured } from "./r2Storage";
 import { ExportService } from "./export-service";
 import { ImportService } from "./import-service";
+import { isOverdue } from "../client/src/lib/date-utils";
 
 // Middleware to check if user is authenticated (via session or JWT)
 function isAuthenticated(req: Request, res: Response, next: NextFunction) {
@@ -577,6 +578,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       res.status(500).json({ message: "Failed to water plant" });
+    }
+  });
+
+  // Water multiple plants at once (used by "Water All" notification action)
+  apiRouter.post("/plants/water-overdue", async (req: Request, res: Response) => {
+    try {
+      const { plantIds } = req.body;
+
+      // If specific IDs provided, water those; otherwise water all overdue
+      const allPlants = await dbStorage.getAllPlants();
+      let toWater: typeof allPlants;
+
+      if (Array.isArray(plantIds) && plantIds.length > 0) {
+        toWater = allPlants.filter(p => plantIds.includes(p.id));
+      } else {
+        // Water all overdue plants
+        toWater = allPlants.filter(p => isOverdue(p.lastWatered, p.wateringFrequency));
+      }
+
+      let watered = 0;
+      for (const plant of toWater) {
+        await dbStorage.createCareActivity({
+          plantId: plant.id,
+          activityType: "watering",
+          notes: "Watered via notification",
+          performedAt: new Date(),
+        });
+        await dbStorage.updatePlant(plant.id, { lastWatered: new Date() });
+        watered++;
+      }
+
+      res.json({ success: true, wateredCount: watered, message: `Watered ${watered} plant(s)` });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to water plants" });
     }
   });
 

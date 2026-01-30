@@ -89,7 +89,12 @@ async function checkPlantsTask() {
             await sendPushoverNotification(summaryTitle, summaryBody, 0);
 
             if (isApnsConfigured()) {
-              await sendApnsNotification(userId, summaryTitle, summaryBody);
+              const overdueIds = overduePlants.map(p => p.id);
+              await sendApnsNotification(userId, summaryTitle, summaryBody, {
+                threadId: "watering",
+                category: "WATERING_SUMMARY",
+                plantIds: overdueIds,
+              });
             }
           }
         } catch (err) {

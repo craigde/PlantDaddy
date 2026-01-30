@@ -56,6 +56,9 @@ enum APIEndpoint {
     // Device Tokens (APNs)
     case deviceTokens
 
+    // Batch watering
+    case waterOverdue
+
     var path: String {
         switch self {
         case .login:
@@ -102,6 +105,8 @@ enum APIEndpoint {
             return "/notification-settings/test"
         case .deviceTokens:
             return "/device-tokens"
+        case .waterOverdue:
+            return "/plants/water-overdue"
         }
     }
 
