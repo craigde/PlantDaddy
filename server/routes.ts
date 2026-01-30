@@ -654,6 +654,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Rename a household (owner only)
+  apiRouter.patch("/households/:id", async (req: Request, res: Response) => {
+    try {
+      const userId = getCurrentUserId();
+      if (!userId) return res.status(401).json({ error: "Authentication required" });
+
+      const householdId = parseInt(req.params.id);
+      const { name } = req.body;
+      if (!name || typeof name !== "string" || !name.trim()) {
+        return res.status(400).json({ error: "Household name is required" });
+      }
+
+      // Verify owner
+      const members = await dbStorage.getHouseholdMembers(householdId);
+      const userMember = members.find(m => m.userId === userId);
+      if (!userMember || userMember.role !== "owner") {
+        return res.status(403).json({ error: "Only the owner can rename the household" });
+      }
+
+      const updated = await dbStorage.updateHousehold(householdId, name.trim());
+      if (!updated) return res.status(404).json({ error: "Household not found" });
+
+      res.json(updated);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update household" });
+    }
+  });
+
   // Get household details with members
   apiRouter.get("/households/:id", async (req: Request, res: Response) => {
     try {

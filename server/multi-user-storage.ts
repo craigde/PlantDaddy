@@ -854,6 +854,14 @@ export class MultiUserStorage implements IStorage {
     return household;
   }
 
+  async updateHousehold(id: number, name: string): Promise<Household | undefined> {
+    const [updated] = await db.update(households)
+      .set({ name })
+      .where(eq(households.id, id))
+      .returning();
+    return updated || undefined;
+  }
+
   async getHousehold(id: number): Promise<Household | undefined> {
     const [household] = await db.select().from(households).where(eq(households.id, id));
     return household || undefined;

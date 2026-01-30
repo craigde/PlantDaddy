@@ -133,6 +133,19 @@ class HouseholdService: ObservableObject {
         return updated
     }
 
+    func renameHousehold(name: String) async throws {
+        guard let householdId = activeHouseholdId else {
+            throw NSError(domain: "HouseholdService", code: 0, userInfo: [NSLocalizedDescriptionKey: "No active household"])
+        }
+        let request = CreateHouseholdRequest(name: name)
+        let _: Household = try await apiClient.request(
+            endpoint: .household(id: householdId),
+            method: .patch,
+            body: request
+        )
+        await fetchHouseholds()
+    }
+
     func updateMemberRole(userId: Int, role: String) async throws {
         guard let householdId = activeHouseholdId else { return }
         let request = UpdateMemberRoleRequest(role: role)
