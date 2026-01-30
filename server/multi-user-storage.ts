@@ -614,23 +614,28 @@ export class MultiUserStorage implements IStorage {
     return plant || undefined;
   }
 
-  // Plant Health Records methods
-  async getPlantHealthRecords(plantId: number): Promise<PlantHealthRecord[]> {
+  // Plant Health Records methods — returns all records for the plant (household-wide)
+  async getPlantHealthRecords(plantId: number): Promise<(PlantHealthRecord & { username: string })[]> {
     const userId = getCurrentUserId();
-    
+
     if (userId === null) {
       return [];
     }
-    
+
     return await db
-      .select()
+      .select({
+        id: plantHealthRecords.id,
+        plantId: plantHealthRecords.plantId,
+        status: plantHealthRecords.status,
+        notes: plantHealthRecords.notes,
+        imageUrl: plantHealthRecords.imageUrl,
+        recordedAt: plantHealthRecords.recordedAt,
+        userId: plantHealthRecords.userId,
+        username: users.username,
+      })
       .from(plantHealthRecords)
-      .where(
-        and(
-          eq(plantHealthRecords.plantId, plantId),
-          eq(plantHealthRecords.userId, userId)
-        )
-      )
+      .innerJoin(users, eq(plantHealthRecords.userId, users.id))
+      .where(eq(plantHealthRecords.plantId, plantId))
       .orderBy(plantHealthRecords.recordedAt);
   }
 
@@ -722,23 +727,27 @@ export class MultiUserStorage implements IStorage {
     return result.rowCount > 0;
   }
 
-  // Care Activities methods
-  async getPlantCareActivities(plantId: number): Promise<CareActivity[]> {
+  // Care Activities methods — returns all activities for the plant (household-wide)
+  async getPlantCareActivities(plantId: number): Promise<(CareActivity & { username: string })[]> {
     const userId = getCurrentUserId();
-    
+
     if (userId === null) {
       return [];
     }
-    
+
     return await db
-      .select()
+      .select({
+        id: careActivities.id,
+        plantId: careActivities.plantId,
+        activityType: careActivities.activityType,
+        notes: careActivities.notes,
+        performedAt: careActivities.performedAt,
+        userId: careActivities.userId,
+        username: users.username,
+      })
       .from(careActivities)
-      .where(
-        and(
-          eq(careActivities.plantId, plantId),
-          eq(careActivities.userId, userId)
-        )
-      )
+      .innerJoin(users, eq(careActivities.userId, users.id))
+      .where(eq(careActivities.plantId, plantId))
       .orderBy(careActivities.performedAt);
   }
 

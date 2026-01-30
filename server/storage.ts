@@ -65,15 +65,15 @@ export interface IStorage {
   updateNotificationSettings(settings: Partial<InsertNotificationSettings>): Promise<NotificationSettings>;
   
   // Plant Health Records methods
-  getPlantHealthRecords(plantId: number): Promise<PlantHealthRecord[]>;
+  getPlantHealthRecords(plantId: number): Promise<(PlantHealthRecord & { username: string })[]>;
   getHealthRecord(id: number): Promise<PlantHealthRecord | undefined>;
   getAllHealthRecordsForUser(): Promise<PlantHealthRecord[]>;
   createHealthRecord(record: InsertPlantHealthRecord): Promise<PlantHealthRecord>;
   updateHealthRecord(id: number, record: Partial<InsertPlantHealthRecord>): Promise<PlantHealthRecord | undefined>;
   deleteHealthRecord(id: number): Promise<boolean>;
-  
-  // Care Activities methods  
-  getPlantCareActivities(plantId: number): Promise<CareActivity[]>;
+
+  // Care Activities methods
+  getPlantCareActivities(plantId: number): Promise<(CareActivity & { username: string })[]>;
   getAllCareActivitiesForUser(): Promise<CareActivity[]>;
   createCareActivity(activity: InsertCareActivity): Promise<CareActivity>;
   updateCareActivity(id: number, activity: Partial<InsertCareActivity>): Promise<CareActivity | undefined>;

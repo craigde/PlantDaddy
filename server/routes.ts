@@ -1421,20 +1421,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Invalid plant ID" });
       }
 
-      // Get authenticated user ID
-      const userId = getCurrentUserId();
-      if (!userId) {
-        return res.status(401).json({ message: "User not authenticated" });
-      }
-
-      // Verify plant ownership first
+      // Verify plant belongs to the user's household (getPlant scopes by household)
       const plant = await dbStorage.getPlant(plantId);
       if (!plant) {
         return res.status(404).json({ message: "Plant not found" });
-      }
-
-      if (plant.userId !== userId) {
-        return res.status(403).json({ message: "Access denied: Plant does not belong to you" });
       }
 
       const healthRecords = await dbStorage.getPlantHealthRecords(plantId);
