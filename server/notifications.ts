@@ -114,7 +114,7 @@ export async function sendPlantWateringNotification(plant: Plant): Promise<boole
       plant.userId,
       title,
       message,
-      { plantId: plant.id, threadId: `plant-${plant.id}` }
+      { plantId: plant.id, threadId: "watering", category: "PLANT_WATERING" }
     );
     if (apnsSent > 0) success = true;
   }

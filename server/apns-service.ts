@@ -62,8 +62,10 @@ interface ApnsPayload {
     sound?: string;
     badge?: number;
     "thread-id"?: string;
+    category?: string;
   };
   plantId?: number;
+  plantIds?: number[];
 }
 
 /**
@@ -148,7 +150,7 @@ export async function sendApnsNotification(
   userId: number,
   title: string,
   body: string,
-  options?: { badge?: number; plantId?: number; threadId?: string }
+  options?: { badge?: number; plantId?: number; plantIds?: number[]; threadId?: string; category?: string }
 ): Promise<number> {
   if (!isApnsConfigured()) {
     return 0;
@@ -170,8 +172,10 @@ export async function sendApnsNotification(
       sound: "default",
       ...(options?.badge !== undefined && { badge: options.badge }),
       ...(options?.threadId && { "thread-id": options.threadId }),
+      ...(options?.category && { category: options.category }),
     },
     ...(options?.plantId && { plantId: options.plantId }),
+    ...(options?.plantIds && { plantIds: options.plantIds }),
   };
 
   let sent = 0;

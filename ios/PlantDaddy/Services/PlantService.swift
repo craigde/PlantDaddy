@@ -35,9 +35,8 @@ class PlantService: ObservableObject {
                 method: .get
             )
 
-            // Reschedule local notifications for all plants
+            // Update badge count based on overdue plants
             if notificationService.isAuthorized {
-                await notificationService.scheduleAllPlantReminders(plants)
                 notificationService.updateBadgeCount(plants.filter { $0.needsWatering }.count)
             }
         } catch {
@@ -107,8 +106,6 @@ class PlantService: ObservableObject {
         // Remove from local array
         plants.removeAll { $0.id == id }
 
-        // Remove notification for deleted plant
-        notificationService.removeWateringReminder(for: id)
         notificationService.updateBadgeCount(plants.filter { $0.needsWatering }.count)
     }
 
@@ -123,9 +120,8 @@ class PlantService: ObservableObject {
             plants[index] = response.plant
         }
 
-        // Reschedule notification for the updated plant
+        // Update badge count after watering
         if notificationService.isAuthorized {
-            await notificationService.scheduleWateringReminder(for: response.plant)
             notificationService.updateBadgeCount(plants.filter { $0.needsWatering }.count)
         }
 
