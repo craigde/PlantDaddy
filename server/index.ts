@@ -25,8 +25,10 @@ async function initializeDatabase() {
     CREATE TABLE IF NOT EXISTS users (
       id SERIAL PRIMARY KEY,
       username TEXT NOT NULL UNIQUE,
-      password TEXT NOT NULL
+      password TEXT NOT NULL,
+      is_admin BOOLEAN DEFAULT false
     );
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS is_admin BOOLEAN DEFAULT false;
 
     CREATE TABLE IF NOT EXISTS session (
       sid VARCHAR NOT NULL PRIMARY KEY,
@@ -181,6 +183,18 @@ app.use((req, res, next) => {
   await addUserIdToSpecies();
   await dropWateringHistory();
   await migrateHouseholds();
+
+  // Ensure admin user is set
+  try {
+    const result = await pool.query(
+      `UPDATE users SET is_admin = true WHERE username = 'craigde' AND (is_admin IS NULL OR is_admin = false) RETURNING username`
+    );
+    if (result.rowCount && result.rowCount > 0) {
+      log("Admin privileges granted to craigde");
+    }
+  } catch (error) {
+    log(`Admin setup note: ${error}`);
+  }
 
   // Seed default plant species (global, userId = null)
   await seedPlantSpecies();
