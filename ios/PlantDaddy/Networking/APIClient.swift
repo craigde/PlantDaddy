@@ -62,6 +62,11 @@ class APIClient: NSObject {
             }
         }
 
+        // Include active household ID for household-scoped requests
+        if let householdId = HouseholdService.shared.activeHouseholdId {
+            request.setValue(String(householdId), forHTTPHeaderField: "X-Household-Id")
+        }
+
         // Encode request body if present
         if let body = body {
             request.httpBody = try encoder.encode(body)

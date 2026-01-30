@@ -15,6 +15,7 @@ struct User: Codable, Identifiable {
 struct AuthResponse: Codable {
     let token: String
     let user: User
+    let households: [Household]?
 }
 
 struct LoginRequest: Codable {

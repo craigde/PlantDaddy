@@ -244,13 +244,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Generate JWT token
       const token = generateToken(user);
 
-      // Return token and user info
+      // Fetch user's households
+      const userHouseholds = await dbStorage.getUserHouseholds(user.id);
+
+      // Return token, user info, and households
       return res.status(200).json({
         token,
         user: {
           id: user.id,
           username: user.username,
-        }
+        },
+        households: userHouseholds,
       });
     } catch (error) {
       console.error("JWT login error:", error);
@@ -281,13 +285,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Generate JWT token
       const token = generateToken(user);
 
-      // Return token and user info
+      // Fetch user's households (includes the one just auto-created)
+      const userHouseholds = await dbStorage.getUserHouseholds(user.id);
+
+      // Return token, user info, and households
       return res.status(201).json({
         token,
         user: {
           id: user.id,
           username: user.username,
-        }
+        },
+        households: userHouseholds,
       });
     } catch (error) {
       console.error("JWT registration error:", error);
@@ -612,6 +620,175 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ success: true, wateredCount: watered, message: `Watered ${watered} plant(s)` });
     } catch (error) {
       res.status(500).json({ message: "Failed to water plants" });
+    }
+  });
+
+  // ---- Household Management ----
+
+  // Get current user's households
+  apiRouter.get("/households", async (req: Request, res: Response) => {
+    try {
+      const userId = getCurrentUserId();
+      if (!userId) return res.status(401).json({ error: "Authentication required" });
+
+      const userHouseholds = await dbStorage.getUserHouseholds(userId);
+      res.json(userHouseholds);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch households" });
+    }
+  });
+
+  // Create a new household
+  apiRouter.post("/households", async (req: Request, res: Response) => {
+    try {
+      const userId = getCurrentUserId();
+      if (!userId) return res.status(401).json({ error: "Authentication required" });
+
+      const { name } = req.body;
+      if (!name) return res.status(400).json({ error: "Household name is required" });
+
+      const household = await dbStorage.createHousehold(name, userId);
+      res.status(201).json(household);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to create household" });
+    }
+  });
+
+  // Get household details with members
+  apiRouter.get("/households/:id", async (req: Request, res: Response) => {
+    try {
+      const userId = getCurrentUserId();
+      if (!userId) return res.status(401).json({ error: "Authentication required" });
+
+      const householdId = parseInt(req.params.id);
+      const household = await dbStorage.getHousehold(householdId);
+      if (!household) return res.status(404).json({ error: "Household not found" });
+
+      // Verify membership
+      const userHouseholds = await dbStorage.getUserHouseholds(userId);
+      if (!userHouseholds.find(h => h.id === householdId)) {
+        return res.status(403).json({ error: "Not a member of this household" });
+      }
+
+      const members = await dbStorage.getHouseholdMembers(householdId);
+      res.json({ ...household, members });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch household" });
+    }
+  });
+
+  // Join a household via invite code
+  apiRouter.post("/households/join", async (req: Request, res: Response) => {
+    try {
+      const userId = getCurrentUserId();
+      if (!userId) return res.status(401).json({ error: "Authentication required" });
+
+      const { inviteCode } = req.body;
+      if (!inviteCode) return res.status(400).json({ error: "Invite code is required" });
+
+      const household = await dbStorage.getHouseholdByInviteCode(inviteCode);
+      if (!household) return res.status(404).json({ error: "Invalid invite code" });
+
+      // Check if already a member
+      const existingMembers = await dbStorage.getHouseholdMembers(household.id);
+      if (existingMembers.find(m => m.userId === userId)) {
+        return res.status(400).json({ error: "Already a member of this household" });
+      }
+
+      await dbStorage.addHouseholdMember(household.id, userId, "member");
+
+      const userHouseholds = await dbStorage.getUserHouseholds(userId);
+      res.json({ household, households: userHouseholds });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to join household" });
+    }
+  });
+
+  // Regenerate invite code (owner only)
+  apiRouter.post("/households/:id/invite", async (req: Request, res: Response) => {
+    try {
+      const userId = getCurrentUserId();
+      if (!userId) return res.status(401).json({ error: "Authentication required" });
+
+      const householdId = parseInt(req.params.id);
+
+      // Verify owner
+      const members = await dbStorage.getHouseholdMembers(householdId);
+      const userMember = members.find(m => m.userId === userId);
+      if (!userMember || userMember.role !== "owner") {
+        return res.status(403).json({ error: "Only the owner can regenerate the invite code" });
+      }
+
+      const updated = await dbStorage.regenerateInviteCode(householdId);
+      res.json(updated);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to regenerate invite code" });
+    }
+  });
+
+  // Update a member's role (owner only)
+  apiRouter.patch("/households/:id/members/:userId", async (req: Request, res: Response) => {
+    try {
+      const currentUser = getCurrentUserId();
+      if (!currentUser) return res.status(401).json({ error: "Authentication required" });
+
+      const householdId = parseInt(req.params.id);
+      const targetUserId = parseInt(req.params.userId);
+      const { role } = req.body;
+
+      if (!role || !["member", "caretaker"].includes(role)) {
+        return res.status(400).json({ error: "Role must be 'member' or 'caretaker'" });
+      }
+
+      // Verify caller is owner
+      const members = await dbStorage.getHouseholdMembers(householdId);
+      const callerMember = members.find(m => m.userId === currentUser);
+      if (!callerMember || callerMember.role !== "owner") {
+        return res.status(403).json({ error: "Only the owner can change roles" });
+      }
+
+      // Can't change the owner's role
+      const targetMember = members.find(m => m.userId === targetUserId);
+      if (!targetMember) return res.status(404).json({ error: "Member not found" });
+      if (targetMember.role === "owner") {
+        return res.status(400).json({ error: "Cannot change the owner's role" });
+      }
+
+      const updated = await dbStorage.updateHouseholdMemberRole(householdId, targetUserId, role);
+      res.json(updated);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update member role" });
+    }
+  });
+
+  // Remove a member (owner only, or self-removal)
+  apiRouter.delete("/households/:id/members/:userId", async (req: Request, res: Response) => {
+    try {
+      const currentUser = getCurrentUserId();
+      if (!currentUser) return res.status(401).json({ error: "Authentication required" });
+
+      const householdId = parseInt(req.params.id);
+      const targetUserId = parseInt(req.params.userId);
+
+      // Allow self-removal or owner-removal
+      const members = await dbStorage.getHouseholdMembers(householdId);
+      const callerMember = members.find(m => m.userId === currentUser);
+      if (!callerMember) return res.status(403).json({ error: "Not a member of this household" });
+
+      if (currentUser !== targetUserId && callerMember.role !== "owner") {
+        return res.status(403).json({ error: "Only the owner can remove other members" });
+      }
+
+      // Owner can't remove themselves
+      const targetMember = members.find(m => m.userId === targetUserId);
+      if (targetMember?.role === "owner") {
+        return res.status(400).json({ error: "The owner cannot leave the household" });
+      }
+
+      await dbStorage.removeHouseholdMember(householdId, targetUserId);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to remove member" });
     }
   });
 

@@ -8,6 +8,7 @@ import { pool } from "./db";
 import { seedPlantSpecies } from "./seed-species";
 import { addUserIdToSpecies } from "./migrations/add-user-id-to-species";
 import { dropWateringHistory } from "./migrations/drop-watering-history";
+import { migrateHouseholds } from "./migrations/add-households";
 
 const app = express();
 app.use(express.json());
@@ -84,6 +85,26 @@ async function initializeDatabase() {
       last_updated TIMESTAMP DEFAULT NOW()
     );
 
+    CREATE TABLE IF NOT EXISTS households (
+      id SERIAL PRIMARY KEY,
+      name TEXT NOT NULL,
+      invite_code TEXT NOT NULL UNIQUE,
+      created_by INTEGER NOT NULL REFERENCES users(id),
+      created_at TIMESTAMP NOT NULL DEFAULT NOW()
+    );
+
+    CREATE TABLE IF NOT EXISTS household_members (
+      id SERIAL PRIMARY KEY,
+      household_id INTEGER NOT NULL REFERENCES households(id),
+      user_id INTEGER NOT NULL REFERENCES users(id),
+      role TEXT NOT NULL DEFAULT 'member',
+      joined_at TIMESTAMP NOT NULL DEFAULT NOW(),
+      UNIQUE(household_id, user_id)
+    );
+
+    ALTER TABLE plants ADD COLUMN IF NOT EXISTS household_id INTEGER REFERENCES households(id);
+    ALTER TABLE locations ADD COLUMN IF NOT EXISTS household_id INTEGER REFERENCES households(id);
+
     CREATE TABLE IF NOT EXISTS device_tokens (
       id SERIAL PRIMARY KEY,
       user_id INTEGER NOT NULL REFERENCES users(id),
@@ -159,6 +180,7 @@ app.use((req, res, next) => {
   // Run migrations
   await addUserIdToSpecies();
   await dropWateringHistory();
+  await migrateHouseholds();
 
   // Seed default plant species (global, userId = null)
   await seedPlantSpecies();

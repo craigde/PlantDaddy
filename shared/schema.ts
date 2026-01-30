@@ -8,6 +8,30 @@ export const users = pgTable("users", {
   password: text("password").notNull(),
 });
 
+// Households - groups of users sharing plants
+export const households = pgTable("households", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  inviteCode: text("invite_code").notNull().unique(),
+  createdBy: integer("created_by").references(() => users.id).notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const householdMembers = pgTable("household_members", {
+  id: serial("id").primaryKey(),
+  householdId: integer("household_id").references(() => households.id).notNull(),
+  userId: integer("user_id").references(() => users.id).notNull(),
+  role: text("role").notNull().default("member"), // "owner", "member", "caretaker"
+  joinedAt: timestamp("joined_at").notNull().defaultNow(),
+}, (table) => ({
+  uniqueMember: unique("household_member_unique").on(table.householdId, table.userId),
+}));
+
+export type Household = typeof households.$inferSelect;
+export type InsertHousehold = typeof households.$inferInsert;
+export type HouseholdMember = typeof householdMembers.$inferSelect;
+export type InsertHouseholdMember = typeof householdMembers.$inferInsert;
+
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
   password: true,
@@ -22,6 +46,7 @@ export const locations = pgTable("locations", {
   name: text("name").notNull(),
   isDefault: boolean("is_default").default(false),
   userId: integer("user_id").references(() => users.id).notNull(),
+  householdId: integer("household_id").references(() => households.id),
 }, (table) => {
   return {
     // Ensure location names are unique per user (but can be repeated across different users)
@@ -46,6 +71,7 @@ export const plants = pgTable("plants", {
   notes: text("notes"),
   imageUrl: text("image_url"),
   userId: integer("user_id").references(() => users.id).notNull(),
+  householdId: integer("household_id").references(() => households.id),
 });
 
 // Create base schema

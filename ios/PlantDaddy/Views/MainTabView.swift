@@ -71,6 +71,7 @@ struct TestNotificationResults: Codable {
 struct SettingsView: View {
     @ObservedObject private var authService = AuthService.shared
     @ObservedObject private var notificationService = NotificationService.shared
+    @ObservedObject private var householdService = HouseholdService.shared
 
     var body: some View {
         NavigationStack {
@@ -89,6 +90,49 @@ struct SettingsView: View {
                         authService.logout()
                     }
                     .foregroundColor(.red)
+                }
+
+                Section {
+                    if let household = householdService.activeHousehold {
+                        NavigationLink {
+                            HouseholdDetailView()
+                        } label: {
+                            HStack {
+                                Image(systemName: "house.fill")
+                                    .foregroundColor(.green)
+                                VStack(alignment: .leading) {
+                                    Text(household.name)
+                                    Text(household.role.capitalized)
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                            }
+                        }
+                    }
+
+                    if householdService.households.count > 1 {
+                        NavigationLink {
+                            HouseholdSwitcherView()
+                        } label: {
+                            HStack {
+                                Image(systemName: "arrow.left.arrow.right")
+                                Text("Switch Household")
+                            }
+                        }
+                    }
+
+                    NavigationLink {
+                        JoinHouseholdView()
+                    } label: {
+                        HStack {
+                            Image(systemName: "person.badge.plus")
+                            Text("Join a Household")
+                        }
+                    }
+                } header: {
+                    Text("Household")
+                } footer: {
+                    Text("Share your household with family members or housesitters so they can help care for your plants.")
                 }
 
                 Section {
