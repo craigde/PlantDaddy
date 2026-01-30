@@ -931,6 +931,94 @@ export class MultiUserStorage implements IStorage {
     return result.length > 0;
   }
 
+  // Admin methods
+
+  async getAllUsersAdmin(): Promise<{ id: number; username: string; isAdmin: boolean | null }[]> {
+    return await db.select({
+      id: users.id,
+      username: users.username,
+      isAdmin: users.isAdmin,
+    }).from(users).orderBy(asc(users.id));
+  }
+
+  async getUserStatsAdmin(userId: number): Promise<{
+    plantCount: number;
+    householdCount: number;
+    locationCount: number;
+  }> {
+    const [plantResult] = await db.select({ count: sql<number>`count(*)::int` })
+      .from(plants).where(eq(plants.userId, userId));
+    const [householdResult] = await db.select({ count: sql<number>`count(*)::int` })
+      .from(householdMembers).where(eq(householdMembers.userId, userId));
+    const [locationResult] = await db.select({ count: sql<number>`count(*)::int` })
+      .from(locations).where(eq(locations.userId, userId));
+    return {
+      plantCount: plantResult?.count ?? 0,
+      householdCount: householdResult?.count ?? 0,
+      locationCount: locationResult?.count ?? 0,
+    };
+  }
+
+  async deleteUserCompletely(userId: number): Promise<void> {
+    // Delete all user data in proper order to respect foreign key constraints
+
+    // 1. Care activities (references plants and users)
+    await db.delete(careActivities).where(eq(careActivities.userId, userId));
+
+    // 2. Plant health records (references plants and users)
+    await db.delete(plantHealthRecords).where(eq(plantHealthRecords.userId, userId));
+
+    // 3. Delete watering history if table exists (legacy table)
+    try {
+      await db.execute(sql`DELETE FROM watering_history WHERE user_id = ${userId}`);
+    } catch {
+      // Table may not exist
+    }
+
+    // 4. Plants (references users and households)
+    await db.delete(plants).where(eq(plants.userId, userId));
+
+    // 5. Locations (references users and households)
+    await db.delete(locations).where(eq(locations.userId, userId));
+
+    // 6. Device tokens
+    await db.delete(deviceTokens).where(eq(deviceTokens.userId, userId));
+
+    // 7. Notification settings
+    await db.delete(notificationSettings).where(eq(notificationSettings.userId, userId));
+
+    // 8. User-created plant species
+    await db.delete(plantSpecies).where(eq(plantSpecies.userId, userId));
+
+    // 9. Household memberships — remove user from all households
+    const membershipsBefore = await db.select().from(householdMembers)
+      .where(eq(householdMembers.userId, userId));
+    await db.delete(householdMembers).where(eq(householdMembers.userId, userId));
+
+    // 10. Delete orphaned households (no remaining members)
+    for (const m of membershipsBefore) {
+      const remaining = await db.select({ count: sql<number>`count(*)::int` })
+        .from(householdMembers)
+        .where(eq(householdMembers.householdId, m.householdId));
+      if ((remaining[0]?.count ?? 0) === 0) {
+        // Clean up any data that might reference this household
+        await db.delete(plants).where(eq(plants.householdId, m.householdId));
+        await db.delete(locations).where(eq(locations.householdId, m.householdId));
+        await db.delete(households).where(eq(households.id, m.householdId));
+      }
+    }
+
+    // 11. Delete sessions for this user
+    try {
+      await db.execute(sql`DELETE FROM session WHERE sess::jsonb -> 'passport' ->> 'user' = ${String(userId)}`);
+    } catch {
+      // Session table format may differ
+    }
+
+    // 12. Delete the user record
+    await db.delete(users).where(eq(users.id, userId));
+  }
+
   async regenerateInviteCode(householdId: number): Promise<Household> {
     let inviteCode: string;
     let attempts = 0;

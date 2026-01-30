@@ -39,16 +39,37 @@ struct RegisterView: View {
 
                 // Registration Form
                 VStack(spacing: 16) {
-                    TextField("Username", text: $username)
-                        .textFieldStyle(.roundedBorder)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
+                    VStack(alignment: .leading, spacing: 4) {
+                        TextField("Username", text: $username)
+                            .textFieldStyle(.roundedBorder)
+                            .textInputAutocapitalization(.never)
+                            .autocorrectionDisabled()
+                        if !username.isEmpty && username.count < 3 {
+                            Text("Username must be at least 3 characters")
+                                .font(.caption2)
+                                .foregroundColor(.orange)
+                        }
+                    }
 
-                    SecureField("Password", text: $password)
-                        .textFieldStyle(.roundedBorder)
+                    VStack(alignment: .leading, spacing: 4) {
+                        SecureField("Password", text: $password)
+                            .textFieldStyle(.roundedBorder)
+                        if !password.isEmpty && password.count < 6 {
+                            Text("Password must be at least 6 characters")
+                                .font(.caption2)
+                                .foregroundColor(.orange)
+                        }
+                    }
 
-                    SecureField("Confirm Password", text: $confirmPassword)
-                        .textFieldStyle(.roundedBorder)
+                    VStack(alignment: .leading, spacing: 4) {
+                        SecureField("Confirm Password", text: $confirmPassword)
+                            .textFieldStyle(.roundedBorder)
+                        if !confirmPassword.isEmpty && password != confirmPassword {
+                            Text("Passwords do not match")
+                                .font(.caption2)
+                                .foregroundColor(.orange)
+                        }
+                    }
 
                     if let errorMessage = errorMessage {
                         Text(errorMessage)
@@ -68,7 +89,7 @@ struct RegisterView: View {
                     }
                     .frame(maxWidth: .infinity)
                     .padding()
-                    .background(Color.green)
+                    .background(isFormValid ? Color.green : Color.green.opacity(0.4))
                     .foregroundColor(.white)
                     .cornerRadius(10)
                     .disabled(isLoading || !isFormValid)
@@ -89,11 +110,9 @@ struct RegisterView: View {
     }
 
     private var isFormValid: Bool {
-        !username.isEmpty &&
-        !password.isEmpty &&
-        !confirmPassword.isEmpty &&
-        password == confirmPassword &&
-        password.count >= 6
+        username.count >= 3 &&
+        password.count >= 6 &&
+        password == confirmPassword
     }
 
     private func register() {

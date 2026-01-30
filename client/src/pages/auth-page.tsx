@@ -40,6 +40,7 @@ export default function AuthPage() {
 
   const registerForm = useForm<RegisterFormValues>({
     resolver: zodResolver(registerSchema),
+    mode: "onChange",
     defaultValues: {
       username: "",
       password: "",
@@ -168,10 +169,10 @@ export default function AuthPage() {
                         </FormItem>
                       )}
                     />
-                    <Button 
-                      type="submit" 
-                      className="w-full" 
-                      disabled={registerMutation.isPending}
+                    <Button
+                      type="submit"
+                      className="w-full"
+                      disabled={registerMutation.isPending || !registerForm.formState.isValid}
                     >
                       {registerMutation.isPending ? (
                         <>

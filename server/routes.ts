@@ -100,7 +100,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   apiRouter.post("/register", async (req: Request, res: Response) => {
     try {
       const userData = insertUserSchema.parse(req.body);
-      
+
+      // Validate password length
+      if (!userData.password || userData.password.length < 6) {
+        return res.status(400).json({ error: "Password must be at least 6 characters" });
+      }
+
+      // Validate username length
+      if (!userData.username || userData.username.length < 3) {
+        return res.status(400).json({ error: "Username must be at least 3 characters" });
+      }
+
       // Check if user already exists
       const existingUser = await dbStorage.getUserByUsername(userData.username);
       if (existingUser) {
@@ -266,6 +276,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   apiRouter.post("/token-register", async (req: Request, res: Response) => {
     try {
       const userData = insertUserSchema.parse(req.body);
+
+      // Validate password length
+      if (!userData.password || userData.password.length < 6) {
+        return res.status(400).json({ error: "Password must be at least 6 characters" });
+      }
+
+      // Validate username length
+      if (!userData.username || userData.username.length < 3) {
+        return res.status(400).json({ error: "Username must be at least 3 characters" });
+      }
 
       // Check if user already exists
       const existingUser = await dbStorage.getUserByUsername(userData.username);
@@ -648,7 +668,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!name) return res.status(400).json({ error: "Household name is required" });
 
       const household = await dbStorage.createHousehold(name, userId);
-      res.status(201).json(household);
+      res.status(201).json({ ...household, role: "owner" });
     } catch (error) {
       res.status(500).json({ message: "Failed to create household" });
     }
@@ -676,7 +696,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const updated = await dbStorage.updateHousehold(householdId, name.trim());
       if (!updated) return res.status(404).json({ error: "Household not found" });
 
-      res.json(updated);
+      res.json({ ...updated, role: "owner" });
     } catch (error) {
       res.status(500).json({ message: "Failed to update household" });
     }
@@ -726,7 +746,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await dbStorage.addHouseholdMember(household.id, userId, "member");
 
       const userHouseholds = await dbStorage.getUserHouseholds(userId);
-      res.json({ household, households: userHouseholds });
+      res.json({ household: { ...household, role: "member" }, households: userHouseholds });
     } catch (error) {
       res.status(500).json({ message: "Failed to join household" });
     }
@@ -748,7 +768,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const updated = await dbStorage.regenerateInviteCode(householdId);
-      res.json(updated);
+      res.json({ ...updated, role: "owner" });
     } catch (error) {
       res.status(500).json({ message: "Failed to regenerate invite code" });
     }
@@ -1986,15 +2006,71 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ============================================================
+  // Admin routes — require authenticated admin user
+  // ============================================================
+
+  function isAdmin(req: Request, res: Response, next: NextFunction) {
+    if (!req.user) {
+      return res.status(401).json({ error: "Authentication required" });
+    }
+    if (!(req.user as any).isAdmin) {
+      return res.status(403).json({ error: "Admin access required" });
+    }
+    next();
+  }
+
+  apiRouter.get("/admin/users", isAuthenticated, isAdmin, async (req: Request, res: Response) => {
+    try {
+      const allUsers = await dbStorage.getAllUsersAdmin();
+      // Fetch stats for each user
+      const usersWithStats = await Promise.all(
+        allUsers.map(async (u) => {
+          const stats = await dbStorage.getUserStatsAdmin(u.id);
+          return { ...u, ...stats };
+        })
+      );
+      res.json(usersWithStats);
+    } catch (error) {
+      console.error("Admin list users error:", error);
+      res.status(500).json({ error: "Failed to list users" });
+    }
+  });
+
+  apiRouter.delete("/admin/users/:id", isAuthenticated, isAdmin, async (req: Request, res: Response) => {
+    const userId = parseInt(req.params.id);
+    if (isNaN(userId)) {
+      return res.status(400).json({ error: "Invalid user ID" });
+    }
+
+    // Prevent deleting yourself
+    if ((req.user as any).id === userId) {
+      return res.status(400).json({ error: "Cannot delete your own account" });
+    }
+
+    try {
+      const user = await dbStorage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      await dbStorage.deleteUserCompletely(userId);
+      res.json({ message: `User "${user.username}" and all associated data deleted` });
+    } catch (error) {
+      console.error("Admin delete user error:", error);
+      res.status(500).json({ error: "Failed to delete user" });
+    }
+  });
+
   // Add API router to app
   // Apply user context middleware before API routes to make user data available
   app.use(setUserContext);
-  
+
   // Health check endpoint for Railway/deployment monitoring
   app.get("/api/health", (req: Request, res: Response) => {
     res.status(200).json({ status: "ok", timestamp: new Date().toISOString() });
   });
-  
+
   // Mount API routes
   app.use("/api", apiRouter);
 
