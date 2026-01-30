@@ -254,7 +254,6 @@ export function PlantHealthTracker({ plantId, plantName }: PlantHealthTrackerPro
                         </div>
                       ) : (
                         <R2ImageUploader
-                          plantId={plantId}
                           onUpload={handleImageUpload}
                           className="w-full"
                         >
