@@ -44,7 +44,6 @@ struct IdentifyPlantView: View {
     @State private var errorMessage: String?
     @State private var selectedOrgan = "auto"
     @State private var showingCamera = false
-    @State private var showAddPlant = false
     @State private var selectedResult: IdentifyResult?
 
     private let organOptions = [
@@ -98,14 +97,12 @@ struct IdentifyPlantView: View {
                     }
                 )
             }
-            .sheet(isPresented: $showAddPlant) {
-                if let result = selectedResult {
-                    AddPlantView(
-                        prefillName: result.displayName,
-                        prefillSpecies: result.scientificName,
-                        prefillImage: selectedImage
-                    )
-                }
+            .sheet(item: $selectedResult) { result in
+                AddPlantView(
+                    prefillName: result.displayName,
+                    prefillSpecies: result.scientificName,
+                    prefillImage: selectedImage
+                )
             }
         }
     }
@@ -261,7 +258,6 @@ struct IdentifyPlantView: View {
             ForEach(results) { result in
                 Button {
                     selectedResult = result
-                    showAddPlant = true
                 } label: {
                     HStack {
                         VStack(alignment: .leading, spacing: 4) {
