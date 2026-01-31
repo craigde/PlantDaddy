@@ -173,6 +173,26 @@ export class R2StorageService {
   }
 
   /**
+   * Fetch a file from R2 as a Buffer
+   * @param key - The object key in R2
+   * @returns Object containing the file buffer and content type
+   */
+  async getFile(key: string): Promise<{ body: Buffer; contentType: string }> {
+    const command = new GetObjectCommand({
+      Bucket: this.bucket,
+      Key: key,
+    });
+    const result = await this.client.send(command);
+
+    const chunks: Uint8Array[] = [];
+    for await (const chunk of result.Body as any) {
+      chunks.push(chunk);
+    }
+    const buffer = Buffer.concat(chunks);
+    return { body: buffer, contentType: result.ContentType || "image/jpeg" };
+  }
+
+  /**
    * Delete an object from R2
    * @param key - The object key to delete
    */
