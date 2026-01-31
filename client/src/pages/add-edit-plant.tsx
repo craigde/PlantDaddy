@@ -39,7 +39,7 @@ export default function AddEditPlant() {
   const id = params?.id;
   const [_, navigate] = useLocation();
   const { toast } = useToast();
-  const isEditing = id !== "new";
+  const isEditing = !!id && id !== "new";
   const plantId = isEditing && id ? parseInt(id) : null;
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   
