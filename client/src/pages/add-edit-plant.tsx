@@ -149,18 +149,38 @@ export default function AddEditPlant() {
       
       // If the species field is populated, ensure it matches one of our valid species options
       let speciesValue = recommendedPlant.species || form.getValues().species;
-      
+      let matchedWateringFrequency = recommendedPlant.wateringFrequency || form.getValues().wateringFrequency;
+      let matchedImageUrl = recommendedPlant.imageUrl || form.getValues().imageUrl;
+
       // Log available species and the one we're trying to select
       console.log("Species from URL:", speciesValue);
-      console.log("Available species:", plantSpeciesData.map(s => s.name));
-      
-      // Validate the species exists in our dropdown
-      const speciesExists = plantSpeciesData.some(s => s.name === speciesValue);
-      if (!speciesExists) {
+      console.log("Available species:", plantSpeciesData.map(s => ({ name: s.name, scientific: s.scientificName })));
+
+      // Try exact match by name first
+      let matchedSpecies = plantSpeciesData.find(s => s.name === speciesValue);
+
+      // Try matching by scientific name (case-insensitive, partial match)
+      if (!matchedSpecies && speciesValue) {
+        const lower = speciesValue.toLowerCase();
+        matchedSpecies = plantSpeciesData.find(s =>
+          s.scientificName?.toLowerCase() === lower ||
+          s.name.toLowerCase() === lower ||
+          s.scientificName?.toLowerCase().includes(lower) ||
+          lower.includes(s.scientificName?.toLowerCase() || '')
+        );
+      }
+
+      if (matchedSpecies) {
+        console.log("Species matched:", matchedSpecies.name, "from", speciesValue);
+        speciesValue = matchedSpecies.name;
+        matchedWateringFrequency = matchedSpecies.wateringFrequency;
+        if (matchedSpecies.imageUrl) {
+          matchedImageUrl = matchedSpecies.imageUrl;
+          setImagePreview(matchedSpecies.imageUrl);
+        }
+      } else {
         console.log("Species not found in dropdown options, using empty value");
         speciesValue = "";
-      } else {
-        console.log("Species found in dropdown options:", speciesValue);
       }
       
       form.reset({
@@ -168,10 +188,10 @@ export default function AddEditPlant() {
         name: recommendedPlant.name || form.getValues().name,
         species: speciesValue,
         location: locations[0].name,
-        wateringFrequency: recommendedPlant.wateringFrequency || form.getValues().wateringFrequency,
-        imageUrl: recommendedPlant.imageUrl,
+        wateringFrequency: matchedWateringFrequency,
+        imageUrl: matchedImageUrl,
       });
-      console.log("Updated form with recommended plant data including imageUrl:", recommendedPlant.imageUrl);
+      console.log("Updated form with recommended plant data, species:", speciesValue, "imageUrl:", matchedImageUrl);
     } else if (!isEditing && !isLoadingLocations && locations && locations.length > 0) {
       form.reset({
         ...form.getValues(),

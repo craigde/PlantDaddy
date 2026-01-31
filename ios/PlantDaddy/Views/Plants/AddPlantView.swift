@@ -215,9 +215,23 @@ struct AddPlantView: View {
                 if let prefillName = prefillName, name.isEmpty {
                     name = prefillName
                 }
-                if let prefillSpecies = prefillSpecies, customSpeciesName.isEmpty {
-                    customSpeciesName = prefillSpecies
-                    useCustomSpecies = true
+                if let prefillSpecies = prefillSpecies {
+                    // Try to match against known species in the explorer
+                    let speciesLower = prefillSpecies.lowercased()
+                    let match = plantService.plantSpecies.first { species in
+                        species.scientificName.lowercased() == speciesLower ||
+                        species.name.lowercased() == speciesLower ||
+                        species.scientificName.lowercased().contains(speciesLower) ||
+                        speciesLower.contains(species.scientificName.lowercased())
+                    }
+                    if let match = match {
+                        selectedSpecies = match
+                        wateringFrequency = match.wateringFrequency
+                        useCustomSpecies = false
+                    } else {
+                        customSpeciesName = prefillSpecies
+                        useCustomSpecies = true
+                    }
                 }
                 if let prefillImage = prefillImage, selectedImage == nil {
                     selectedImage = prefillImage

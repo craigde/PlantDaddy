@@ -151,11 +151,11 @@ export default function IdentifyPlant() {
               </div>
             ) : (
               <div className="space-y-3">
-                <div className="relative rounded-lg overflow-hidden">
+                <div className="relative rounded-lg overflow-hidden max-w-sm mx-auto">
                   <img
                     src={imagePreview}
                     alt="Plant to identify"
-                    className="w-full h-48 object-cover"
+                    className="w-full max-h-64 object-contain"
                   />
                   <button
                     onClick={handleReset}
