@@ -328,13 +328,6 @@ struct IdentifyPlantView: View {
         results = nil
 
         do {
-            let imageUploadService = ImageUploadService.shared
-            guard let imageData = image.jpegData(compressionQuality: 0.7) else {
-                errorMessage = "Failed to process image"
-                isIdentifying = false
-                return
-            }
-
             // Resize if too large
             let maxSize: CGFloat = 1024
             let resizedImage: UIImage
