@@ -18,6 +18,11 @@ struct MainTabView: View {
                     Label("Plants", systemImage: "leaf.fill")
                 }
 
+            IdentifyPlantView()
+                .tabItem {
+                    Label("Identify", systemImage: "camera.viewfinder")
+                }
+
             PlantExplorerView()
                 .tabItem {
                     Label("Explore", systemImage: "magnifyingglass")
