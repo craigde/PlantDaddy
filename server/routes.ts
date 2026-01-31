@@ -1176,6 +1176,69 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // PlantNet plant identification endpoint
+  // Accepts an image upload and proxies to PlantNet API for species identification
+  apiRouter.post("/identify-plant", isAuthenticated, r2Upload.single('image'), async (req: Request, res: Response) => {
+    try {
+      const apiKey = process.env.PLANTNET_API_KEY;
+      if (!apiKey) {
+        return res.status(503).json({ message: "Plant identification service is not configured. Set PLANTNET_API_KEY environment variable." });
+      }
+
+      if (!req.file) {
+        return res.status(400).json({ message: "No image file provided" });
+      }
+
+      const organ = req.body.organ || 'auto';
+      console.log("[PlantNet] Identifying plant, organ:", organ, "file:", req.file.originalname, "size:", req.file.size);
+
+      // Build multipart form data for PlantNet API
+      const formData = new FormData();
+      formData.append('organs', organ);
+      formData.append('images', new Blob([req.file.buffer], { type: req.file.mimetype }), req.file.originalname || 'plant.jpg');
+
+      const plantnetUrl = `https://my-api.plantnet.org/v2/identify/all?api-key=${encodeURIComponent(apiKey)}&lang=en&nb-results=5`;
+
+      const response = await fetch(plantnetUrl, {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("[PlantNet] API error:", response.status, errorText);
+
+        if (response.status === 404) {
+          return res.status(404).json({ message: "Could not identify plant species from this image. Try a clearer photo of leaves or flowers." });
+        }
+
+        return res.status(response.status).json({ message: "Plant identification failed", error: errorText });
+      }
+
+      const data: any = await response.json();
+
+      // Transform PlantNet response to a simpler format for the client
+      const results = (data.results || []).map((result: any) => ({
+        score: result.score,
+        scientificName: result.species?.scientificNameWithoutAuthor || '',
+        commonNames: result.species?.commonNames || [],
+        family: result.species?.family?.scientificNameWithoutAuthor || '',
+        genus: result.species?.genus?.scientificNameWithoutAuthor || '',
+      }));
+
+      console.log("[PlantNet] Identified:", data.bestMatch, "with", results.length, "results");
+
+      res.json({
+        bestMatch: data.bestMatch || null,
+        results,
+        remainingRequests: data.remainingIdentificationRequests,
+      });
+    } catch (error: any) {
+      console.error("[PlantNet] Identification error:", error);
+      res.status(500).json({ message: "Plant identification failed", error: error?.message });
+    }
+  });
+
   // Notification endpoints
   apiRouter.post("/notifications/test", async (req: Request, res: Response) => {
     try {

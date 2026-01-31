@@ -11,6 +11,11 @@ struct AddPlantView: View {
     @Environment(\.dismiss) private var dismiss
     @ObservedObject private var plantService = PlantService.shared
 
+    // Optional pre-fill from plant identification
+    var prefillName: String?
+    var prefillSpecies: String?
+    var prefillImage: UIImage?
+
     @State private var name: String = ""
     @State private var selectedSpecies: PlantSpecies?
     @State private var customSpeciesName: String = ""
@@ -204,6 +209,18 @@ struct AddPlantView: View {
                 await plantService.fetchPlantSpecies()
                 if let firstLocation = plantService.locations.first {
                     selectedLocation = firstLocation.name
+                }
+
+                // Apply pre-fill from plant identification
+                if let prefillName = prefillName, name.isEmpty {
+                    name = prefillName
+                }
+                if let prefillSpecies = prefillSpecies, customSpeciesName.isEmpty {
+                    customSpeciesName = prefillSpecies
+                    useCustomSpecies = true
+                }
+                if let prefillImage = prefillImage, selectedImage == nil {
+                    selectedImage = prefillImage
                 }
             }
         }
