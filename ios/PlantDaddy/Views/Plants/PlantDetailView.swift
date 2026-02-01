@@ -7,6 +7,24 @@
 
 import SwiftUI
 
+// MARK: - Disease Detection Models
+
+struct DiseaseResult: Codable {
+    let label: String
+    let name: String
+    let score: Double?
+    let categories: [String]
+}
+
+struct DiseaseDetectResponse: Codable {
+    let results: [DiseaseResult]
+    let message: String?
+}
+
+struct DetectDiseaseRequest: Codable {
+    let imageUrl: String
+}
+
 struct PlantDetailView: View {
     let plantId: Int
 
@@ -23,6 +41,8 @@ struct PlantDetailView: View {
     @State private var isUploadingImage = false
     @State private var showingEditSheet = false
     @State private var expandedTimelineItemId: String?
+    @State private var diseaseResults: [String: DiseaseDetectResponse] = [:]
+    @State private var detectingDiseaseItemId: String?
     @Environment(\.dismiss) private var dismiss
 
     private let imageUploadService = ImageUploadService.shared
@@ -388,6 +408,83 @@ struct PlantDetailView: View {
                                         .font(.subheadline)
                                         .foregroundColor(.secondary)
                                 }
+
+                                // Disease detection for health events with photos
+                                if item.isHealthRecord, let rawUrl = item.rawImageUrl {
+                                    if let results = diseaseResults[item.id] {
+                                        // Show results
+                                        VStack(alignment: .leading, spacing: 6) {
+                                            Text("Disease Analysis")
+                                                .font(.caption)
+                                                .fontWeight(.medium)
+                                                .foregroundColor(.secondary)
+                                                .textCase(.uppercase)
+
+                                            if results.results.isEmpty {
+                                                Text("No diseases detected")
+                                                    .font(.subheadline)
+                                                    .foregroundColor(.green)
+                                            } else {
+                                                ForEach(Array(results.results.enumerated()), id: \.offset) { _, disease in
+                                                    HStack {
+                                                        Text(disease.label)
+                                                            .font(.subheadline)
+                                                        Spacer()
+                                                        if let score = disease.score {
+                                                            Text("\(Int(score * 100))%")
+                                                                .font(.caption)
+                                                                .fontWeight(.semibold)
+                                                                .padding(.horizontal, 8)
+                                                                .padding(.vertical, 2)
+                                                                .background(
+                                                                    score >= 0.5 ? Color.red.opacity(0.15) :
+                                                                    score >= 0.2 ? Color.orange.opacity(0.15) :
+                                                                    Color.gray.opacity(0.15)
+                                                                )
+                                                                .foregroundColor(
+                                                                    score >= 0.5 ? .red :
+                                                                    score >= 0.2 ? .orange :
+                                                                    .gray
+                                                                )
+                                                                .clipShape(Capsule())
+                                                        }
+                                                    }
+                                                }
+                                            }
+
+                                            Text("Results are informational, not a professional diagnosis.")
+                                                .font(.caption2)
+                                                .italic()
+                                                .foregroundColor(.secondary)
+                                        }
+                                        .padding(10)
+                                        .background(Color(.systemGray6))
+                                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                                    } else {
+                                        // Show detect button
+                                        Button {
+                                            Task { await detectDisease(itemId: item.id, imageUrl: rawUrl) }
+                                        } label: {
+                                            HStack(spacing: 6) {
+                                                if detectingDiseaseItemId == item.id {
+                                                    ProgressView()
+                                                        .controlSize(.small)
+                                                        .tint(.orange)
+                                                } else {
+                                                    Image(systemName: "magnifyingglass")
+                                                        .font(.caption)
+                                                }
+                                                Text(detectingDiseaseItemId == item.id ? "Analyzing..." : "Detect Disease")
+                                                    .font(.subheadline)
+                                            }
+                                            .padding(.horizontal, 12)
+                                            .padding(.vertical, 6)
+                                        }
+                                        .buttonStyle(.bordered)
+                                        .tint(.orange)
+                                        .disabled(detectingDiseaseItemId == item.id)
+                                    }
+                                }
                             }
                             .padding(.leading, 52)
                             .padding(.top, 8)
@@ -410,10 +507,12 @@ struct PlantDetailView: View {
         let date: Date
         let notes: String?
         let imageUrl: String?
+        let rawImageUrl: String?
         let username: String?
+        let isHealthRecord: Bool
 
         var hasDetails: Bool {
-            notes != nil || imageUrl != nil
+            notes != nil || imageUrl != nil || isHealthRecord
         }
     }
 
@@ -430,7 +529,9 @@ struct PlantDetailView: View {
                 date: activity.performedAt,
                 notes: activity.notes,
                 imageUrl: nil,
-                username: activity.username
+                rawImageUrl: nil,
+                username: activity.username,
+                isHealthRecord: false
             ))
         }
 
@@ -444,7 +545,9 @@ struct PlantDetailView: View {
                 date: record.recordedAt,
                 notes: record.notes,
                 imageUrl: record.fullImageUrl,
-                username: record.username
+                rawImageUrl: record.imageUrl,
+                username: record.username,
+                isHealthRecord: true
             ))
         }
 
@@ -521,6 +624,28 @@ struct PlantDetailView: View {
             }
             isUploadingImage = false
         }
+    }
+
+    private func detectDisease(itemId: String, imageUrl: String) async {
+        detectingDiseaseItemId = itemId
+
+        do {
+            let response: DiseaseDetectResponse = try await APIClient.shared.request(
+                endpoint: .detectDisease,
+                method: .post,
+                body: DetectDiseaseRequest(imageUrl: imageUrl)
+            )
+            diseaseResults[itemId] = response
+        } catch {
+            print("Error detecting disease: \(error)")
+            // Show empty results with error message on failure
+            diseaseResults[itemId] = DiseaseDetectResponse(
+                results: [],
+                message: "Detection failed: \(error.localizedDescription)"
+            )
+        }
+
+        detectingDiseaseItemId = nil
     }
 
     private func removePhoto(for plantId: Int) {

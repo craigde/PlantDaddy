@@ -32,7 +32,20 @@ import {
   Trash2,
   ChevronDown,
   ChevronUp,
+  Search,
 } from "lucide-react";
+
+interface DiseaseResult {
+  label: string;
+  name: string;
+  score: number | null;
+  categories: string[];
+}
+
+interface DiseaseResponse {
+  results: DiseaseResult[];
+  message?: string;
+}
 
 interface TimelineEvent {
   id: string;
@@ -121,6 +134,8 @@ export function PlantCareTimeline({ plantId, plantName }: PlantCareTimelineProps
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [uploadedImageUrl, setUploadedImageUrl] = useState<string | null>(null);
   const [expandedEventId, setExpandedEventId] = useState<string | null>(null);
+  const [diseaseResults, setDiseaseResults] = useState<Record<string, DiseaseResponse>>({});
+  const [detectingDiseaseId, setDetectingDiseaseId] = useState<string | null>(null);
 
   const { toast } = useToast();
   const { useGetPlantCareActivities } = useCareActivities();
@@ -226,6 +241,41 @@ export function PlantCareTimeline({ plantId, plantName }: PlantCareTimelineProps
         description: "Please try again.",
         variant: "destructive",
       });
+    }
+  };
+
+  const handleDetectDisease = async (eventId: string, imageUrl: string) => {
+    setDetectingDiseaseId(eventId);
+    try {
+      const res = await fetch("/api/detect-disease", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ imageUrl }),
+      });
+
+      if (!res.ok) {
+        const error = await res.json().catch(() => ({ message: "Detection failed" }));
+        throw new Error(error.message || "Detection failed");
+      }
+
+      const data: DiseaseResponse = await res.json();
+      setDiseaseResults((prev) => ({ ...prev, [eventId]: data }));
+
+      if (data.results.length === 0) {
+        toast({
+          title: "No diseases detected",
+          description: data.message || "The photo appears healthy or could not be analyzed.",
+        });
+      }
+    } catch (error: any) {
+      toast({
+        title: "Disease detection failed",
+        description: error.message || "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setDetectingDiseaseId(null);
     }
   };
 
@@ -495,6 +545,65 @@ export function PlantCareTimeline({ plantId, plantName }: PlantCareTimelineProps
                           <p className="text-sm text-gray-600" data-testid={`event-description-${event.id}`}>
                             {event.description}
                           </p>
+                        )}
+                        {/* Disease detection for health events with photos */}
+                        {event.type === 'health' && event.imageUrl && (
+                          <div className="pt-1">
+                            {!diseaseResults[event.id] ? (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDetectDisease(event.id, event.imageUrl!);
+                                }}
+                                disabled={detectingDiseaseId === event.id}
+                              >
+                                {detectingDiseaseId === event.id ? (
+                                  <>
+                                    <Loader2 className="h-3 w-3 mr-2 animate-spin" />
+                                    Analyzing...
+                                  </>
+                                ) : (
+                                  <>
+                                    <Search className="h-3 w-3 mr-2" />
+                                    Detect Disease
+                                  </>
+                                )}
+                              </Button>
+                            ) : (
+                              <div className="bg-muted/50 rounded-lg p-3 space-y-2">
+                                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                                  Disease Analysis
+                                </p>
+                                {diseaseResults[event.id].results.length > 0 ? (
+                                  <div className="space-y-1.5">
+                                    {diseaseResults[event.id].results.map((d, i) => (
+                                      <div key={i} className="flex items-center justify-between text-sm">
+                                        <span>{d.label}</span>
+                                        {d.score != null && (
+                                          <span className={`text-xs font-medium px-2 py-0.5 rounded ${
+                                            d.score >= 0.5
+                                              ? "bg-red-100 text-red-800"
+                                              : d.score >= 0.2
+                                              ? "bg-yellow-100 text-yellow-800"
+                                              : "bg-gray-100 text-gray-600"
+                                          }`}>
+                                            {Math.round(d.score * 100)}%
+                                          </span>
+                                        )}
+                                      </div>
+                                    ))}
+                                  </div>
+                                ) : (
+                                  <p className="text-sm text-green-700">No diseases detected</p>
+                                )}
+                                <p className="text-xs text-muted-foreground italic">
+                                  Results are informational, not a professional diagnosis.
+                                </p>
+                              </div>
+                            )}
+                          </div>
                         )}
                       </div>
                     )}

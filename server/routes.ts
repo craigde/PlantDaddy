@@ -1239,6 +1239,75 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // PlantNet disease detection endpoint
+  // Accepts an imageUrl (R2 path) and proxies to PlantNet disease API
+  apiRouter.post("/detect-disease", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const apiKey = process.env.PLANTNET_API_KEY;
+      if (!apiKey) {
+        return res.status(503).json({ message: "Plant identification service is not configured. Set PLANTNET_API_KEY environment variable." });
+      }
+
+      const { imageUrl } = req.body;
+      if (!imageUrl) {
+        return res.status(400).json({ message: "No imageUrl provided" });
+      }
+
+      // Fetch image from R2
+      const r2Service = new R2StorageService();
+      const key = r2Service.extractKeyFromUrl(imageUrl);
+      if (!key) {
+        return res.status(400).json({ message: "Invalid image URL" });
+      }
+
+      console.log("[PlantNet Disease] Fetching image from R2, key:", key);
+      const { body: imageBuffer, contentType } = await r2Service.getFile(key);
+      console.log("[PlantNet Disease] Image fetched, size:", imageBuffer.length, "type:", contentType);
+
+      // Build multipart form data for PlantNet disease API
+      const formData = new FormData();
+      formData.append('organs', 'auto');
+      formData.append('images', new Blob([imageBuffer], { type: contentType }), 'plant.jpg');
+
+      const plantnetUrl = `https://my-api.plantnet.org/v2/diseases/identify?api-key=${encodeURIComponent(apiKey)}&lang=en&nb-results=5`;
+
+      const response = await fetch(plantnetUrl, {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("[PlantNet Disease] API error:", response.status, errorText);
+
+        if (response.status === 404) {
+          return res.json({ results: [], message: "No diseases detected in this image." });
+        }
+
+        return res.status(response.status).json({ message: "Disease detection failed", error: errorText });
+      }
+
+      const data: any = await response.json();
+
+      const results = (data.results || []).map((result: any) => ({
+        label: result.label || '',
+        name: result.name || '',
+        score: result.score ?? null,
+        categories: result.categories || [],
+      }));
+
+      console.log("[PlantNet Disease] Detected:", results.length, "results");
+
+      res.json({
+        results,
+        remainingRequests: data.remainingIdentificationRequests,
+      });
+    } catch (error: any) {
+      console.error("[PlantNet Disease] Detection error:", error);
+      res.status(500).json({ message: "Disease detection failed", error: error?.message });
+    }
+  });
+
   // Notification endpoints
   apiRouter.post("/notifications/test", async (req: Request, res: Response) => {
     try {
