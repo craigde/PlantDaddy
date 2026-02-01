@@ -18,6 +18,153 @@ import { ExportService } from "./export-service";
 import { ImportService } from "./import-service";
 import { isOverdue } from "../client/src/lib/date-utils";
 
+// Common EPPO codes for plant diseases/pests mapped to human-readable names.
+// Used as a fast lookup when resolving PlantNet disease identification results.
+const EPPO_CODE_NAMES: Record<string, string> = {
+  // Fungi
+  'BOTRCI': 'Botrytis cinerea (Gray Mold)',
+  'PHYTIN': 'Phytophthora infestans (Late Blight)',
+  'PUCCRE': 'Puccinia recondita (Leaf Rust)',
+  'FUSAOX': 'Fusarium oxysporum (Fusarium Wilt)',
+  'ERWICH': 'Erwinia amylovora (Fire Blight)',
+  'ALTEAL': 'Alternaria alternata (Alternaria Leaf Spot)',
+  'ALTESL': 'Alternaria solani (Early Blight)',
+  'COLLAC': 'Colletotrichum acutatum (Anthracnose)',
+  'COLLGL': 'Colletotrichum gloeosporioides (Anthracnose)',
+  'PYRPBR': 'Pyricularia oryzae (Rice Blast)',
+  'DIDYLY': 'Didymella lycopersici (Stem Rot)',
+  'PSDCCA': 'Pseudocercospora (Leaf Spot)',
+  'RHIZSO': 'Rhizoctonia solani (Root Rot)',
+  'SCLESF': 'Sclerotinia sclerotiorum (White Mold)',
+  'PHYTCP': 'Phytophthora capsici (Phytophthora Blight)',
+  'PHYTCN': 'Phytophthora cinnamomi (Root Rot)',
+  'PLASVI': 'Plasmopara viticola (Downy Mildew)',
+  'UNCINE': 'Erysiphe necator (Powdery Mildew)',
+  'ERYSCI': 'Erysiphe cichoracearum (Powdery Mildew)',
+  'SPHRPA': 'Podosphaera pannosa (Powdery Mildew)',
+  'VENTIN': 'Venturia inaequalis (Apple Scab)',
+  'SEPTTR': 'Zymoseptoria tritici (Septoria Leaf Blotch)',
+  'CERCBE': 'Cercospora beticola (Cercospora Leaf Spot)',
+  'MONIFG': 'Monilinia fructigena (Brown Rot)',
+  'MONIFC': 'Monilinia fructicola (Brown Rot)',
+  'VERTDA': 'Verticillium dahliae (Verticillium Wilt)',
+  'PYTHIU': 'Pythium (Damping Off)',
+  'THIEBS': 'Thielaviopsis basicola (Black Root Rot)',
+  'MYCOGR': 'Mycosphaerella graminicola (Septoria Blotch)',
+  'CLADOS': 'Cladosporium (Cladosporium Leaf Mold)',
+  'USTIMA': 'Ustilago maydis (Corn Smut)',
+  'PUCCGT': 'Puccinia graminis f. sp. tritici (Stem Rust)',
+  'PUCCST': 'Puccinia striiformis (Stripe Rust)',
+  // Bacteria
+  'PSDMSY': 'Pseudomonas syringae (Bacterial Blight)',
+  'PSDMSA': 'Pseudomonas savastanoi (Olive Knot)',
+  'XANTCM': 'Xanthomonas campestris (Black Rot)',
+  'RALSSO': 'Ralstonia solanacearum (Bacterial Wilt)',
+  'AGRBTU': 'Agrobacterium tumefaciens (Crown Gall)',
+  'PECCAT': 'Pectobacterium atrosepticum (Blackleg)',
+  'PECTCA': 'Pectobacterium carotovorum (Soft Rot)',
+  // Viruses
+  'TMV000': 'Tobacco Mosaic Virus',
+  'CMV000': 'Cucumber Mosaic Virus',
+  'PVY000': 'Potato Virus Y',
+  'TYLCV0': 'Tomato Yellow Leaf Curl Virus',
+  // Insects / Pests
+  'APHISP': 'Aphids',
+  'BEMITA': 'Bemisia tabaci (Whitefly)',
+  'TRIAVA': 'Trialeurodes vaporariorum (Greenhouse Whitefly)',
+  'TEMDsp': 'Tetranychus (Spider Mites)',
+  'TETRUR': 'Tetranychus urticae (Two-Spotted Spider Mite)',
+  'FRANOC': 'Frankliniella occidentalis (Western Flower Thrips)',
+  'THRITP': 'Thrips palmi (Melon Thrips)',
+  'MLOASP': 'Mealybugs',
+  // Taxonomic groups (codes starting with 1)
+  '1COCCF': 'Scale Insects (Coccoidea)',
+  '1APHIF': 'Aphids (Aphididae)',
+  '1THRIG': 'Thrips (Thysanoptera)',
+  '1ACARF': 'Mites (Acari)',
+  '1RBDCG': 'Rhabdocline (Needle Cast)',
+  '1RATTG': 'Rodent Damage (Rattus)',
+  '1BOTRG': 'Botrytis (Gray Mold)',
+  '1ERWIG': 'Erwinia (Bacterial Disease)',
+  '1FUSAG': 'Fusarium (Wilt/Rot)',
+  '1PYTHG': 'Pythium (Damping Off/Root Rot)',
+  '1PHYTG': 'Phytophthora (Root Rot/Blight)',
+  '1ALACF': 'Leaf Miners (Agromyzidae)',
+  '1PUCCG': 'Rust (Puccinia)',
+  '1SEPTG': 'Septoria (Leaf Spot)',
+  '1CERCG': 'Cercospora (Leaf Spot)',
+  '1COLLG': 'Colletotrichum (Anthracnose)',
+  '1OIDIG': 'Powdery Mildew (Oidium)',
+  '1PLASF': 'Downy Mildew (Peronosporaceae)',
+  '1VERTICG': 'Verticillium (Wilt)',
+};
+
+// Cache for EPPO code lookups resolved via web
+const eppoCodeCache: Record<string, string> = {};
+
+/**
+ * Resolve an EPPO code to a human-readable disease/pest name.
+ * First checks local mapping, then tries EPPO Global Database web lookup.
+ * Falls back to the raw code if resolution fails.
+ */
+async function resolveEppoCode(code: string): Promise<string> {
+  if (!code) return 'Unknown';
+
+  // Check local mapping first
+  if (EPPO_CODE_NAMES[code]) {
+    return EPPO_CODE_NAMES[code];
+  }
+
+  // Check cache
+  if (eppoCodeCache[code]) {
+    return eppoCodeCache[code];
+  }
+
+  // Try EPPO Global Database web lookup
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 3000); // 3s timeout
+
+    const eppoResponse = await fetch(`https://gd.eppo.int/taxon/${code}`, {
+      signal: controller.signal,
+      headers: { 'Accept': 'text/html' },
+    });
+    clearTimeout(timeout);
+
+    if (eppoResponse.ok) {
+      const html = await eppoResponse.text();
+
+      // Title format: "Botrytis cinerea (BOTRCI)[Overview]| EPPO Global Database"
+      // Extract the name before the EPPO code in parentheses
+      const titleMatch = html.match(/<title>\s*(.+?)\s*\(/i);
+      if (titleMatch && titleMatch[1]) {
+        const name = titleMatch[1].trim();
+        if (name && name !== code && !name.toLowerCase().includes('eppo')) {
+          eppoCodeCache[code] = name;
+          console.log(`[EPPO] Resolved ${code} -> ${name}`);
+          return name;
+        }
+      }
+
+      // Fallback: look for "Preferred name:" in the body
+      const prefMatch = html.match(/Preferred name[^:]*:\s*<[^>]*>?\s*([^<\n]+)/i);
+      if (prefMatch && prefMatch[1]) {
+        const name = prefMatch[1].trim();
+        if (name && name !== code) {
+          eppoCodeCache[code] = name;
+          console.log(`[EPPO] Resolved ${code} -> ${name} (from preferred name)`);
+          return name;
+        }
+      }
+    }
+  } catch (err: any) {
+    // Timeout or network error - fall through to code
+    console.log(`[EPPO] Lookup failed for ${code}: ${err?.message || 'unknown error'}`);
+  }
+
+  return code;
+}
+
 // Middleware to check if user is authenticated (via session or JWT)
 function isAuthenticated(req: Request, res: Response, next: NextFunction) {
   // Check session auth (passport) or JWT auth (req.user set by jwtAuthMiddleware)
@@ -1289,12 +1436,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const data: any = await response.json();
 
-      const results = (data.results || []).map((result: any) => ({
-        label: result.disease?.name || result.label || result.name || 'Unknown',
-        name: result.disease?.scientificName || result.disease?.name || result.name || '',
-        score: result.score ?? null,
-        categories: result.categories || [],
-      }));
+      console.log("[PlantNet Disease] Raw API response keys:", Object.keys(data));
+      if (data.results?.[0]) {
+        console.log("[PlantNet Disease] First result keys:", Object.keys(data.results[0]));
+        console.log("[PlantNet Disease] First result:", JSON.stringify(data.results[0]));
+      }
+
+      // PlantNet disease identification returns EPPO codes in the 'name' field.
+      // We need to resolve these codes to human-readable disease names.
+      const rawResults = (data.results || []).map((result: any) => {
+        // Handle both flat and nested response structures
+        const disease = result.disease || result;
+        return {
+          eppoCode: disease.name || result.name || '',
+          label: disease.label || result.label || '', // may be empty from identification endpoint
+          score: result.score ?? null,
+          categories: disease.categories || result.categories || [],
+        };
+      });
+
+      // Resolve EPPO codes to human-readable names
+      const results = await Promise.all(
+        rawResults.map(async (r: any) => {
+          let displayName = r.label;
+
+          // If label is empty or looks like an EPPO code, try to resolve it
+          if (!displayName || /^[A-Z0-9]{5,6}$/.test(displayName)) {
+            displayName = await resolveEppoCode(r.eppoCode);
+          }
+
+          return {
+            label: displayName || r.eppoCode || 'Unknown',
+            name: r.eppoCode,
+            score: r.score,
+            categories: r.categories,
+          };
+        })
+      );
 
       console.log("[PlantNet Disease] Detected:", results.length, "results",
         results.map((r: any) => `${r.label} (${Math.round((r.score || 0) * 100)}%)`).join(", "));
