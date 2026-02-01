@@ -1290,13 +1290,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const data: any = await response.json();
 
       const results = (data.results || []).map((result: any) => ({
-        label: result.label || '',
-        name: result.name || '',
+        label: result.disease?.name || result.label || result.name || 'Unknown',
+        name: result.disease?.scientificName || result.disease?.name || result.name || '',
         score: result.score ?? null,
         categories: result.categories || [],
       }));
 
-      console.log("[PlantNet Disease] Detected:", results.length, "results");
+      console.log("[PlantNet Disease] Detected:", results.length, "results",
+        results.map((r: any) => `${r.label} (${Math.round((r.score || 0) * 100)}%)`).join(", "));
 
       res.json({
         results,
