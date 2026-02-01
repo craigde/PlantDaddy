@@ -122,6 +122,47 @@ export async function sendPlantWateringNotification(plant: Plant): Promise<boole
   return success;
 }
 
+/**
+ * Send a plant notification with custom title/message/priority.
+ * Used by the scheduler for urgency-aware messaging.
+ */
+export async function sendPlantNotification(
+  userId: number,
+  plant: Plant,
+  title: string,
+  message: string,
+  priority: number = 0
+): Promise<boolean> {
+  const settings = await storage.getNotificationSettings();
+  let success = false;
+
+  // Send Pushover notification if enabled
+  if (settings?.pushoverEnabled !== false) {
+    const pushoverSent = await sendPushoverNotification(title, message, priority);
+    if (pushoverSent) success = true;
+  }
+
+  // Send email notification if enabled
+  if (settings?.emailEnabled && settings?.emailAddress && settings?.sendgridApiKey) {
+    configureEmailService(settings.sendgridApiKey);
+    const emailSent = await sendPlantWateringEmail(plant, settings.emailAddress);
+    if (emailSent) success = true;
+  }
+
+  // Send APNs push notification
+  if (isApnsConfigured()) {
+    const apnsSent = await sendApnsNotification(
+      userId,
+      title,
+      message,
+      { plantId: plant.id, threadId: "watering", category: "PLANT_WATERING" }
+    );
+    if (apnsSent > 0) success = true;
+  }
+
+  return success;
+}
+
 export async function sendWelcomeNotification(): Promise<boolean> {
   const title = '🪴 Welcome to PlantDaddy!';
   const message = 'Your plant watering notifications are now set up. You\'ll receive alerts when your plants need water.';
