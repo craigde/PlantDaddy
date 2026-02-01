@@ -56,6 +56,10 @@ enum APIEndpoint {
     // Device Tokens (APNs)
     case deviceTokens
 
+    // Plant Journal (Plant Story)
+    case plantJournal(plantId: Int)
+    case journalEntry(id: Int)
+
     // Plant Identification
     case identifyPlant
     case detectDisease
@@ -114,6 +118,10 @@ enum APIEndpoint {
             return "/notification-settings"
         case .testNotification:
             return "/notification-settings/test"
+        case .plantJournal(let plantId):
+            return "/plants/\(plantId)/journal"
+        case .journalEntry(let id):
+            return "/journal/\(id)"
         case .identifyPlant:
             return "/identify-plant"
         case .detectDisease:

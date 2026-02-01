@@ -23,6 +23,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Image } from "lucide-react";
 import { PlantCareTimeline } from "@/components/ui/plant-care-timeline";
+import { PlantStory } from "@/components/ui/plant-story";
 
 export default function PlantDetails() {
   const params = useParams();
@@ -251,6 +252,9 @@ export default function PlantDetails() {
             </CardContent>
           </Card>
         )}
+
+        {/* Plant Story - Photo Journal */}
+        <PlantStory plantId={plantId} plantName={plant.name} />
 
         {/* Unified Care Timeline */}
         <PlantCareTimeline plantId={plantId} plantName={plant.name} />

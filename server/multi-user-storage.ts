@@ -9,7 +9,8 @@ import {
   households, type Household,
   householdMembers, type HouseholdMember,
   plantHealthRecords, type PlantHealthRecord, type InsertPlantHealthRecord,
-  careActivities, type CareActivity, type InsertCareActivity
+  careActivities, type CareActivity, type InsertCareActivity,
+  plantJournalEntries, type PlantJournalEntry, type InsertPlantJournalEntry
 } from "@shared/schema";
 import { db } from "./db";
 import { getCurrentUserId, requireAuth, getHouseholdId } from "./user-context";
@@ -1046,6 +1047,56 @@ export class MultiUserStorage implements IStorage {
       .returning();
 
     return updated;
+  }
+
+  // Plant Journal Entries
+  async getPlantJournalEntries(plantId: number): Promise<(PlantJournalEntry & { username: string })[]> {
+    const userId = getCurrentUserId();
+    if (userId === null) return [];
+
+    return await db
+      .select({
+        id: plantJournalEntries.id,
+        plantId: plantJournalEntries.plantId,
+        imageUrl: plantJournalEntries.imageUrl,
+        caption: plantJournalEntries.caption,
+        createdAt: plantJournalEntries.createdAt,
+        userId: plantJournalEntries.userId,
+        username: users.username,
+      })
+      .from(plantJournalEntries)
+      .innerJoin(users, eq(plantJournalEntries.userId, users.id))
+      .where(eq(plantJournalEntries.plantId, plantId))
+      .orderBy(plantJournalEntries.createdAt);
+  }
+
+  async createJournalEntry(entry: InsertPlantJournalEntry): Promise<PlantJournalEntry> {
+    const userId = requireAuth();
+
+    const plant = await this.getPlant(entry.plantId);
+    if (!plant) {
+      throw new Error(`Plant with ID ${entry.plantId} not found or does not belong to the current user`);
+    }
+
+    const [created] = await db
+      .insert(plantJournalEntries)
+      .values({ ...entry, userId })
+      .returning();
+    return created;
+  }
+
+  async deleteJournalEntry(id: number): Promise<boolean> {
+    const userId = requireAuth();
+
+    const [entry] = await db
+      .select()
+      .from(plantJournalEntries)
+      .where(eq(plantJournalEntries.id, id));
+
+    if (!entry || entry.userId !== userId) return false;
+
+    await db.delete(plantJournalEntries).where(eq(plantJournalEntries.id, id));
+    return true;
   }
 }
 
