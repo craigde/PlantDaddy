@@ -126,6 +126,10 @@ export const notificationSettings = pgTable("notification_settings", {
   emailEnabled: boolean("email_enabled").notNull().default(false),
   emailAddress: text("email_address"),
   sendgridApiKey: text("sendgrid_api_key"),
+  // Reminder preferences
+  reminderTime: text("reminder_time").default("08:00"), // HH:MM format
+  reminderDaysBefore: integer("reminder_days_before").default(0), // 0 = on due day, 1 = day before, etc.
+  lastNotifiedDate: text("last_notified_date"), // YYYY-MM-DD dedup
   lastUpdated: timestamp("last_updated").defaultNow(),
 });
 
@@ -134,6 +138,20 @@ export const insertNotificationSettingsSchema = notificationSettingsSchema.omit(
 
 export type NotificationSettings = typeof notificationSettings.$inferSelect;
 export type InsertNotificationSettings = z.infer<typeof insertNotificationSettingsSchema>;
+
+// Notification log - tracks sent notifications
+export const notificationLog = pgTable("notification_log", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id).notNull(),
+  plantId: integer("plant_id").references(() => plants.id),
+  title: text("title").notNull(),
+  message: text("message").notNull(),
+  channel: text("channel").notNull(), // "pushover", "email", "apns", "summary"
+  success: boolean("success").notNull(),
+  sentAt: timestamp("sent_at").notNull().defaultNow(),
+});
+
+export type NotificationLogEntry = typeof notificationLog.$inferSelect;
 
 // Device tokens for APNs push notifications
 export const deviceTokens = pgTable("device_tokens", {

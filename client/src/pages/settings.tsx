@@ -903,7 +903,73 @@ export default function Settings() {
                   />
                 </div>
 
-                <div className="mt-6">
+                <div className="mt-6 border-t pt-4">
+                  <h4 className="font-medium mb-3">Reminder Preferences</h4>
+                  <div className="space-y-4">
+                    <div className="grid gap-2">
+                      <Label htmlFor="reminder-time">Daily Reminder Time</Label>
+                      <Select
+                        value={notificationSettings?.reminderTime || "08:00"}
+                        onValueChange={(value) => {
+                          updateSettings({ reminderTime: value });
+                          toast({
+                            title: "Reminder time updated",
+                            description: `Daily reminders will be sent at ${value}.`,
+                          });
+                        }}
+                        disabled={isUpdating}
+                      >
+                        <SelectTrigger id="reminder-time">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {Array.from({ length: 17 }, (_, i) => i + 6).map((hour) => {
+                            const timeStr = `${String(hour).padStart(2, '0')}:00`;
+                            const label = hour < 12 ? `${hour}:00 AM` : hour === 12 ? '12:00 PM' : `${hour - 12}:00 PM`;
+                            return (
+                              <SelectItem key={timeStr} value={timeStr}>
+                                {label}
+                              </SelectItem>
+                            );
+                          })}
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-muted-foreground">
+                        When to send your daily watering reminder (server time).
+                      </p>
+                    </div>
+
+                    <div className="grid gap-2">
+                      <Label htmlFor="reminder-days">Advance Reminder</Label>
+                      <Select
+                        value={String(notificationSettings?.reminderDaysBefore ?? 0)}
+                        onValueChange={(value) => {
+                          updateSettings({ reminderDaysBefore: parseInt(value) });
+                          toast({
+                            title: "Advance reminder updated",
+                            description: `Reminder preferences saved.`,
+                          });
+                        }}
+                        disabled={isUpdating}
+                      >
+                        <SelectTrigger id="reminder-days">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="0">On the day they're due (+ overdue)</SelectItem>
+                          <SelectItem value="1">1 day before</SelectItem>
+                          <SelectItem value="2">2 days before</SelectItem>
+                          <SelectItem value="3">3 days before</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-muted-foreground">
+                        How early to start reminding you about upcoming waterings.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-6 border-t pt-4">
                   <h4 className="font-medium mb-3">Pushover Credentials</h4>
                   <p className="text-sm text-muted-foreground mb-4">
                     PlantDaddy uses Pushover to send notifications to your devices. You'll need to provide your Pushover credentials to receive notifications.

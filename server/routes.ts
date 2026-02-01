@@ -1886,17 +1886,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
           id: null,
           enabled: true,
           pushoverEnabled: true,
-          pushoverAppToken: process.env.PUSHOVER_APP_TOKEN ? true : false, // Just return boolean indicating if token exists
-          pushoverUserKey: process.env.PUSHOVER_USER_KEY ? true : false, // Just return boolean indicating if key exists
+          pushoverAppToken: process.env.PUSHOVER_APP_TOKEN ? true : false,
+          pushoverUserKey: process.env.PUSHOVER_USER_KEY ? true : false,
           emailEnabled: false,
           emailAddress: null,
-          sendgridApiKey: false, // Just indicate token doesn't exist
+          sendgridApiKey: false,
+          reminderTime: "08:00",
+          reminderDaysBefore: 0,
           lastUpdated: null
         });
       }
-      
+
       // Don't expose actual tokens in the response for security reasons
-      // Just indicate whether they exist or not
       res.json({
         id: settings.id,
         enabled: settings.enabled,
@@ -1906,11 +1907,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
         emailEnabled: settings.emailEnabled,
         emailAddress: settings.emailAddress,
         sendgridApiKey: !!settings.sendgridApiKey,
+        reminderTime: settings.reminderTime || "08:00",
+        reminderDaysBefore: settings.reminderDaysBefore ?? 0,
         lastUpdated: settings.lastUpdated
       });
     } catch (error: any) {
       const errorMessage = error?.message || "Failed to fetch notification settings";
       res.status(500).json({ message: errorMessage });
+    }
+  });
+
+  // Notification log - recent sent notifications
+  apiRouter.get("/notification-log", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = getCurrentUserId();
+      if (!userId) return res.status(401).json({ error: "Authentication required" });
+
+      const { notificationLog: logTable, plants: plantsTable } = await import("@shared/schema");
+      const { desc, eq: dEq } = await import("drizzle-orm");
+      const { db: database } = await import("./db");
+
+      const entries = await database
+        .select({
+          id: logTable.id,
+          plantId: logTable.plantId,
+          plantName: plantsTable.name,
+          title: logTable.title,
+          message: logTable.message,
+          channel: logTable.channel,
+          success: logTable.success,
+          sentAt: logTable.sentAt,
+        })
+        .from(logTable)
+        .leftJoin(plantsTable, dEq(logTable.plantId, plantsTable.id))
+        .where(dEq(logTable.userId, userId))
+        .orderBy(desc(logTable.sentAt))
+        .limit(50);
+
+      res.json(entries);
+    } catch (error) {
+      console.error("Failed to fetch notification log:", error);
+      res.status(500).json({ message: "Failed to fetch notification log" });
     }
   });
 

@@ -11,6 +11,8 @@ export type NotificationSettingsResponse = {
   emailEnabled?: boolean;
   emailAddress?: string | null;
   sendgridApiKey: boolean; // Indicates if API key exists, not the actual key
+  reminderTime: string;
+  reminderDaysBefore: number;
   lastUpdated: string | null;
 };
 
@@ -22,6 +24,8 @@ type UpdateNotificationSettingsParams = {
   emailEnabled?: boolean;
   emailAddress?: string;
   sendgridApiKey?: string;
+  reminderTime?: string;
+  reminderDaysBefore?: number;
 };
 
 export function useNotificationSettings() {
