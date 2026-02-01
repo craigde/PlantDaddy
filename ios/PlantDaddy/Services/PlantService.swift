@@ -232,6 +232,48 @@ class PlantService: ObservableObject {
         )
     }
 
+    // MARK: - Journal Entries (Plant Story)
+
+    func fetchJournalEntries(plantId: Int) async throws -> [JournalEntry] {
+        try await apiClient.request(
+            endpoint: .plantJournal(plantId: plantId),
+            method: .get
+        )
+    }
+
+    func createJournalEntry(
+        plantId: Int,
+        imageUrl: String,
+        caption: String?
+    ) async throws -> JournalEntry {
+        let request = CreateJournalEntryRequest(
+            imageUrl: imageUrl,
+            caption: caption
+        )
+
+        return try await apiClient.request(
+            endpoint: .plantJournal(plantId: plantId),
+            method: .post,
+            body: request
+        )
+    }
+
+    func deleteJournalEntry(id: Int) async throws {
+        try await apiClient.requestWithoutResponse(
+            endpoint: .journalEntry(id: id),
+            method: .delete
+        )
+    }
+
+    // MARK: - Care Stats
+
+    func fetchCareStats() async throws -> CareStats {
+        try await apiClient.request(
+            endpoint: .careStats,
+            method: .get
+        )
+    }
+
     // MARK: - Care Activities
 
     func fetchCareActivities(plantId: Int) async throws -> [CareActivity] {

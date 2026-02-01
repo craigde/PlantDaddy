@@ -192,3 +192,20 @@ export const insertCareActivitySchema = careActivitySchema
 
 export type CareActivity = typeof careActivities.$inferSelect;
 export type InsertCareActivity = z.infer<typeof insertCareActivitySchema>;
+
+// Plant Journal Entries - Photo journal / "Plant Story" for tracking plant life over time
+export const plantJournalEntries = pgTable("plant_journal_entries", {
+  id: serial("id").primaryKey(),
+  plantId: integer("plant_id").references(() => plants.id).notNull(),
+  imageUrl: text("image_url").notNull(),
+  caption: text("caption"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  userId: integer("user_id").references(() => users.id).notNull(),
+});
+
+export const plantJournalEntrySchema = createInsertSchema(plantJournalEntries);
+export const insertPlantJournalEntrySchema = plantJournalEntrySchema
+  .omit({ id: true, createdAt: true });
+
+export type PlantJournalEntry = typeof plantJournalEntries.$inferSelect;
+export type InsertPlantJournalEntry = z.infer<typeof insertPlantJournalEntrySchema>;

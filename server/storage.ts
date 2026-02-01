@@ -23,7 +23,9 @@ import {
   type InsertPlantHealthRecord,
   type CareActivity,
   type InsertCareActivity,
-  type DeviceToken
+  type DeviceToken,
+  type PlantJournalEntry,
+  type InsertPlantJournalEntry
 } from "@shared/schema";
 
 export interface IStorage {
@@ -78,6 +80,11 @@ export interface IStorage {
   createCareActivity(activity: InsertCareActivity): Promise<CareActivity>;
   updateCareActivity(id: number, activity: Partial<InsertCareActivity>): Promise<CareActivity | undefined>;
   deleteCareActivity(id: number): Promise<boolean>;
+
+  // Plant Journal Entries methods
+  getPlantJournalEntries(plantId: number): Promise<(PlantJournalEntry & { username: string })[]>;
+  createJournalEntry(entry: InsertPlantJournalEntry): Promise<PlantJournalEntry>;
+  deleteJournalEntry(id: number): Promise<boolean>;
 
   // Import/restore methods
   deleteAllUserData(): Promise<void>;
@@ -1086,6 +1093,18 @@ export class MemStorage implements IStorage {
                  plant.species === species &&
                  plant.location === location
     );
+  }
+
+  async getPlantJournalEntries(plantId: number): Promise<(PlantJournalEntry & { username: string })[]> {
+    return [];
+  }
+
+  async createJournalEntry(entry: InsertPlantJournalEntry): Promise<PlantJournalEntry> {
+    throw new Error("Not implemented in MemStorage");
+  }
+
+  async deleteJournalEntry(id: number): Promise<boolean> {
+    return false;
   }
 }
 

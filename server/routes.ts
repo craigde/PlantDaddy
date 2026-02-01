@@ -2,7 +2,7 @@ import express, { type Express, Request, Response, NextFunction } from "express"
 import { createServer, type Server } from "http";
 import { storage as dbStorage } from "./multi-user-storage";
 import { z } from "zod";
-import { insertPlantSchema, insertLocationSchema, insertPlantSpeciesSchema, insertNotificationSettingsSchema, insertUserSchema, insertPlantHealthRecordSchema, insertCareActivitySchema } from "@shared/schema";
+import { insertPlantSchema, insertLocationSchema, insertPlantSpeciesSchema, insertNotificationSettingsSchema, insertUserSchema, insertPlantHealthRecordSchema, insertCareActivitySchema, insertPlantJournalEntrySchema } from "@shared/schema";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
@@ -1790,8 +1790,92 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Plant Journal Entries (Plant Story)
+
+  apiRouter.get("/plants/:id/journal", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const plantId = parseInt(req.params.id);
+      if (isNaN(plantId)) {
+        return res.status(400).json({ message: "Invalid plant ID" });
+      }
+
+      const plant = await dbStorage.getPlant(plantId);
+      if (!plant) {
+        return res.status(404).json({ message: "Plant not found" });
+      }
+
+      const entries = await dbStorage.getPlantJournalEntries(plantId);
+      res.json(entries);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch journal entries" });
+    }
+  });
+
+  apiRouter.post("/plants/:id/journal", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const plantId = parseInt(req.params.id);
+      if (isNaN(plantId)) {
+        return res.status(400).json({ message: "Invalid plant ID" });
+      }
+
+      const userId = getCurrentUserId();
+      if (!userId) {
+        return res.status(401).json({ message: "User not authenticated" });
+      }
+
+      const plant = await dbStorage.getPlant(plantId);
+      if (!plant) {
+        return res.status(404).json({ message: "Plant not found" });
+      }
+
+      const parsed = insertPlantJournalEntrySchema.safeParse({
+        ...req.body,
+        plantId,
+        userId,
+      });
+
+      if (!parsed.success) {
+        return res.status(400).json({ message: "Invalid journal entry data", errors: parsed.error.format() });
+      }
+
+      const entry = await dbStorage.createJournalEntry(parsed.data);
+      res.status(201).json(entry);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to create journal entry" });
+    }
+  });
+
+  apiRouter.delete("/journal/:id", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid journal entry ID" });
+      }
+
+      const deleted = await dbStorage.deleteJournalEntry(id);
+      if (!deleted) {
+        return res.status(404).json({ message: "Journal entry not found or access denied" });
+      }
+
+      res.json({ message: "Journal entry deleted" });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete journal entry" });
+    }
+  });
+
+  // Care Stats endpoint
+  apiRouter.get("/care-stats", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const stats = await dbStorage.getCareStats();
+      res.json(stats);
+    } catch (error) {
+      console.error("Failed to fetch care stats:", error);
+      res.status(500).json({ message: "Failed to fetch care stats" });
+    }
+  });
+
   // Notification Settings endpoints
-  
+
   // Get notification settings
   apiRouter.get("/notification-settings", async (req: Request, res: Response) => {
     try {

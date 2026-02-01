@@ -43,6 +43,12 @@ struct PlantDetailView: View {
     @State private var expandedTimelineItemId: String?
     @State private var diseaseResults: [String: DiseaseDetectResponse] = [:]
     @State private var detectingDiseaseItemId: String?
+    @State private var journalEntries: [JournalEntry] = []
+    @State private var showingStoryPhotoPicker = false
+    @State private var storyImage: UIImage?
+    @State private var storyCaption: String = ""
+    @State private var isUploadingStoryPhoto = false
+    @State private var selectedStoryPhoto: StoryPhoto?
     @Environment(\.dismiss) private var dismiss
 
     private let imageUploadService = ImageUploadService.shared
@@ -62,6 +68,9 @@ struct PlantDetailView: View {
 
                     // Watering Schedule
                     wateringScheduleSection(plant)
+
+                    // Plant Story - Photo Journal
+                    plantStorySection
 
                     // Care Timeline (combines care activities and health records)
                     careTimelineSection
@@ -497,6 +506,165 @@ struct PlantDetailView: View {
         }
     }
 
+    // MARK: - Plant Story
+
+    struct StoryPhoto: Identifiable {
+        let id: String
+        let imageUrl: String?
+        let caption: String?
+        let date: Date
+        let source: String // "journal" or "health"
+        let username: String?
+        let journalEntryId: Int?
+    }
+
+    private var storyPhotos: [StoryPhoto] {
+        var photos: [StoryPhoto] = []
+
+        for entry in journalEntries {
+            photos.append(StoryPhoto(
+                id: "journal-\(entry.id)",
+                imageUrl: entry.fullImageUrl,
+                caption: entry.caption,
+                date: entry.createdAt,
+                source: "journal",
+                username: entry.username,
+                journalEntryId: entry.id
+            ))
+        }
+
+        for record in healthRecords where record.imageUrl != nil {
+            photos.append(StoryPhoto(
+                id: "health-\(record.id)",
+                imageUrl: record.fullImageUrl,
+                caption: "Health: \(record.status.displayName)\(record.notes.map { " - \($0)" } ?? "")",
+                date: record.recordedAt,
+                source: "health",
+                username: record.username,
+                journalEntryId: nil
+            ))
+        }
+
+        return photos.sorted { $0.date > $1.date }
+    }
+
+    private var plantStorySection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text("Plant Story")
+                    .font(.headline)
+                Spacer()
+                Button(action: { showingStoryPhotoPicker = true }) {
+                    Image(systemName: "plus.circle.fill")
+                        .font(.title3)
+                        .foregroundColor(.green)
+                }
+            }
+
+            let photos = storyPhotos
+
+            if photos.isEmpty {
+                Text("No photos yet. Add your first photo to start the story.")
+                    .foregroundColor(.secondary)
+                    .font(.subheadline)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .padding()
+            } else {
+                let columns = [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())]
+
+                LazyVGrid(columns: columns, spacing: 8) {
+                    ForEach(photos) { photo in
+                        Button {
+                            selectedStoryPhoto = photo
+                        } label: {
+                            ZStack(alignment: .bottomLeading) {
+                                if let url = photo.imageUrl {
+                                    AuthenticatedImage(
+                                        url: url,
+                                        loadingPlaceholder: {
+                                            Rectangle()
+                                                .fill(Color.gray.opacity(0.2))
+                                                .overlay(ProgressView())
+                                        },
+                                        failurePlaceholder: {
+                                            Rectangle()
+                                                .fill(Color.gray.opacity(0.1))
+                                                .overlay(
+                                                    Image(systemName: "photo")
+                                                        .foregroundColor(.secondary)
+                                                )
+                                        }
+                                    )
+                                    .aspectRatio(contentMode: .fill)
+                                    .frame(minWidth: 0, maxWidth: .infinity)
+                                    .frame(height: 100)
+                                    .clipped()
+                                }
+
+                                // Date overlay
+                                Text(photo.date, format: .dateTime.month(.abbreviated).day())
+                                    .font(.system(size: 9, weight: .semibold))
+                                    .foregroundColor(.white)
+                                    .padding(.horizontal, 4)
+                                    .padding(.vertical, 2)
+                                    .background(Color.black.opacity(0.5))
+                                    .clipShape(RoundedRectangle(cornerRadius: 3))
+                                    .padding(4)
+                            }
+                            .clipShape(RoundedRectangle(cornerRadius: 8))
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+        }
+        .sheet(isPresented: $showingStoryPhotoPicker) {
+            StoryPhotoPickerSheet(
+                storyImage: $storyImage,
+                onImageSelected: { image in
+                    uploadStoryPhoto(image)
+                }
+            )
+        }
+        .sheet(item: $selectedStoryPhoto) { photo in
+            StoryPhotoDetailSheet(
+                photo: photo,
+                onDelete: photo.source == "journal" && photo.journalEntryId != nil ? {
+                    deleteStoryPhoto(id: photo.journalEntryId!)
+                } : nil
+            )
+        }
+    }
+
+    private func uploadStoryPhoto(_ image: UIImage) {
+        isUploadingStoryPhoto = true
+        Task {
+            do {
+                let imageUrl = try await imageUploadService.uploadGenericImage(image)
+                _ = try await plantService.createJournalEntry(
+                    plantId: plantId,
+                    imageUrl: imageUrl,
+                    caption: nil
+                )
+                await loadCareData()
+            } catch {
+                print("Error uploading story photo: \(error)")
+            }
+            isUploadingStoryPhoto = false
+        }
+    }
+
+    private func deleteStoryPhoto(id: Int) {
+        Task {
+            do {
+                try await plantService.deleteJournalEntry(id: id)
+                await loadCareData()
+            } catch {
+                print("Error deleting story photo: \(error)")
+            }
+        }
+    }
+
     // MARK: - Timeline Data
 
     struct TimelineItem {
@@ -578,6 +746,7 @@ struct PlantDetailView: View {
         do {
             careActivities = try await plantService.fetchCareActivities(plantId: plantId)
             healthRecords = try await plantService.fetchHealthRecords(plantId: plantId)
+            journalEntries = try await plantService.fetchJournalEntries(plantId: plantId)
         } catch {
             print("Error loading care data: \(error)")
         }
@@ -800,6 +969,157 @@ struct LogHealthView: View {
             }
 
             isLoading = false
+        }
+    }
+}
+
+// MARK: - Story Photo Picker Sheet
+
+struct StoryPhotoPickerSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @Binding var storyImage: UIImage?
+    @State private var showingCamera = false
+    @State private var showingLibrary = false
+
+    let onImageSelected: (UIImage) -> Void
+
+    var body: some View {
+        NavigationStack {
+            List {
+                Button(action: { showingCamera = true }) {
+                    Label("Take Photo", systemImage: "camera.fill")
+                }
+
+                Button(action: { showingLibrary = true }) {
+                    Label("Choose from Library", systemImage: "photo.fill")
+                }
+            }
+            .navigationTitle("Add to Story")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Cancel") { dismiss() }
+                }
+            }
+            .sheet(isPresented: $showingCamera) {
+                CameraPicker(
+                    image: $storyImage,
+                    sourceType: .camera,
+                    onImagePicked: { image in
+                        storyImage = image
+                        onImageSelected(image)
+                        dismiss()
+                    }
+                )
+            }
+            .sheet(isPresented: $showingLibrary) {
+                CameraPicker(
+                    image: $storyImage,
+                    sourceType: .photoLibrary,
+                    onImagePicked: { image in
+                        storyImage = image
+                        onImageSelected(image)
+                        dismiss()
+                    }
+                )
+            }
+        }
+    }
+}
+
+// MARK: - Story Photo Detail Sheet
+
+struct StoryPhotoDetailSheet: View {
+    let photo: PlantDetailView.StoryPhoto
+    let onDelete: (() -> Void)?
+
+    @Environment(\.dismiss) private var dismiss
+    @State private var showingDeleteConfirm = false
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    if let url = photo.imageUrl {
+                        AuthenticatedImage(
+                            url: url,
+                            loadingPlaceholder: {
+                                Rectangle()
+                                    .fill(Color.gray.opacity(0.2))
+                                    .overlay(ProgressView())
+                            },
+                            failurePlaceholder: {
+                                Rectangle()
+                                    .fill(Color.gray.opacity(0.1))
+                                    .overlay(
+                                        Image(systemName: "photo")
+                                            .foregroundColor(.secondary)
+                                    )
+                            }
+                        )
+                        .aspectRatio(contentMode: .fit)
+                        .frame(maxWidth: .infinity)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                    }
+
+                    HStack {
+                        Text(photo.date, style: .date)
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+
+                        Spacer()
+
+                        if photo.source == "health" {
+                            Text("Health Check")
+                                .font(.caption)
+                                .fontWeight(.medium)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                                .background(Color.orange.opacity(0.15))
+                                .foregroundColor(.orange)
+                                .clipShape(Capsule())
+                        }
+
+                        if let username = photo.username {
+                            Text("by \(username)")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+
+                    if let caption = photo.caption, !caption.isEmpty {
+                        Text(caption)
+                            .font(.body)
+                            .foregroundColor(.secondary)
+                    }
+
+                    if let onDelete = onDelete {
+                        Button(role: .destructive, action: { showingDeleteConfirm = true }) {
+                            Label("Delete Photo", systemImage: "trash")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.bordered)
+                        .padding(.top, 8)
+                        .alert("Delete Photo?", isPresented: $showingDeleteConfirm) {
+                            Button("Cancel", role: .cancel) {}
+                            Button("Delete", role: .destructive) {
+                                onDelete()
+                                dismiss()
+                            }
+                        } message: {
+                            Text("This photo will be removed from the story.")
+                        }
+                    }
+                }
+                .padding()
+            }
+            .navigationTitle("Photo")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Done") { dismiss() }
+                }
+            }
         }
     }
 }
