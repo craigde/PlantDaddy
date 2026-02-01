@@ -1,14 +1,19 @@
 # PlantDaddy
 
-A plant care tracking application for iOS and web. Track watering schedules, organize plants by location, share households with family members, and receive push notifications when plants need attention.
+A plant care tracking application for iOS and web. Track watering schedules, organize plants by location, share households with family members, identify plants with AI, and receive customizable push notifications when plants need attention.
 
 ## Features
 
 - **Plant Management** -- Track plants with custom watering schedules, photos, health records, and care activity logs
+- **Plant Story** -- Photo journal for each plant, merging manual snapshots with health record photos into a chronological visual timeline
+- **Care Timeline** -- Unified timeline of all care activities (watering, fertilizing, repotting, etc.) with expandable details and user attribution
+- **Care Stats** -- Dashboard card with care streak tracking, monthly activity breakdown by type and member, and a household leaderboard with full detail page
+- **Plant Identification** -- Identify plants from photos using PlantNet's AI API, with species auto-fill from the catalog
+- **Disease Detection** -- AI-powered disease analysis from health record photos via PlantNet's disease identification API
 - **Species Catalog** -- Browse 37 built-in plant species with care guides, or add custom species
 - **Household Sharing** -- Invite family members or housesitters to view and water your plants. Support for multiple households (e.g., home + vacation house) with role-based access (owner, member, caretaker)
 - **Location Management** -- Organize plants by room or area, with full CRUD from both iOS and web
-- **Push Notifications** -- Automated daily watering reminders via APNs (iOS), Pushover, or email. Includes actionable "Water Now" and "Water All" buttons on iOS
+- **Smart Notifications** -- Customizable daily reminders with per-user timing (6 AM - 10 PM), advance reminders (0-3 days before due), urgency-tiered messages, notification history log, and multi-channel delivery via APNs (iOS), Pushover, or email
 - **Data Backup** -- Export and import plant data as ZIP files, with merge or replace restore modes
 - **Dark Mode** -- Full light/dark theme support on web
 
@@ -30,6 +35,7 @@ A plant care tracking application for iOS and web. Track watering schedules, org
 - **Hosting:** Railway
 - **Image Storage:** Cloudflare R2 (S3-compatible)
 - **Push Notifications:** APNs (iOS native), Pushover, SendGrid (email)
+- **Plant Identification:** PlantNet API (species + disease detection)
 
 ## Project Structure
 
@@ -37,9 +43,9 @@ A plant care tracking application for iOS and web. Track watering schedules, org
 PlantDaddy/
 ├── client/                    # React web app
 │   └── src/
-│       ├── components/        # UI components (50+ shadcn/ui)
-│       ├── hooks/             # React hooks (auth, plants, locations, households, etc.)
-│       ├── pages/             # Page components (dashboard, settings, plant details, etc.)
+│       ├── components/        # UI components (shadcn/ui, plant-story, care-stats, timeline)
+│       ├── hooks/             # React hooks (auth, plants, locations, households, journal, care-stats, etc.)
+│       ├── pages/             # Page components (dashboard, settings, plant details, care stats, notifications, etc.)
 │       └── lib/               # API client, utilities, routing
 ├── server/                    # Express backend
 │   ├── index.ts               # Server entry point, migrations
@@ -50,7 +56,7 @@ PlantDaddy/
 │   ├── jwt.ts                 # JWT token management for mobile
 │   ├── apns-service.ts        # Apple Push Notification Service
 │   ├── notifications.ts       # Notification dispatch (Pushover, Email, APNs)
-│   ├── scheduler.ts           # Hourly watering check, daily 8 AM reminders
+│   ├── scheduler.ts           # Per-user reminder scheduler with customizable times
 │   ├── email-service.ts       # SendGrid email integration
 │   ├── r2Storage.ts           # Cloudflare R2 image storage
 │   ├── export-service.ts      # ZIP backup export
@@ -62,11 +68,11 @@ PlantDaddy/
 ├── ios/                       # Native iOS app
 │   └── PlantDaddy/
 │       ├── App/               # App entry point, AppDelegate
-│       ├── Models/            # Swift data models
+│       ├── Models/            # Swift data models (Plant, CareStats, JournalEntry, etc.)
 │       ├── Networking/        # API client, endpoint definitions
 │       ├── Services/          # Auth, plant, household, notification services
 │       └── Views/             # SwiftUI views
-│           ├── Plants/        # Plant list, detail, add/edit
+│           ├── Plants/        # Plant list, detail, add/edit, care stats, story
 │           ├── Settings/      # Household, location, notification settings
 │           ├── Explorer/      # Plant species browser
 │           ├── Authentication/# Login/register
@@ -86,7 +92,9 @@ PlantDaddy/
 | `plant_species` | Species catalog (37 built-in + user-created) |
 | `plant_health_records` | Health tracking over time (status, notes, photos) |
 | `care_activities` | Activity log (watering, fertilizing, repotting, pruning, misting, rotating) |
-| `notification_settings` | Per-user notification preferences (Pushover, email, APNs) |
+| `plant_journal_entries` | Plant Story photo journal entries (image, caption, per-plant) |
+| `notification_settings` | Per-user notification preferences (channels, reminder time, advance days) |
+| `notification_log` | Sent notification history (title, message, channel, success, timestamp) |
 | `device_tokens` | iOS APNs device tokens (sandbox/production) |
 | `session` | Express session storage |
 
@@ -125,12 +133,13 @@ Open `ios/PlantDaddy.xcodeproj` in Xcode. Update `APIConfig.swift` to point to y
 | `APNS_KEY_ID` | No | Apple Push Notification key ID |
 | `APNS_TEAM_ID` | No | Apple Developer Team ID |
 | `APNS_KEY` | No | APNs .p8 private key contents |
-| `PUSHOVER_APP_TOKEN` | No | Pushover app token |
-| `PUSHOVER_USER_KEY` | No | Pushover user key |
+| `PUSHOVER_APP_TOKEN` | No | Pushover app token (can also be set per-user in settings) |
+| `PUSHOVER_USER_KEY` | No | Pushover user key (can also be set per-user in settings) |
 | `R2_ACCOUNT_ID` | No | Cloudflare R2 account ID |
 | `R2_ACCESS_KEY_ID` | No | R2 access key |
 | `R2_SECRET_ACCESS_KEY` | No | R2 secret key |
 | `R2_BUCKET_NAME` | No | R2 bucket name (default: `plantdaddy`) |
+| `PLANTNET_API_KEY` | No | PlantNet API key for plant identification and disease detection |
 
 ## Deploy to Railway
 
@@ -140,14 +149,8 @@ Open `ios/PlantDaddy.xcodeproj` in Xcode. Update `APIConfig.swift` to point to y
 4. Add a PostgreSQL database from the Railway dashboard
 5. Set `SESSION_SECRET` in environment variables
 6. Railway auto-detects Node.js and runs `npm install && npm run build && npm start`
-7. Push the database schema:
 
-```bash
-npm install -g @railway/cli
-railway login
-railway link
-railway run npm run db:push
-```
+Database schema migrations run automatically during the build step via `drizzle-kit push` (non-destructive, compares schema diff).
 
 ## API Overview
 
@@ -165,7 +168,13 @@ All endpoints are prefixed with `/api`. Web app uses session cookies; iOS uses J
 
 **Health & Care:** `GET /plants/:id/health-records`, `POST /plants/:id/health-records`, `GET /plants/:id/care-activities`, `POST /plants/:id/care-activities`
 
-**Notifications:** `GET /notification-settings`, `POST /notification-settings`, `POST /notification-settings/test`, `POST /device-tokens`
+**Plant Story:** `GET /plants/:id/journal`, `POST /plants/:id/journal`, `DELETE /journal/:id`
+
+**Care Stats:** `GET /care-stats`
+
+**Identification:** `POST /identify-plant`, `POST /detect-disease`
+
+**Notifications:** `GET /notification-settings`, `POST /notification-settings`, `POST /notification-settings/test`, `POST /device-tokens`, `GET /notification-log`, `POST /notifications/check-plants`
 
 **Data:** `GET /export`, `POST /import`
 
