@@ -11,6 +11,7 @@ import Notifications from "@/pages/notifications";
 import Settings from "@/pages/settings";
 import PlantExplorer from "@/pages/plant-explorer";
 import IdentifyPlant from "@/pages/identify-plant";
+import CareStatsPage from "@/pages/care-stats";
 import AuthPage from "@/pages/auth-page";
 import AdminPage from "@/pages/admin";
 import HouseholdOnboarding from "@/pages/household-onboarding";
@@ -73,6 +74,7 @@ function HouseholdGate() {
         <Route path="/plants/:id/edit" component={AddEditPlant} />
         <Route path="/plants/:id" component={PlantDetails} />
         <Route path="/identify-plant" component={IdentifyPlant} />
+        <Route path="/care-stats" component={CareStatsPage} />
         <Route path="/plant-explorer" component={PlantExplorer} />
         <Route path="/notifications" component={Notifications} />
         <Route path="/settings" component={Settings} />

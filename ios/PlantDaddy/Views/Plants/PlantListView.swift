@@ -12,6 +12,7 @@ struct PlantListView: View {
     @ObservedObject private var authService = AuthService.shared
     @State private var showingAddPlant = false
     @State private var searchText = ""
+    @State private var careStats: CareStats?
 
     private var filteredPlants: [Plant] {
         if searchText.isEmpty {
@@ -71,9 +72,11 @@ struct PlantListView: View {
                 await plantService.fetchPlants()
                 await plantService.fetchLocations()
                 await plantService.fetchPlantSpecies()
+                await loadCareStats()
             }
             .refreshable {
                 await plantService.fetchPlants()
+                await loadCareStats()
             }
         }
     }
@@ -81,6 +84,15 @@ struct PlantListView: View {
     private var plantsList: some View {
         ScrollView {
             LazyVStack(spacing: 16) {
+                // Care stats card
+                if let stats = careStats, stats.totalPlants > 0 {
+                    NavigationLink(destination: CareStatsDetailView()) {
+                        CareStatsCardView(stats: stats)
+                            .padding(.horizontal)
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                }
+
                 // Alert banner for plants needing water
                 if !plantsNeedingWater.isEmpty {
                     HStack {
@@ -146,6 +158,14 @@ struct PlantListView: View {
     private func speciesImageUrl(for plant: Plant) -> String? {
         guard let speciesName = plant.species else { return nil }
         return plantService.plantSpecies.first { $0.name == speciesName }?.fullImageUrl
+    }
+
+    private func loadCareStats() async {
+        do {
+            careStats = try await plantService.fetchCareStats()
+        } catch {
+            print("Failed to load care stats: \(error)")
+        }
     }
 }
 

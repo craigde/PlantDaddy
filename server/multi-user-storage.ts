@@ -1,4 +1,4 @@
-import { and, eq, sql, or, isNull, asc } from "drizzle-orm";
+import { and, eq, sql, or, isNull, asc, inArray, gte } from "drizzle-orm";
 import {
   users, type User, type InsertUser,
   plants, type Plant, type InsertPlant,
@@ -1097,6 +1097,126 @@ export class MultiUserStorage implements IStorage {
 
     await db.delete(plantJournalEntries).where(eq(plantJournalEntries.id, id));
     return true;
+  }
+
+  // Care Stats - aggregate statistics for the household
+  async getCareStats(): Promise<{
+    streak: number;
+    monthlyTotal: number;
+    monthlyByMember: { userId: number; username: string; count: number }[];
+    monthlyByType: { type: string; count: number }[];
+    totalPlants: number;
+    plantsNeedingWater: number;
+  }> {
+    const allPlants = await this.getAllPlants();
+    const plantIds = allPlants.map(p => p.id);
+
+    const emptyResult = {
+      streak: 0,
+      monthlyTotal: 0,
+      monthlyByMember: [] as { userId: number; username: string; count: number }[],
+      monthlyByType: [] as { type: string; count: number }[],
+      totalPlants: allPlants.length,
+      plantsNeedingWater: 0,
+    };
+
+    if (plantIds.length === 0) {
+      return emptyResult;
+    }
+
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    // Monthly totals by member
+    const monthlyByMember = await db
+      .select({
+        userId: careActivities.userId,
+        username: users.username,
+        count: sql<number>`count(*)::int`,
+      })
+      .from(careActivities)
+      .innerJoin(users, eq(careActivities.userId, users.id))
+      .where(
+        and(
+          inArray(careActivities.plantId, plantIds),
+          gte(careActivities.performedAt, startOfMonth)
+        )
+      )
+      .groupBy(careActivities.userId, users.username);
+
+    // Monthly totals by type
+    const monthlyByType = await db
+      .select({
+        type: careActivities.activityType,
+        count: sql<number>`count(*)::int`,
+      })
+      .from(careActivities)
+      .where(
+        and(
+          inArray(careActivities.plantId, plantIds),
+          gte(careActivities.performedAt, startOfMonth)
+        )
+      )
+      .groupBy(careActivities.activityType);
+
+    const monthlyTotal = monthlyByMember.reduce((sum, m) => sum + m.count, 0);
+
+    // Overdue count
+    const plantsNeedingWater = allPlants.filter(p => {
+      const nextWatering = new Date(p.lastWatered);
+      nextWatering.setDate(nextWatering.getDate() + p.wateringFrequency);
+      return nextWatering < now;
+    }).length;
+
+    // Streak: consecutive days with at least one care activity
+    const yearAgo = new Date(now);
+    yearAgo.setDate(yearAgo.getDate() - 365);
+
+    const activityDates = await db
+      .select({
+        dateStr: sql<string>`(${careActivities.performedAt})::date::text`,
+      })
+      .from(careActivities)
+      .where(
+        and(
+          inArray(careActivities.plantId, plantIds),
+          gte(careActivities.performedAt, yearAgo)
+        )
+      )
+      .groupBy(sql`(${careActivities.performedAt})::date`)
+      .orderBy(sql`(${careActivities.performedAt})::date DESC`);
+
+    const dateSet = new Set(activityDates.map(d => d.dateStr));
+
+    const fmtDate = (d: Date): string => {
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    };
+
+    let streak = 0;
+    const checkDate = new Date(now);
+    checkDate.setHours(0, 0, 0, 0);
+
+    // If today has no activity yet, start counting from yesterday
+    if (!dateSet.has(fmtDate(checkDate))) {
+      checkDate.setDate(checkDate.getDate() - 1);
+    }
+
+    while (dateSet.has(fmtDate(checkDate))) {
+      streak++;
+      checkDate.setDate(checkDate.getDate() - 1);
+    }
+
+    return {
+      streak,
+      monthlyTotal,
+      monthlyByMember,
+      monthlyByType,
+      totalPlants: allPlants.length,
+      plantsNeedingWater,
+    };
   }
 }
 

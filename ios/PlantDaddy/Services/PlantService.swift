@@ -265,6 +265,15 @@ class PlantService: ObservableObject {
         )
     }
 
+    // MARK: - Care Stats
+
+    func fetchCareStats() async throws -> CareStats {
+        try await apiClient.request(
+            endpoint: .careStats,
+            method: .get
+        )
+    }
+
     // MARK: - Care Activities
 
     func fetchCareActivities(plantId: Int) async throws -> [CareActivity] {

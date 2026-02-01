@@ -1863,6 +1863,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Care Stats endpoint
+  apiRouter.get("/care-stats", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const stats = await dbStorage.getCareStats();
+      res.json(stats);
+    } catch (error) {
+      console.error("Failed to fetch care stats:", error);
+      res.status(500).json({ message: "Failed to fetch care stats" });
+    }
+  });
+
   // Notification Settings endpoints
 
   // Get notification settings

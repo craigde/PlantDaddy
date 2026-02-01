@@ -64,6 +64,9 @@ enum APIEndpoint {
     case identifyPlant
     case detectDisease
 
+    // Care Stats
+    case careStats
+
     // Batch watering
     case waterOverdue
 
@@ -126,6 +129,8 @@ enum APIEndpoint {
             return "/identify-plant"
         case .detectDisease:
             return "/detect-disease"
+        case .careStats:
+            return "/care-stats"
         case .deviceTokens:
             return "/device-tokens"
         case .waterOverdue:

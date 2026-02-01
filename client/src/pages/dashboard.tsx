@@ -11,6 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { groupPlantsByStatus } from "@/lib/plant-utils";
 import { useViewMode } from "@/hooks/use-view-mode";
 import { Loader2 } from "lucide-react";
+import { CareStatsCard } from "@/components/ui/care-stats-card";
 
 export default function Dashboard() {
   const [_, navigate] = useLocation();
@@ -88,7 +89,9 @@ export default function Dashboard() {
         </div>
       ) : (
         <>
-          <div className="mt-6">
+          <CareStatsCard />
+
+          <div className="mt-2">
             {viewMode === 'grid' && (
               <PlantGridView
                 plants={plants}
