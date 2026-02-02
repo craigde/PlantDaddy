@@ -104,11 +104,12 @@ export const plantSpecies = pgTable("plant_species", {
   toxicity: text("toxicity"), // "non-toxic", "toxic to pets", "toxic to humans"
   commonIssues: text("common_issues"),
   imageUrl: text("image_url"),
-  userId: integer("user_id").references(() => users.id), // null = global species, set = user custom species
+  userId: integer("user_id").references(() => users.id), // who created it
+  householdId: integer("household_id").references(() => households.id), // null = global species, set = household species
 });
 
 export const plantSpeciesSchema = createInsertSchema(plantSpecies);
-export const insertPlantSpeciesSchema = plantSpeciesSchema.omit({ id: true, userId: true }); // userId is set automatically by the server
+export const insertPlantSpeciesSchema = plantSpeciesSchema.omit({ id: true, userId: true, householdId: true }); // userId & householdId set automatically by the server
 
 export type PlantSpecies = typeof plantSpecies.$inferSelect;
 export type InsertPlantSpecies = z.infer<typeof insertPlantSpeciesSchema>;

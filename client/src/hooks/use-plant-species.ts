@@ -32,7 +32,7 @@ export function usePlantSpecies() {
 
   // Add a new plant species
   const addPlantSpecies = useMutation({
-    mutationFn: async (newSpecies: Omit<PlantSpecies, 'id'>) => {
+    mutationFn: async (newSpecies: Omit<PlantSpecies, 'id' | 'userId' | 'householdId'>) => {
       return apiRequest({
         method: 'POST',
         body: JSON.stringify(newSpecies),

@@ -303,20 +303,20 @@ export class MultiUserStorage implements IStorage {
   }
 
   // Plant species catalog methods
-  // Returns global species (userId = null) + current user's custom species
+  // Returns global species (householdId = null) + current household's custom species
   async getAllPlantSpecies(): Promise<PlantSpecies[]> {
-    const userId = getCurrentUserId();
+    const householdId = await getHouseholdId();
 
-    // If no user is logged in, return only global species
-    if (!userId) {
-      return await db.select().from(plantSpecies).where(isNull(plantSpecies.userId)).orderBy(asc(plantSpecies.name));
+    if (householdId === null) {
+      // Fallback: no household, return only global species
+      return await db.select().from(plantSpecies).where(isNull(plantSpecies.householdId)).orderBy(asc(plantSpecies.name));
     }
 
-    // Return global species + user's custom species
+    // Return global species + household's custom species
     return await db.select().from(plantSpecies).where(
       or(
-        isNull(plantSpecies.userId), // Global species
-        eq(plantSpecies.userId, userId) // User's custom species
+        isNull(plantSpecies.householdId), // Global species
+        eq(plantSpecies.householdId, householdId) // Household's custom species
       )
     ).orderBy(asc(plantSpecies.name));
   }
@@ -327,35 +327,57 @@ export class MultiUserStorage implements IStorage {
   }
 
   async getPlantSpeciesByName(name: string): Promise<PlantSpecies | undefined> {
+    const householdId = await getHouseholdId();
+
+    if (householdId === null) {
+      // Only check global species
+      const [species] = await db
+        .select()
+        .from(plantSpecies)
+        .where(and(eq(plantSpecies.name, name), isNull(plantSpecies.householdId)));
+      return species || undefined;
+    }
+
+    // Check global + household species
     const [species] = await db
       .select()
       .from(plantSpecies)
-      .where(eq(plantSpecies.name, name));
-    
+      .where(
+        and(
+          eq(plantSpecies.name, name),
+          or(
+            isNull(plantSpecies.householdId),
+            eq(plantSpecies.householdId, householdId)
+          )
+        )
+      );
     return species || undefined;
   }
 
   async createPlantSpecies(insertSpecies: InsertPlantSpecies): Promise<PlantSpecies> {
     const userId = requireAuth(); // User must be logged in to create species
+    const householdId = await getHouseholdId();
 
-    // Check if species with this name already exists (global or user's own)
+    // Check if species with this name already exists (global or household's own)
     const existingSpecies = await this.getPlantSpeciesByName(insertSpecies.name);
 
     if (existingSpecies) {
       throw new Error(`Plant species with name '${insertSpecies.name}' already exists`);
     }
 
-    // Create species with userId (makes it user-specific, not global)
+    // Create species scoped to the household (or user-only if no household)
     const [species] = await db.insert(plantSpecies).values({
       ...insertSpecies,
-      userId // Set to current user's ID
+      userId, // Track who created it
+      householdId, // Scope to the household
     }).returning();
 
     return species;
   }
 
   async updatePlantSpecies(id: number, speciesUpdate: Partial<InsertPlantSpecies>): Promise<PlantSpecies | undefined> {
-    const userId = requireAuth(); // User must be logged in
+    requireAuth(); // User must be logged in
+    const householdId = await getHouseholdId();
 
     // Get the species to check ownership
     const species = await this.getPlantSpecies(id);
@@ -363,14 +385,14 @@ export class MultiUserStorage implements IStorage {
       throw new Error('Species not found');
     }
 
-    // Cannot update global species (userId = null)
-    if (species.userId === null) {
+    // Cannot update global species (householdId = null)
+    if (species.householdId === null) {
       throw new Error('Cannot update global plant species. Only custom species can be edited.');
     }
 
-    // Cannot update species that belongs to another user
-    if (species.userId !== userId) {
-      throw new Error('You can only update your own custom species');
+    // Cannot update species from another household
+    if (species.householdId !== householdId) {
+      throw new Error('You can only update species in your household');
     }
 
     // If name is being updated, check if it already exists
@@ -385,7 +407,7 @@ export class MultiUserStorage implements IStorage {
       }
     }
 
-    // Update the user's custom species
+    // Update the household's custom species
     const [updatedSpecies] = await db
       .update(plantSpecies)
       .set(speciesUpdate)
@@ -396,7 +418,8 @@ export class MultiUserStorage implements IStorage {
   }
 
   async deletePlantSpecies(id: number): Promise<boolean> {
-    const userId = requireAuth(); // User must be logged in
+    requireAuth(); // User must be logged in
+    const householdId = await getHouseholdId();
 
     // Get the species to check ownership
     const species = await this.getPlantSpecies(id);
@@ -404,24 +427,24 @@ export class MultiUserStorage implements IStorage {
       return false;
     }
 
-    // Cannot delete global species (userId = null)
-    if (species.userId === null) {
+    // Cannot delete global species (householdId = null)
+    if (species.householdId === null) {
       throw new Error('Cannot delete global plant species. Only custom species can be deleted.');
     }
 
-    // Cannot delete species that belongs to another user
-    if (species.userId !== userId) {
-      throw new Error('You can only delete your own custom species');
+    // Cannot delete species from another household
+    if (species.householdId !== householdId) {
+      throw new Error('You can only delete species in your household');
     }
 
-    // Check if this species is used by any of the user's plants
+    // Check if this species is used by any plants in the household
     const plantsWithSpecies = await db
       .select()
       .from(plants)
       .where(
         and(
           eq(plants.species, species.name),
-          eq(plants.userId, userId)
+          householdId ? eq(plants.householdId, householdId) : isNull(plants.householdId)
         )
       );
 
@@ -429,7 +452,7 @@ export class MultiUserStorage implements IStorage {
       throw new Error(`Cannot delete species '${species.name}' because it is being used by ${plantsWithSpecies.length} plant(s)`);
     }
 
-    // Delete the user's custom species
+    // Delete the household's custom species
     const result = await db.delete(plantSpecies).where(eq(plantSpecies.id, id)).returning();
     return result.length > 0;
   }
@@ -438,10 +461,10 @@ export class MultiUserStorage implements IStorage {
     if (!query || query.trim() === '') {
       return this.getAllPlantSpecies();
     }
-    
+
     const lowerQuery = query.toLowerCase();
     const allSpecies = await this.getAllPlantSpecies();
-    
+
     return allSpecies.filter((species) => {
       return (
         species.name.toLowerCase().includes(lowerQuery) ||
