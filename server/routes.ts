@@ -1722,8 +1722,148 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // AI-powered species catalog generation endpoints
+
+  // Generate plant care details using Claude API
+  apiRouter.post("/generate-species-details", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const apiKey = process.env.ANTHROPIC_API_KEY;
+      if (!apiKey) {
+        return res.status(503).json({ message: "AI service is not configured. Set ANTHROPIC_API_KEY environment variable." });
+      }
+
+      const { scientificName, commonName, family } = req.body;
+      if (!scientificName) {
+        return res.status(400).json({ message: "scientificName is required" });
+      }
+
+      const Anthropic = (await import("@anthropic-ai/sdk")).default;
+      const client = new Anthropic({ apiKey });
+
+      const prompt = `You are a plant care expert. Generate detailed care information for the following plant species. Return ONLY a valid JSON object with no additional text.
+
+Plant: ${commonName ? `${commonName} (${scientificName})` : scientificName}${family ? `\nFamily: ${family}` : ''}
+
+Return this exact JSON structure:
+{
+  "name": "Common name for the plant",
+  "scientificName": "${scientificName}",
+  "family": "${family || 'determine the family'}",
+  "origin": "Native region/origin",
+  "description": "2-3 sentence description of the plant, its appearance, and why it's popular",
+  "careLevel": "easy|moderate|difficult",
+  "lightRequirements": "Light needs description",
+  "wateringFrequency": <number of days between waterings as integer>,
+  "humidity": "low|medium|high",
+  "soilType": "Recommended soil type",
+  "propagation": "How to propagate",
+  "toxicity": "non-toxic|toxic to pets|toxic to humans|toxic to pets and humans",
+  "commonIssues": "Common problems and pests"
+}`;
+
+      console.log("[AI Species] Generating care details for:", scientificName);
+
+      const message = await client.messages.create({
+        model: "claude-sonnet-4-20250514",
+        max_tokens: 1024,
+        messages: [{ role: "user", content: prompt }],
+      });
+
+      const textContent = message.content.find((c: any) => c.type === 'text');
+      if (!textContent || textContent.type !== 'text') {
+        throw new Error("No text response from AI");
+      }
+
+      // Extract JSON from the response (handle potential markdown code blocks)
+      let jsonStr = textContent.text.trim();
+      const jsonMatch = jsonStr.match(/```(?:json)?\s*([\s\S]*?)```/);
+      if (jsonMatch) {
+        jsonStr = jsonMatch[1].trim();
+      }
+
+      const speciesDetails = JSON.parse(jsonStr);
+
+      // Ensure the common name is set
+      if (!speciesDetails.name && commonName) {
+        speciesDetails.name = commonName;
+      }
+
+      console.log("[AI Species] Generated details for:", speciesDetails.name);
+      res.json(speciesDetails);
+    } catch (error: any) {
+      console.error("[AI Species] Generation error:", error);
+      res.status(500).json({ message: "Failed to generate species details", error: error?.message });
+    }
+  });
+
+  // Generate plant species illustration using DALL-E and upload to R2
+  apiRouter.post("/generate-species-image", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const apiKey = process.env.OPENAI_API_KEY;
+      if (!apiKey) {
+        return res.status(503).json({ message: "Image generation service is not configured. Set OPENAI_API_KEY environment variable." });
+      }
+
+      if (!isR2Configured()) {
+        return res.status(503).json({ message: "R2 storage is not configured for image uploads." });
+      }
+
+      const { name, scientificName } = req.body;
+      if (!name) {
+        return res.status(400).json({ message: "Plant name is required" });
+      }
+
+      const userId = (req.user as any)?.id;
+      if (!userId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      const OpenAI = (await import("openai")).default;
+      const openai = new OpenAI({ apiKey });
+
+      const prompt = `A minimalist flat-design illustration of a ${name}${scientificName ? ` (${scientificName})` : ''} houseplant in a simple terracotta/mauve colored pot. The style should be:
+- Flat vector illustration with no gradients or shadows
+- Simple geometric shapes for leaves and stems
+- Multiple shades of green for the foliage
+- Brown/dark mauve tones for stems
+- A simple trapezoidal mauve/terracotta pot
+- Pure white background
+- Clean, centered composition
+- Modern minimalist app icon style
+- No text, no labels, no decorations`;
+
+      console.log("[AI Species Image] Generating illustration for:", name);
+
+      const response = await openai.images.generate({
+        model: "dall-e-3",
+        prompt,
+        n: 1,
+        size: "1024x1024",
+        quality: "standard",
+        response_format: "b64_json",
+      });
+
+      const b64Data = response.data[0]?.b64_json;
+      if (!b64Data) {
+        throw new Error("No image data returned from DALL-E");
+      }
+
+      // Upload to R2
+      const imageBuffer = Buffer.from(b64Data, "base64");
+      const r2Service = new R2StorageService();
+      const key = await r2Service.uploadFile(userId, imageBuffer, "image/png");
+      const imageUrl = `/r2/${key}`;
+
+      console.log("[AI Species Image] Generated and uploaded illustration:", imageUrl);
+      res.json({ imageUrl });
+    } catch (error: any) {
+      console.error("[AI Species Image] Generation error:", error);
+      res.status(500).json({ message: "Failed to generate species image", error: error?.message });
+    }
+  });
+
   // Plant Health Records endpoints
-  
+
   // Get health records for a specific plant
   apiRouter.get("/plants/:id/health-records", isAuthenticated, async (req: Request, res: Response) => {
     try {

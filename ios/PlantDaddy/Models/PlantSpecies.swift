@@ -53,6 +53,46 @@ struct PlantSpecies: Codable, Identifiable, Hashable {
     }
 }
 
+// Response from AI-generated species details
+struct GeneratedSpeciesDetails: Codable {
+    let name: String?
+    let scientificName: String?
+    let family: String?
+    let origin: String?
+    let description: String?
+    let careLevel: String?
+    let lightRequirements: String?
+    let wateringFrequency: Int?
+    let humidity: String?
+    let soilType: String?
+    let propagation: String?
+    let toxicity: String?
+    let commonIssues: String?
+}
+
+// Response from AI-generated species image
+struct GeneratedImageResponse: Codable {
+    let imageUrl: String
+}
+
+// Request to create a new plant species
+struct CreatePlantSpeciesRequest: Encodable {
+    let name: String
+    let scientificName: String
+    let family: String?
+    let origin: String?
+    let description: String
+    let careLevel: String
+    let lightRequirements: String
+    let wateringFrequency: Int
+    let humidity: String?
+    let soilType: String?
+    let propagation: String?
+    let toxicity: String?
+    let commonIssues: String?
+    let imageUrl: String?
+}
+
 enum CareLevel: String, Codable, CaseIterable, Hashable {
     case easy = "easy"
     case moderate = "moderate"
