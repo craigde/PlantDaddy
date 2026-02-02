@@ -3,7 +3,10 @@ import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2 } from "lucide-react";
+import { Loader2, Sparkles } from "lucide-react";
+import { usePlantSpecies } from "@/hooks/use-plant-species";
+import { useQuery } from "@tanstack/react-query";
+import type { PlantSpecies } from "@shared/schema";
 
 interface IdentifyResult {
   score: number;
@@ -28,6 +31,22 @@ export default function IdentifyPlant() {
   const [isIdentifying, setIsIdentifying] = useState(false);
   const [results, setResults] = useState<IdentifyResponse | null>(null);
   const [organ, setOrgan] = useState<string>("auto");
+  const [addingToExplorer, setAddingToExplorer] = useState<string | null>(null);
+
+  const { addPlantSpecies } = usePlantSpecies();
+
+  // Fetch existing species catalog to check for duplicates
+  const { data: existingSpecies } = useQuery<PlantSpecies[]>({
+    queryKey: ['plant-species'],
+    enabled: !!results,
+  });
+
+  const isSpeciesInCatalog = (scientificName: string): boolean => {
+    if (!existingSpecies) return false;
+    return existingSpecies.some(
+      (s) => s.scientificName.toLowerCase() === scientificName.toLowerCase()
+    );
+  };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -99,6 +118,90 @@ export default function IdentifyPlant() {
       species: result.scientificName,
     });
     navigate(`/plants/new?${params.toString()}`);
+  };
+
+  const handleAddToExplorer = async (result: IdentifyResult) => {
+    const displayName = result.commonNames.length > 0 ? result.commonNames[0] : result.scientificName;
+    setAddingToExplorer(result.scientificName);
+
+    try {
+      // Step 1: Generate care details via Claude API
+      toast({ title: "Generating care details...", description: `Using AI to research ${displayName}` });
+
+      const detailsRes = await fetch("/api/generate-species-details", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          scientificName: result.scientificName,
+          commonName: displayName,
+          family: result.family,
+        }),
+      });
+
+      if (!detailsRes.ok) {
+        const err = await detailsRes.json().catch(() => ({}));
+        throw new Error(err.message || "Failed to generate species details");
+      }
+
+      const speciesDetails = await detailsRes.json();
+
+      // Step 2: Generate illustration via DALL-E
+      toast({ title: "Generating illustration...", description: `Creating artwork for ${displayName}` });
+
+      const imageRes = await fetch("/api/generate-species-image", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          name: speciesDetails.name || displayName,
+          scientificName: result.scientificName,
+        }),
+      });
+
+      let imageUrl: string | null = null;
+      if (imageRes.ok) {
+        const imageData = await imageRes.json();
+        imageUrl = imageData.imageUrl;
+      } else {
+        console.warn("Image generation failed, proceeding without illustration");
+      }
+
+      // Step 3: Create species in catalog
+      const newSpecies = {
+        name: speciesDetails.name || displayName,
+        scientificName: speciesDetails.scientificName || result.scientificName,
+        family: speciesDetails.family || result.family || null,
+        origin: speciesDetails.origin || null,
+        description: speciesDetails.description || `${displayName} is a plant species in the ${result.family} family.`,
+        careLevel: speciesDetails.careLevel || "moderate",
+        lightRequirements: speciesDetails.lightRequirements || "Bright indirect light",
+        wateringFrequency: speciesDetails.wateringFrequency || 7,
+        humidity: speciesDetails.humidity || null,
+        soilType: speciesDetails.soilType || null,
+        propagation: speciesDetails.propagation || null,
+        toxicity: speciesDetails.toxicity || null,
+        commonIssues: speciesDetails.commonIssues || null,
+        imageUrl: imageUrl,
+        userId: null,
+      };
+
+      await addPlantSpecies.mutateAsync(newSpecies as any);
+
+      toast({
+        title: "Added to Explorer!",
+        description: `${newSpecies.name} has been added to the plant catalog with AI-generated care details and illustration.`,
+      });
+    } catch (error: any) {
+      console.error("Error adding to explorer:", error);
+      toast({
+        title: "Failed to add to Explorer",
+        description: error.message || "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setAddingToExplorer(null);
+    }
   };
 
   const handleReset = () => {
@@ -227,48 +330,87 @@ export default function IdentifyPlant() {
                 {results.results.map((result, index) => {
                   const confidence = Math.round(result.score * 100);
                   const displayName = result.commonNames.length > 0 ? result.commonNames[0] : result.scientificName;
+                  const inCatalog = isSpeciesInCatalog(result.scientificName);
+                  const isAdding = addingToExplorer === result.scientificName;
 
                   return (
-                    <button
+                    <div
                       key={index}
-                      onClick={() => handleSelectSpecies(result)}
-                      className="w-full text-left p-3 rounded-lg border border-border hover:border-primary/50 hover:bg-accent/50 transition-colors"
+                      className="p-3 rounded-lg border border-border"
                     >
-                      <div className="flex items-center justify-between">
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium truncate">{displayName}</p>
-                          <p className="text-sm text-muted-foreground italic truncate">
-                            {result.scientificName}
-                          </p>
-                          {result.family && (
-                            <p className="text-xs text-muted-foreground">
-                              Family: {result.family}
+                      <button
+                        onClick={() => handleSelectSpecies(result)}
+                        className="w-full text-left hover:bg-accent/50 rounded transition-colors"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium truncate">{displayName}</p>
+                            <p className="text-sm text-muted-foreground italic truncate">
+                              {result.scientificName}
                             </p>
-                          )}
-                        </div>
-                        <div className="ml-3 flex items-center">
-                          <div
-                            className={`px-2 py-1 rounded text-sm font-medium ${
-                              confidence >= 70
-                                ? "bg-green-100 text-green-800"
-                                : confidence >= 40
-                                ? "bg-yellow-100 text-yellow-800"
-                                : "bg-gray-100 text-gray-600"
-                            }`}
-                          >
-                            {confidence}%
+                            {result.family && (
+                              <p className="text-xs text-muted-foreground">
+                                Family: {result.family}
+                              </p>
+                            )}
                           </div>
-                          <span className="material-icons text-muted-foreground ml-2">
-                            chevron_right
-                          </span>
+                          <div className="ml-3 flex items-center">
+                            <div
+                              className={`px-2 py-1 rounded text-sm font-medium ${
+                                confidence >= 70
+                                  ? "bg-green-100 text-green-800"
+                                  : confidence >= 40
+                                  ? "bg-yellow-100 text-yellow-800"
+                                  : "bg-gray-100 text-gray-600"
+                              }`}
+                            >
+                              {confidence}%
+                            </div>
+                            <span className="material-icons text-muted-foreground ml-2">
+                              chevron_right
+                            </span>
+                          </div>
                         </div>
+                      </button>
+
+                      {/* Add to Explorer button */}
+                      <div className="mt-2 pt-2 border-t border-border/50">
+                        {inCatalog ? (
+                          <p className="text-xs text-muted-foreground flex items-center">
+                            <span className="material-icons text-green-600 text-sm mr-1">check_circle</span>
+                            Already in Plant Explorer
+                          </p>
+                        ) : (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleAddToExplorer(result);
+                            }}
+                            disabled={isAdding || !!addingToExplorer}
+                            className="w-full text-xs"
+                          >
+                            {isAdding ? (
+                              <>
+                                <Loader2 className="h-3 w-3 mr-1.5 animate-spin" />
+                                Adding to Explorer...
+                              </>
+                            ) : (
+                              <>
+                                <Sparkles className="h-3 w-3 mr-1.5" />
+                                Add to Explorer with AI
+                              </>
+                            )}
+                          </Button>
+                        )}
                       </div>
-                    </button>
+                    </div>
                   );
                 })}
               </div>
               <p className="text-xs text-muted-foreground mt-3 text-center">
-                Tap a result to add it as a new plant
+                Tap a result to add as a plant, or add to Explorer catalog
               </p>
             </CardContent>
           </Card>

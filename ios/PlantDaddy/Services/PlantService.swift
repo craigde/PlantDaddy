@@ -146,6 +146,41 @@ class PlantService: ObservableObject {
         isLoading = false
     }
 
+    func generateSpeciesDetails(scientificName: String, commonName: String, family: String) async throws -> GeneratedSpeciesDetails {
+        struct Request: Encodable {
+            let scientificName: String
+            let commonName: String
+            let family: String
+        }
+        return try await apiClient.request(
+            endpoint: .generateSpeciesDetails,
+            method: .post,
+            body: Request(scientificName: scientificName, commonName: commonName, family: family)
+        )
+    }
+
+    func generateSpeciesImage(name: String, scientificName: String) async throws -> GeneratedImageResponse {
+        struct Request: Encodable {
+            let name: String
+            let scientificName: String
+        }
+        return try await apiClient.request(
+            endpoint: .generateSpeciesImage,
+            method: .post,
+            body: Request(name: name, scientificName: scientificName)
+        )
+    }
+
+    func createPlantSpecies(_ species: CreatePlantSpeciesRequest) async throws -> PlantSpecies {
+        let created: PlantSpecies = try await apiClient.request(
+            endpoint: .plantSpecies,
+            method: .post,
+            body: species
+        )
+        await fetchPlantSpecies()
+        return created
+    }
+
     // MARK: - Location Operations
 
     func fetchLocations() async {

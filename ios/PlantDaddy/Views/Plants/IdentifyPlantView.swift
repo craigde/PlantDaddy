@@ -37,6 +37,7 @@ struct IdentifyResponse: Codable {
 // MARK: - Identify Plant View
 
 struct IdentifyPlantView: View {
+    @ObservedObject private var plantService = PlantService.shared
     @State private var selectedImage: UIImage?
     @State private var selectedItem: PhotosPickerItem?
     @State private var isIdentifying = false
@@ -45,6 +46,8 @@ struct IdentifyPlantView: View {
     @State private var selectedOrgan = "auto"
     @State private var showingCamera = false
     @State private var selectedResult: IdentifyResult?
+    @State private var addingToExplorer: String? = nil
+    @State private var explorerStatusMessage: String? = nil
 
     private let organOptions = [
         ("auto", "Auto-detect"),
@@ -250,60 +253,106 @@ struct IdentifyPlantView: View {
 
     // MARK: - Results Section
 
+    private func isSpeciesInCatalog(_ scientificName: String) -> Bool {
+        plantService.plantSpecies.contains { $0.scientificName.lowercased() == scientificName.lowercased() }
+    }
+
     private func resultsSection(results: [IdentifyResult]) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Species Matches")
                 .font(.headline)
 
             ForEach(results) { result in
-                Button {
-                    selectedResult = result
-                } label: {
-                    HStack {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(result.displayName)
-                                .font(.body)
-                                .fontWeight(.medium)
-                                .foregroundColor(.primary)
+                VStack(spacing: 0) {
+                    // Main result button - tap to add as plant
+                    Button {
+                        selectedResult = result
+                    } label: {
+                        HStack {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(result.displayName)
+                                    .font(.body)
+                                    .fontWeight(.medium)
+                                    .foregroundColor(.primary)
 
-                            Text(result.scientificName)
-                                .font(.caption)
-                                .italic()
-                                .foregroundColor(.secondary)
-
-                            if !result.family.isEmpty {
-                                Text("Family: \(result.family)")
-                                    .font(.caption2)
+                                Text(result.scientificName)
+                                    .font(.caption)
+                                    .italic()
                                     .foregroundColor(.secondary)
+
+                                if !result.family.isEmpty {
+                                    Text("Family: \(result.family)")
+                                        .font(.caption2)
+                                        .foregroundColor(.secondary)
+                                }
                             }
+
+                            Spacer()
+
+                            Text("\(result.confidencePercent)%")
+                                .font(.subheadline)
+                                .fontWeight(.semibold)
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 4)
+                                .background(confidenceColor(result.confidencePercent).opacity(0.15))
+                                .foregroundColor(confidenceColor(result.confidencePercent))
+                                .clipShape(Capsule())
+
+                            Image(systemName: "chevron.right")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
                         }
-
-                        Spacer()
-
-                        Text("\(result.confidencePercent)%")
-                            .font(.subheadline)
-                            .fontWeight(.semibold)
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 4)
-                            .background(confidenceColor(result.confidencePercent).opacity(0.15))
-                            .foregroundColor(confidenceColor(result.confidencePercent))
-                            .clipShape(Capsule())
-
-                        Image(systemName: "chevron.right")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
+                        .padding(12)
                     }
-                    .padding(12)
-                    .background(Color(.systemBackground))
-                    .clipShape(RoundedRectangle(cornerRadius: 10))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 10)
-                            .stroke(Color(.systemGray4), lineWidth: 1)
-                    )
+
+                    // Add to Explorer section
+                    Divider()
+                        .padding(.horizontal, 12)
+
+                    if isSpeciesInCatalog(result.scientificName) {
+                        HStack(spacing: 4) {
+                            Image(systemName: "checkmark.circle.fill")
+                                .font(.caption)
+                                .foregroundColor(.green)
+                            Text("Already in Plant Explorer")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        .padding(.vertical, 8)
+                        .padding(.horizontal, 12)
+                    } else {
+                        Button {
+                            Task { await addToExplorer(result) }
+                        } label: {
+                            HStack(spacing: 6) {
+                                if addingToExplorer == result.scientificName {
+                                    ProgressView()
+                                        .controlSize(.small)
+                                } else {
+                                    Image(systemName: "sparkles")
+                                        .font(.caption)
+                                }
+                                Text(addingToExplorer == result.scientificName
+                                     ? (explorerStatusMessage ?? "Adding...")
+                                     : "Add to Explorer with AI")
+                                    .font(.caption)
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 8)
+                        }
+                        .disabled(addingToExplorer != nil)
+                        .padding(.horizontal, 12)
+                    }
                 }
+                .background(Color(.systemBackground))
+                .clipShape(RoundedRectangle(cornerRadius: 10))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10)
+                        .stroke(Color(.systemGray4), lineWidth: 1)
+                )
             }
 
-            Text("Tap a result to add it as a new plant")
+            Text("Tap a result to add as a plant, or add to Explorer catalog")
                 .font(.caption)
                 .foregroundColor(.secondary)
                 .frame(maxWidth: .infinity)
@@ -419,6 +468,63 @@ struct IdentifyPlantView: View {
         }
 
         isIdentifying = false
+    }
+
+    // MARK: - Add to Explorer
+
+    private func addToExplorer(_ result: IdentifyResult) async {
+        let displayName = result.displayName
+        addingToExplorer = result.scientificName
+        explorerStatusMessage = "Generating care details..."
+
+        do {
+            // Step 1: Generate care details via Claude API
+            let details = try await plantService.generateSpeciesDetails(
+                scientificName: result.scientificName,
+                commonName: displayName,
+                family: result.family
+            )
+
+            // Step 2: Generate illustration via DALL-E
+            explorerStatusMessage = "Generating illustration..."
+            var imageUrl: String? = nil
+            do {
+                let imageResponse = try await plantService.generateSpeciesImage(
+                    name: details.name ?? displayName,
+                    scientificName: result.scientificName
+                )
+                imageUrl = imageResponse.imageUrl
+            } catch {
+                print("Image generation failed, proceeding without illustration: \(error)")
+            }
+
+            // Step 3: Create species in catalog
+            explorerStatusMessage = "Saving to catalog..."
+            let request = CreatePlantSpeciesRequest(
+                name: details.name ?? displayName,
+                scientificName: details.scientificName ?? result.scientificName,
+                family: details.family ?? result.family,
+                origin: details.origin,
+                description: details.description ?? "\(displayName) is a plant species in the \(result.family) family.",
+                careLevel: details.careLevel ?? "moderate",
+                lightRequirements: details.lightRequirements ?? "Bright indirect light",
+                wateringFrequency: details.wateringFrequency ?? 7,
+                humidity: details.humidity,
+                soilType: details.soilType,
+                propagation: details.propagation,
+                toxicity: details.toxicity,
+                commonIssues: details.commonIssues,
+                imageUrl: imageUrl
+            )
+
+            _ = try await plantService.createPlantSpecies(request)
+            explorerStatusMessage = nil
+        } catch {
+            print("Error adding to explorer: \(error)")
+            explorerStatusMessage = nil
+        }
+
+        addingToExplorer = nil
     }
 }
 

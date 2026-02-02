@@ -64,6 +64,10 @@ enum APIEndpoint {
     case identifyPlant
     case detectDisease
 
+    // AI Species Generation
+    case generateSpeciesDetails
+    case generateSpeciesImage
+
     // Care Stats
     case careStats
 
@@ -129,6 +133,10 @@ enum APIEndpoint {
             return "/identify-plant"
         case .detectDisease:
             return "/detect-disease"
+        case .generateSpeciesDetails:
+            return "/generate-species-details"
+        case .generateSpeciesImage:
+            return "/generate-species-image"
         case .careStats:
             return "/care-stats"
         case .deviceTokens:
