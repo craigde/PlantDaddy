@@ -1848,26 +1848,27 @@ Return this exact JSON structure:
       const openai = new OpenAI({ apiKey });
 
       const prompt = `A minimalist flat-design illustration of a ${name}${scientificName ? ` (${scientificName})` : ''} houseplant in a simple terracotta/mauve colored pot. The style should be:
-- Flat vector illustration with no gradients or shadows
+- Flat vector illustration with no gradients, no shadows, no outlines, no borders
 - Simple geometric shapes for leaves and stems
 - Multiple shades of green for the foliage
 - Brown/dark mauve tones for stems
 - A simple trapezoidal mauve/terracotta pot
-- Pure white background
-- Clean, centered composition
+- TRANSPARENT background with NO border, NO frame, NO outline around the image
+- Clean, centered composition floating on empty transparent space
 - Modern minimalist app icon style
-- No text, no labels, no decorations`;
+- No text, no labels, no decorations, no background elements
+- The plant and pot should be the only elements, surrounded by nothing`;
 
       console.log("[AI Species Image] Generating illustration for:", name);
 
       const response = await openai.images.generate({
-        model: "dall-e-3",
+        model: "gpt-image-1",
         prompt,
         n: 1,
         size: "1024x1024",
-        quality: "standard",
-        response_format: "b64_json",
-      });
+        quality: "medium",
+        background: "transparent",
+      } as any);
 
       const b64Data = response.data[0]?.b64_json;
       if (!b64Data) {
