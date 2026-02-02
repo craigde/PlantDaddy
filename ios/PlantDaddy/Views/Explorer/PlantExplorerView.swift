@@ -152,20 +152,28 @@ struct SpeciesCardView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            // Species image
+            // Species image (uses AuthenticatedImage for R2 URLs)
             if let imageUrl = species.fullImageUrl {
-                AsyncImage(url: URL(string: imageUrl)) { image in
-                    image
-                        .resizable()
-                        .aspectRatio(contentMode: .fill)
-                } placeholder: {
-                    Rectangle()
-                        .fill(Color.gray.opacity(0.2))
-                        .overlay(
-                            Image(systemName: "leaf.fill")
-                                .foregroundColor(.green.opacity(0.3))
-                        )
-                }
+                AuthenticatedImage(
+                    url: imageUrl,
+                    loadingPlaceholder: {
+                        Rectangle()
+                            .fill(Color.gray.opacity(0.2))
+                            .overlay(
+                                Image(systemName: "leaf.fill")
+                                    .foregroundColor(.green.opacity(0.3))
+                            )
+                    },
+                    failurePlaceholder: {
+                        Rectangle()
+                            .fill(Color.gray.opacity(0.2))
+                            .overlay(
+                                Image(systemName: "leaf.fill")
+                                    .foregroundColor(.green.opacity(0.3))
+                            )
+                    }
+                )
+                .aspectRatio(contentMode: .fill)
                 .frame(height: 120)
                 .frame(maxWidth: .infinity)
                 .clipped()

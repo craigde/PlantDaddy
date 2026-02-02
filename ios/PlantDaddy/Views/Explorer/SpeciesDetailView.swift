@@ -122,15 +122,24 @@ struct SpeciesDetailView: View {
     private var speciesImage: some View {
         Group {
             if let imageUrl = species.fullImageUrl {
-                AsyncImage(url: URL(string: imageUrl)) { image in
-                    image
-                        .resizable()
-                        .aspectRatio(contentMode: .fit)
-                } placeholder: {
-                    Rectangle()
-                        .fill(Color.gray.opacity(0.2))
-                        .overlay(ProgressView())
-                }
+                AuthenticatedImage(
+                    url: imageUrl,
+                    loadingPlaceholder: {
+                        Rectangle()
+                            .fill(Color.gray.opacity(0.2))
+                            .overlay(ProgressView())
+                    },
+                    failurePlaceholder: {
+                        Rectangle()
+                            .fill(Color.gray.opacity(0.1))
+                            .overlay(
+                                Image(systemName: "leaf.fill")
+                                    .font(.system(size: 60))
+                                    .foregroundColor(.green.opacity(0.3))
+                            )
+                    }
+                )
+                .aspectRatio(contentMode: .fit)
                 .frame(maxWidth: .infinity)
                 .frame(maxHeight: 250)
                 .background(Color(.secondarySystemBackground))
@@ -341,11 +350,16 @@ struct AddPlantFromSpeciesView: View {
                 Section {
                     HStack(spacing: 12) {
                         if let imageUrl = species.fullImageUrl {
-                            AsyncImage(url: URL(string: imageUrl)) { image in
-                                image.resizable().aspectRatio(contentMode: .fill)
-                            } placeholder: {
-                                Rectangle().fill(Color.gray.opacity(0.2))
-                            }
+                            AuthenticatedImage(
+                                url: imageUrl,
+                                loadingPlaceholder: {
+                                    Rectangle().fill(Color.gray.opacity(0.2))
+                                },
+                                failurePlaceholder: {
+                                    Rectangle().fill(Color.gray.opacity(0.2))
+                                }
+                            )
+                            .aspectRatio(contentMode: .fill)
                             .frame(width: 50, height: 50)
                             .clipShape(RoundedRectangle(cornerRadius: 8))
                         }
