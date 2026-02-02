@@ -9,6 +9,7 @@ import { seedPlantSpecies } from "./seed-species";
 import { addUserIdToSpecies } from "./migrations/add-user-id-to-species";
 import { dropWateringHistory } from "./migrations/drop-watering-history";
 import { migrateHouseholds } from "./migrations/add-households";
+import { addHouseholdIdToSpecies } from "./migrations/add-household-id-to-species";
 
 const app = express();
 app.use(express.json());
@@ -183,6 +184,7 @@ app.use((req, res, next) => {
   await addUserIdToSpecies();
   await dropWateringHistory();
   await migrateHouseholds();
+  await addHouseholdIdToSpecies();
 
   // Ensure admin user is set
   try {
