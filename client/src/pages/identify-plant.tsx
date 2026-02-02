@@ -164,7 +164,14 @@ export default function IdentifyPlant() {
         const imageData = await imageRes.json();
         imageUrl = imageData.imageUrl;
       } else {
-        console.warn("Image generation failed, proceeding without illustration");
+        const err = await imageRes.json().catch(() => ({}));
+        const reason = err.message || `HTTP ${imageRes.status}`;
+        console.warn("Image generation failed:", reason);
+        toast({
+          title: "Illustration skipped",
+          description: reason,
+          variant: "destructive",
+        });
       }
 
       // Step 3: Create species in catalog
