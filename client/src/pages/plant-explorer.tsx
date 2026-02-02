@@ -36,7 +36,8 @@ import {
   RefreshCw,
   Plus,
   PlusCircle,
-  Loader2
+  Loader2,
+  Trash2
 } from 'lucide-react';
 import type { PlantSpecies, InsertPlantSpecies } from '@shared/schema';
 
@@ -49,9 +50,10 @@ export default function PlantExplorer() {
   const { toast } = useToast();
   
   // Get plant species data with search query
-  const { getPlantSpecies, getPlantSpeciesById, addPlantSpecies } = usePlantSpecies();
+  const { getPlantSpecies, getPlantSpeciesById, addPlantSpecies, deletePlantSpecies } = usePlantSpecies();
   const { data: plantSpecies, isLoading, isError } = getPlantSpecies();
   const { data: selectedSpecies, isLoading: isLoadingSelected } = getPlantSpeciesById(selectedSpeciesId);
+  const [isDeleting, setIsDeleting] = useState(false);
   
   // Create form schema for adding new plant species
   const formSchema = z.object({
@@ -735,29 +737,65 @@ export default function PlantExplorer() {
             </ScrollArea>
             
             <DialogFooter className="absolute bottom-0 left-0 right-0 bg-card p-4 border-t">
-              <Button 
-                onClick={() => setSelectedSpeciesId(null)}
-                variant="outline"
-                className="mr-2"
-              >
-                Close
-              </Button>
-              <Button 
-                onClick={() => {
-                  setSelectedSpeciesId(null);
-                  // Pass as URL parameters instead of state
-                  const params = new URLSearchParams({
-                    name: selectedSpecies.name,
-                    species: selectedSpecies.name, // Use common name instead of scientific name
-                    wateringFrequency: selectedSpecies.wateringFrequency.toString(),
-                    imageUrl: selectedSpecies.imageUrl || ''
-                  });
-                  navigate(`/plants/new?${params.toString()}`);
-                }}
-              >
-                <Leaf className="mr-2 h-4 w-4" />
-                Add to My Plants
-              </Button>
+              <div className="flex w-full justify-between">
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  disabled={isDeleting}
+                  onClick={async () => {
+                    if (!selectedSpecies) return;
+                    setIsDeleting(true);
+                    try {
+                      await deletePlantSpecies.mutateAsync(selectedSpecies.id);
+                      toast({
+                        title: "Species removed",
+                        description: `${selectedSpecies.name} has been removed from the catalog.`,
+                      });
+                      setSelectedSpeciesId(null);
+                    } catch (error: any) {
+                      toast({
+                        title: "Cannot delete",
+                        description: error?.message || "Failed to delete species",
+                        variant: "destructive",
+                      });
+                    } finally {
+                      setIsDeleting(false);
+                    }
+                  }}
+                >
+                  {isDeleting ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <>
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      Delete
+                    </>
+                  )}
+                </Button>
+                <div className="flex gap-2">
+                  <Button
+                    onClick={() => setSelectedSpeciesId(null)}
+                    variant="outline"
+                  >
+                    Close
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      setSelectedSpeciesId(null);
+                      const params = new URLSearchParams({
+                        name: selectedSpecies.name,
+                        species: selectedSpecies.name,
+                        wateringFrequency: selectedSpecies.wateringFrequency.toString(),
+                        imageUrl: selectedSpecies.imageUrl || ''
+                      });
+                      navigate(`/plants/new?${params.toString()}`);
+                    }}
+                  >
+                    <Leaf className="mr-2 h-4 w-4" />
+                    Add to My Plants
+                  </Button>
+                </div>
+              </div>
             </DialogFooter>
           </DialogContent>
         )}

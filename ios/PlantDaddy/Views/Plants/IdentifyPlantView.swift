@@ -496,6 +496,7 @@ struct IdentifyPlantView: View {
                 imageUrl = imageResponse.imageUrl
             } catch {
                 print("Image generation failed, proceeding without illustration: \(error)")
+                explorerStatusMessage = "Illustration skipped, saving..."
             }
 
             // Step 3: Create species in catalog

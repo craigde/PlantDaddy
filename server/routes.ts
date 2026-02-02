@@ -1702,19 +1702,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // Delete a plant species
-  apiRouter.delete("/plant-species/:id", async (req: Request, res: Response) => {
+  // Delete a plant species (only if not in use by any plant)
+  apiRouter.delete("/plant-species/:id", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id);
       if (isNaN(id)) {
         return res.status(400).json({ message: "Invalid plant species ID" });
       }
-      
+
+      // Check if species exists
+      const species = await dbStorage.getPlantSpecies(id);
+      if (!species) {
+        return res.status(404).json({ message: "Plant species not found" });
+      }
+
+      // Check if any plant references this species (by name or scientific name)
+      const { plants: plantsTable } = await import("@shared/schema");
+      const { db: database } = await import("./db");
+      const { or, ilike } = await import("drizzle-orm");
+      const plantsUsing = await database.select({ id: plantsTable.id })
+        .from(plantsTable)
+        .where(
+          or(
+            ilike(plantsTable.species, species.name),
+            ilike(plantsTable.species, species.scientificName)
+          )
+        )
+        .limit(1);
+
+      if (plantsUsing.length > 0) {
+        return res.status(409).json({
+          message: `Cannot delete "${species.name}" because it is used by one or more plants.`,
+        });
+      }
+
       const deleted = await dbStorage.deletePlantSpecies(id);
       if (!deleted) {
         return res.status(404).json({ message: "Plant species not found" });
       }
-      
+
       res.json({ success: true });
     } catch (error: any) {
       const errorMessage = error?.message || "Failed to delete plant species";
