@@ -63,7 +63,6 @@ const BackupCareActivitySchema = z.object({
 
 const BackupNotificationSettingsSchema = z.object({
   enabled: z.boolean(),
-  pushoverEnabled: z.boolean().optional(),
   emailEnabled: z.boolean().optional(),
   emailAddress: z.string().nullable().optional(),
   lastUpdated: z.string().transform(val => new Date(val))
@@ -518,10 +517,9 @@ export class ImportService {
       // Only restore safe notification settings (no tokens)
       const safeSettings: Partial<InsertNotificationSettings> = {
         enabled: settings.enabled,
-        pushoverEnabled: settings.pushoverEnabled || false,
         emailEnabled: settings.emailEnabled || false,
         emailAddress: settings.emailAddress
-        // Never restore: pushoverAppToken, pushoverUserKey, sendgridApiKey
+        // Never restore: sendgridApiKey for security
       };
       
       await this.storage.updateNotificationSettings(safeSettings);

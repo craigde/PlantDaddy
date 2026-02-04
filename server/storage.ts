@@ -1021,10 +1021,8 @@ export class MemStorage implements IStorage {
       this.notificationSettingsData = {
         id: 1,
         enabled: true,
-        pushoverAppToken: process.env.PUSHOVER_APP_TOKEN || null,
-        pushoverUserKey: process.env.PUSHOVER_USER_KEY || null,
         lastUpdated: new Date()
-      };
+      } as NotificationSettings;
     }
 
     // Update settings

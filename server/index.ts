@@ -11,6 +11,7 @@ import { dropWateringHistory } from "./migrations/drop-watering-history";
 import { migrateHouseholds } from "./migrations/add-households";
 import { addHouseholdIdToSpecies } from "./migrations/add-household-id-to-species";
 import { addReminderColumnsToNotificationSettings } from "./migrations/add-reminder-columns";
+import { dropPushoverColumns } from "./migrations/drop-pushover-columns";
 
 const app = express();
 app.use(express.json());
@@ -80,9 +81,6 @@ async function initializeDatabase() {
       id SERIAL PRIMARY KEY,
       user_id INTEGER NOT NULL UNIQUE REFERENCES users(id),
       enabled BOOLEAN NOT NULL DEFAULT true,
-      pushover_app_token TEXT,
-      pushover_user_key TEXT,
-      pushover_enabled BOOLEAN NOT NULL DEFAULT true,
       email_enabled BOOLEAN NOT NULL DEFAULT false,
       email_address TEXT,
       sendgrid_api_key TEXT,
@@ -190,6 +188,7 @@ app.use((req, res, next) => {
   await migrateHouseholds();
   await addHouseholdIdToSpecies();
   await addReminderColumnsToNotificationSettings();
+  await dropPushoverColumns();
 
   // Ensure admin user is set
   try {

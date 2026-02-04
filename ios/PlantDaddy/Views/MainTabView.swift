@@ -41,12 +41,9 @@ struct MainTabView: View {
 struct NotificationSettingsResponse: Codable {
     let id: Int?
     let enabled: Bool
-    let pushoverEnabled: Bool
-    let pushoverAppToken: Bool
-    let pushoverUserKey: Bool
-    let emailEnabled: Bool
+    let emailEnabled: Bool?
     let emailAddress: String?
-    let sendgridApiKey: Bool
+    let sendgridApiKey: Bool?
     let reminderTime: String?
     let reminderDaysBefore: Int?
     let lastUpdated: String?
@@ -65,8 +62,8 @@ struct TestNotificationResponse: Codable {
 }
 
 struct TestNotificationResults: Codable {
-    let pushover: Bool?
     let email: Bool?
+    let apns: Bool?
 }
 
 // MARK: - Settings View

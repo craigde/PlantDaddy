@@ -322,8 +322,6 @@ export class DatabaseStorage implements IStorage {
         .insert(notificationSettings)
         .values({
           enabled: settings.enabled ?? true,
-          pushoverAppToken: settings.pushoverAppToken ?? process.env.PUSHOVER_APP_TOKEN ?? null,
-          pushoverUserKey: settings.pushoverUserKey ?? process.env.PUSHOVER_USER_KEY ?? null,
           lastUpdated: new Date()
         })
         .returning();

@@ -6,7 +6,7 @@ import { insertPlantSchema, insertLocationSchema, insertPlantSpeciesSchema, inse
 import multer from "multer";
 import path from "path";
 import fs from "fs";
-import { sendPlantWateringNotification, sendWelcomeNotification, checkPlantsAndSendNotifications, sendPushoverNotification, sendTestNotification } from "./notifications";
+import { sendPlantWateringNotification, sendWelcomeNotification, checkPlantsAndSendNotifications, sendTestNotification } from "./notifications";
 import { isApnsConfigured } from "./apns-service";
 import { setupAuth, hashPassword, jwtAuthMiddleware, comparePasswords } from "./auth";
 import passport from "passport";
@@ -737,14 +737,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       const updatedPlant = await dbStorage.getPlant(id);
-
-      // Send a confirmation notification via Pushover
-      const notificationTitle = "🪴 PlantDaddy: Plant Watered";
-      const notificationMessage = `${updatedPlant?.name} has been watered successfully.`;
-
-      // We don't need to await this, it can happen in the background
-      sendPushoverNotification(notificationTitle, notificationMessage, 0)
-        .catch((err: Error) => console.error("Failed to send watering confirmation notification:", err));
 
       res.json({
         success: true,
@@ -2231,9 +2223,6 @@ Return this exact JSON structure:
         return res.json({
           id: null,
           enabled: true,
-          pushoverEnabled: true,
-          pushoverAppToken: process.env.PUSHOVER_APP_TOKEN ? true : false,
-          pushoverUserKey: process.env.PUSHOVER_USER_KEY ? true : false,
           emailEnabled: false,
           emailAddress: null,
           sendgridApiKey: false,
@@ -2243,13 +2232,10 @@ Return this exact JSON structure:
         });
       }
 
-      // Don't expose actual tokens in the response for security reasons
+      // Don't expose actual API keys in the response
       res.json({
         id: settings.id,
         enabled: settings.enabled,
-        pushoverEnabled: settings.pushoverEnabled,
-        pushoverAppToken: !!settings.pushoverAppToken,
-        pushoverUserKey: !!settings.pushoverUserKey,
         emailEnabled: settings.emailEnabled,
         emailAddress: settings.emailAddress,
         sendgridApiKey: !!settings.sendgridApiKey,
@@ -2505,16 +2491,15 @@ Return this exact JSON structure:
 
       const updatedSettings = await dbStorage.updateNotificationSettings(parsedData.data);
       
-      // Don't expose actual tokens in the response for security reasons
+      // Don't expose actual API keys in the response
       res.json({
         id: updatedSettings.id,
         enabled: updatedSettings.enabled,
-        pushoverEnabled: updatedSettings.pushoverEnabled,
-        pushoverAppToken: !!updatedSettings.pushoverAppToken,
-        pushoverUserKey: !!updatedSettings.pushoverUserKey,
         emailEnabled: updatedSettings.emailEnabled,
         emailAddress: updatedSettings.emailAddress,
         sendgridApiKey: !!updatedSettings.sendgridApiKey,
+        reminderTime: updatedSettings.reminderTime || "08:00",
+        reminderDaysBefore: updatedSettings.reminderDaysBefore ?? 0,
         lastUpdated: updatedSettings.lastUpdated
       });
     } catch (error: any) {
@@ -2528,10 +2513,9 @@ Return this exact JSON structure:
     try {
       const results = await sendTestNotification();
       
-      if (results.pushover || results.email || results.apns) {
+      if (results.email || results.apns) {
         const successTypes = [];
         if (results.apns) successTypes.push("Push Notification");
-        if (results.pushover) successTypes.push("Pushover");
         if (results.email) successTypes.push("Email");
 
         const message = `Test notification sent via ${successTypes.join(" and ")}.`;

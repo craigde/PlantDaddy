@@ -119,10 +119,6 @@ export const notificationSettings = pgTable("notification_settings", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").references(() => users.id).notNull().unique(), // Each user has one settings record
   enabled: boolean("enabled").notNull().default(true),
-  // Pushover settings
-  pushoverAppToken: text("pushover_app_token"),
-  pushoverUserKey: text("pushover_user_key"),
-  pushoverEnabled: boolean("pushover_enabled").notNull().default(true),
   // Email settings
   emailEnabled: boolean("email_enabled").notNull().default(false),
   emailAddress: text("email_address"),
@@ -147,7 +143,7 @@ export const notificationLog = pgTable("notification_log", {
   plantId: integer("plant_id").references(() => plants.id),
   title: text("title").notNull(),
   message: text("message").notNull(),
-  channel: text("channel").notNull(), // "pushover", "email", "apns", "summary"
+  channel: text("channel").notNull(), // "email", "apns", "summary", "all"
   success: boolean("success").notNull(),
   sentAt: timestamp("sent_at").notNull().defaultNow(),
 });
