@@ -13,7 +13,7 @@ A plant care tracking application for iOS and web. Track watering schedules, org
 - **Species Catalog** -- Browse 37 built-in plant species with care guides, or add custom species
 - **Household Sharing** -- Invite family members or housesitters to view and water your plants. Support for multiple households (e.g., home + vacation house) with role-based access (owner, member, caretaker)
 - **Location Management** -- Organize plants by room or area, with full CRUD from both iOS and web
-- **Smart Notifications** -- Customizable daily reminders with per-user timing (6 AM - 10 PM), advance reminders (0-3 days before due), urgency-tiered messages, notification history log, and multi-channel delivery via APNs (iOS), Pushover, or email
+- **Smart Notifications** -- Customizable daily reminders with per-user timing (6 AM - 10 PM), advance reminders (0-3 days before due), urgency-tiered messages, notification history log, and multi-channel delivery via APNs (iOS) and email
 - **Data Backup** -- Export and import plant data as ZIP files, with merge or replace restore modes
 - **Dark Mode** -- Full light/dark theme support on web
 
@@ -34,7 +34,7 @@ A plant care tracking application for iOS and web. Track watering schedules, org
 ### Infrastructure
 - **Hosting:** Railway
 - **Image Storage:** Cloudflare R2 (S3-compatible)
-- **Push Notifications:** APNs (iOS native), Pushover, SendGrid (email)
+- **Push Notifications:** APNs (iOS native), SendGrid (email)
 - **Plant Identification:** PlantNet API (species + disease detection)
 
 ## Project Structure
@@ -55,7 +55,7 @@ PlantDaddy/
 │   ├── auth.ts                # Passport.js session auth
 │   ├── jwt.ts                 # JWT token management for mobile
 │   ├── apns-service.ts        # Apple Push Notification Service
-│   ├── notifications.ts       # Notification dispatch (Pushover, Email, APNs)
+│   ├── notifications.ts       # Notification dispatch (Email, APNs)
 │   ├── scheduler.ts           # Per-user reminder scheduler with customizable times
 │   ├── email-service.ts       # SendGrid email integration
 │   ├── r2Storage.ts           # Cloudflare R2 image storage
@@ -133,8 +133,6 @@ Open `ios/PlantDaddy.xcodeproj` in Xcode. Update `APIConfig.swift` to point to y
 | `APNS_KEY_ID` | No | Apple Push Notification key ID |
 | `APNS_TEAM_ID` | No | Apple Developer Team ID |
 | `APNS_KEY` | No | APNs .p8 private key contents |
-| `PUSHOVER_APP_TOKEN` | No | Pushover app token (can also be set per-user in settings) |
-| `PUSHOVER_USER_KEY` | No | Pushover user key (can also be set per-user in settings) |
 | `R2_ACCOUNT_ID` | No | Cloudflare R2 account ID |
 | `R2_ACCESS_KEY_ID` | No | R2 access key |
 | `R2_SECRET_ACCESS_KEY` | No | R2 secret key |
