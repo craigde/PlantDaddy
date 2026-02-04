@@ -10,6 +10,7 @@ import { addUserIdToSpecies } from "./migrations/add-user-id-to-species";
 import { dropWateringHistory } from "./migrations/drop-watering-history";
 import { migrateHouseholds } from "./migrations/add-households";
 import { addHouseholdIdToSpecies } from "./migrations/add-household-id-to-species";
+import { addReminderColumnsToNotificationSettings } from "./migrations/add-reminder-columns";
 
 const app = express();
 app.use(express.json());
@@ -85,6 +86,9 @@ async function initializeDatabase() {
       email_enabled BOOLEAN NOT NULL DEFAULT false,
       email_address TEXT,
       sendgrid_api_key TEXT,
+      reminder_time TEXT DEFAULT '08:00',
+      reminder_days_before INTEGER DEFAULT 0,
+      last_notified_date TEXT,
       last_updated TIMESTAMP DEFAULT NOW()
     );
 
@@ -185,6 +189,7 @@ app.use((req, res, next) => {
   await dropWateringHistory();
   await migrateHouseholds();
   await addHouseholdIdToSpecies();
+  await addReminderColumnsToNotificationSettings();
 
   // Ensure admin user is set
   try {
