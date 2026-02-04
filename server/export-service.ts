@@ -24,7 +24,7 @@ export interface UserBackupData {
   locations: Location[];
   plantHealthRecords: PlantHealthRecord[];
   careActivities: CareActivity[];
-  notificationSettings?: Omit<NotificationSettings, 'pushoverAppToken' | 'pushoverUserKey' | 'sendgridApiKey'>;
+  notificationSettings?: Omit<NotificationSettings, 'sendgridApiKey'>;
 }
 
 export interface ExportResult {
@@ -62,11 +62,13 @@ export class ExportService {
       id: notificationSettings.id,
       userId: notificationSettings.userId,
       enabled: notificationSettings.enabled,
-      pushoverEnabled: notificationSettings.pushoverEnabled,
       emailEnabled: notificationSettings.emailEnabled,
       emailAddress: notificationSettings.emailAddress,
+      reminderTime: notificationSettings.reminderTime,
+      reminderDaysBefore: notificationSettings.reminderDaysBefore,
+      lastNotifiedDate: notificationSettings.lastNotifiedDate,
       lastUpdated: notificationSettings.lastUpdated
-      // Excluded: pushoverAppToken, pushoverUserKey, sendgridApiKey for security
+      // Excluded: sendgridApiKey for security
     } : undefined;
 
     const backupData: UserBackupData = {

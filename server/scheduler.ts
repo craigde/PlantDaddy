@@ -2,7 +2,7 @@ import { db } from './db';
 import { plants, notificationSettings, notificationLog, householdMembers } from '@shared/schema';
 import { eq, inArray } from 'drizzle-orm';
 import { daysUntilWatering } from '../client/src/lib/date-utils';
-import { sendPushoverNotification, sendPlantNotification } from './notifications';
+import { sendPlantNotification } from './notifications';
 import { sendApnsNotification, isApnsConfigured } from './apns-service';
 import { userContextStorage } from './user-context';
 
@@ -138,8 +138,6 @@ async function checkPlantsTask() {
 
             const summaryTitle = '🪴 PlantDaddy Daily Summary';
             const summaryBody = `${plantsNeedingAttention.length} plants need attention: ${parts.join(', ')}.`;
-
-            await sendPushoverNotification(summaryTitle, summaryBody, 0);
 
             if (isApnsConfigured()) {
               const plantIds = plantsNeedingAttention.map(p => p.plant.id);

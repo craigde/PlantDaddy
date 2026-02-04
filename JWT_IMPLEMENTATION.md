@@ -283,7 +283,7 @@ Implement token refresh or re-login flow when token expires (401 response).
 2. **Test endpoints** with curl or Postman
 3. **Build iOS networking layer** (see examples above)
 4. **Implement token storage** in Keychain
-5. **Add push notifications** (APNs instead of Pushover)
+5. **Add push notifications** (APNs)
 6. **Handle offline mode** (optional)
 
 ## Support
