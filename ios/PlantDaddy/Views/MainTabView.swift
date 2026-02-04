@@ -42,22 +42,20 @@ struct NotificationSettingsResponse: Codable {
     let id: Int?
     let enabled: Bool
     let pushoverEnabled: Bool
-    let pushoverAppToken: Bool  // Server returns boolean indicating if token exists
+    let pushoverAppToken: Bool
     let pushoverUserKey: Bool
     let emailEnabled: Bool
     let emailAddress: String?
     let sendgridApiKey: Bool
+    let reminderTime: String?
+    let reminderDaysBefore: Int?
     let lastUpdated: String?
 }
 
 struct NotificationSettingsUpdate: Codable {
     var enabled: Bool?
-    var pushoverEnabled: Bool?
-    var pushoverAppToken: String?
-    var pushoverUserKey: String?
-    var emailEnabled: Bool?
-    var emailAddress: String?
-    var sendgridApiKey: String?
+    var reminderTime: String?
+    var reminderDaysBefore: Int?
 }
 
 struct TestNotificationResponse: Codable {
@@ -181,14 +179,14 @@ struct SettingsView: View {
                         ServerNotificationSettingsView()
                     } label: {
                         HStack {
-                            Image(systemName: "server.rack")
-                            Text("Server Notifications")
+                            Image(systemName: "bell.badge")
+                            Text("Notification Settings")
                         }
                     }
                 } header: {
                     Text("Notifications")
                 } footer: {
-                    Text("Device notifications alert you locally. Server notifications send via Pushover or email even when the app is closed.")
+                    Text("Configure when and how you receive watering reminders.")
                 }
 
                 Section("About") {
@@ -214,22 +212,36 @@ struct ServerNotificationSettingsView: View {
     @State private var isTesting = false
 
     @State private var enabled = true
-    @State private var pushoverEnabled = true
-    @State private var pushoverAppToken = ""
-    @State private var pushoverUserKey = ""
-    @State private var hasPushoverAppToken = false
-    @State private var hasPushoverUserKey = false
-
-    @State private var emailEnabled = false
-    @State private var emailAddress = ""
-    @State private var sendgridApiKey = ""
-    @State private var hasSendgridApiKey = false
+    @State private var reminderTime = "08:00"
+    @State private var reminderDaysBefore = 0
 
     @State private var alertTitle = ""
     @State private var alertMessage = ""
     @State private var showAlert = false
 
     private let apiClient = APIClient.shared
+
+    private let timeOptions: [(label: String, value: String)] = {
+        (6...22).map { hour in
+            let timeStr = String(format: "%02d:00", hour)
+            let label: String
+            if hour < 12 {
+                label = "\(hour):00 AM"
+            } else if hour == 12 {
+                label = "12:00 PM"
+            } else {
+                label = "\(hour - 12):00 PM"
+            }
+            return (label: label, value: timeStr)
+        }
+    }()
+
+    private let advanceOptions: [(label: String, value: Int)] = [
+        ("On the day they're due (+ overdue)", 0),
+        ("1 day before", 1),
+        ("2 days before", 2),
+        ("3 days before", 3)
+    ]
 
     var body: some View {
         Form {
@@ -242,57 +254,21 @@ struct ServerNotificationSettingsView: View {
             }
 
             Section {
-                Toggle("Pushover Enabled", isOn: $pushoverEnabled)
-
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("App Token")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                    SecureField(hasPushoverAppToken ? "••••••• (configured)" : "Enter Pushover app token", text: $pushoverAppToken)
-                        .textContentType(.none)
-                        .autocorrectionDisabled()
+                Picker("Daily Reminder Time", selection: $reminderTime) {
+                    ForEach(timeOptions, id: \.value) { option in
+                        Text(option.label).tag(option.value)
+                    }
                 }
 
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("User Key")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                    SecureField(hasPushoverUserKey ? "••••••• (configured)" : "Enter Pushover user key", text: $pushoverUserKey)
-                        .textContentType(.none)
-                        .autocorrectionDisabled()
+                Picker("Advance Reminder", selection: $reminderDaysBefore) {
+                    ForEach(advanceOptions, id: \.value) { option in
+                        Text(option.label).tag(option.value)
+                    }
                 }
             } header: {
-                Text("Pushover")
+                Text("Reminder Preferences")
             } footer: {
-                Text("Get a Pushover account at pushover.net. Leave fields empty to keep existing values.")
-            }
-
-            Section {
-                Toggle("Email Enabled", isOn: $emailEnabled)
-
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Email Address")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                    TextField("you@example.com", text: $emailAddress)
-                        .textContentType(.emailAddress)
-                        .keyboardType(.emailAddress)
-                        .autocapitalization(.none)
-                        .autocorrectionDisabled()
-                }
-
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("SendGrid API Key")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                    SecureField(hasSendgridApiKey ? "••••••• (configured)" : "Enter SendGrid API key", text: $sendgridApiKey)
-                        .textContentType(.none)
-                        .autocorrectionDisabled()
-                }
-            } header: {
-                Text("Email")
-            } footer: {
-                Text("Requires a SendGrid account for email delivery.")
+                Text("Choose when to receive your daily watering reminder and how far in advance.")
             }
 
             Section {
@@ -327,7 +303,7 @@ struct ServerNotificationSettingsView: View {
                 .disabled(isTesting)
             }
         }
-        .navigationTitle("Server Notifications")
+        .navigationTitle("Notifications")
         .navigationBarTitleDisplayMode(.inline)
         .overlay {
             if isLoading {
@@ -354,12 +330,8 @@ struct ServerNotificationSettingsView: View {
                 method: .get
             )
             enabled = settings.enabled
-            pushoverEnabled = settings.pushoverEnabled
-            hasPushoverAppToken = settings.pushoverAppToken
-            hasPushoverUserKey = settings.pushoverUserKey
-            emailEnabled = settings.emailEnabled
-            emailAddress = settings.emailAddress ?? ""
-            hasSendgridApiKey = settings.sendgridApiKey
+            reminderTime = settings.reminderTime ?? "08:00"
+            reminderDaysBefore = settings.reminderDaysBefore ?? 0
         } catch {
             alertTitle = "Error"
             alertMessage = "Failed to load notification settings: \(error.localizedDescription)"
@@ -373,36 +345,14 @@ struct ServerNotificationSettingsView: View {
         do {
             var update = NotificationSettingsUpdate()
             update.enabled = enabled
-            update.pushoverEnabled = pushoverEnabled
-            update.emailEnabled = emailEnabled
-
-            // Only send tokens if user entered new values
-            if !pushoverAppToken.isEmpty {
-                update.pushoverAppToken = pushoverAppToken
-            }
-            if !pushoverUserKey.isEmpty {
-                update.pushoverUserKey = pushoverUserKey
-            }
-            if !emailAddress.isEmpty {
-                update.emailAddress = emailAddress
-            }
-            if !sendgridApiKey.isEmpty {
-                update.sendgridApiKey = sendgridApiKey
-            }
+            update.reminderTime = reminderTime
+            update.reminderDaysBefore = reminderDaysBefore
 
             let _: NotificationSettingsResponse = try await apiClient.request(
                 endpoint: .notificationSettings,
                 method: .post,
                 body: update
             )
-
-            // Clear entered secrets after save
-            pushoverAppToken = ""
-            pushoverUserKey = ""
-            sendgridApiKey = ""
-
-            // Reload to refresh the "configured" indicators
-            await loadSettings()
 
             alertTitle = "Saved"
             alertMessage = "Notification settings updated successfully."

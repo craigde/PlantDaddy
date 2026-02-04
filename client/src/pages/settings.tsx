@@ -111,8 +111,7 @@ export default function Settings() {
 
   const [newLocation, setNewLocation] = useState("");
   const [editingLocation, setEditingLocation] = useState<{ id: number; name: string } | null>(null);
-  const [pushoverAppToken, setPushoverAppToken] = useState("");
-  const [pushoverUserKey, setPushoverUserKey] = useState("");
+  // Pushover deprecated — native push notifications are used instead
   const [emailAddress, setEmailAddress] = useState("");
   const [sendgridApiKey, setSendgridApiKey] = useState("");
   
@@ -969,128 +968,6 @@ export default function Settings() {
                   </div>
                 </div>
 
-                <div className="mt-6 border-t pt-4">
-                  <h4 className="font-medium mb-3">Pushover Credentials</h4>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    PlantDaddy uses Pushover to send notifications to your devices. You'll need to provide your Pushover credentials to receive notifications.
-                  </p>
-
-                  <div className="space-y-4">
-                    <div className="grid gap-2">
-                      <Label htmlFor="pushover-app-token">Pushover App Token</Label>
-                      <div className="flex items-center">
-                        <Input
-                          id="pushover-app-token"
-                          type="password"
-                          value={pushoverAppToken}
-                          onChange={(e) => setPushoverAppToken(e.target.value)}
-                          placeholder={notificationSettings?.pushoverAppToken ? "••••••••••••••••••••••••••••••" : "Enter your Pushover App Token"}
-                          className="mr-2"
-                        />
-                        {notificationSettings?.pushoverAppToken && (
-                          <div className="text-green-500 flex items-center">
-                            <CheckCircle className="h-4 w-4 mr-1" />
-                            <span className="text-xs">Configured</span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="grid gap-2">
-                      <Label htmlFor="pushover-user-key">Pushover User Key</Label>
-                      <div className="flex items-center">
-                        <Input
-                          id="pushover-user-key"
-                          type="password"
-                          value={pushoverUserKey}
-                          onChange={(e) => setPushoverUserKey(e.target.value)}
-                          placeholder={notificationSettings?.pushoverUserKey ? "••••••••••••••••••••••••••••••" : "Enter your Pushover User Key"}
-                          className="mr-2"
-                        />
-                        {notificationSettings?.pushoverUserKey && (
-                          <div className="text-green-500 flex items-center">
-                            <CheckCircle className="h-4 w-4 mr-1" />
-                            <span className="text-xs">Configured</span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="flex items-center space-x-3">
-                      <Button 
-                        onClick={() => {
-                          const updates: any = {};
-                          if (pushoverAppToken) updates.pushoverAppToken = pushoverAppToken;
-                          if (pushoverUserKey) updates.pushoverUserKey = pushoverUserKey;
-                          
-                          if (Object.keys(updates).length === 0) {
-                            toast({
-                              title: "No changes to save",
-                              description: "Please enter your Pushover credentials.",
-                              variant: "destructive",
-                            });
-                            return;
-                          }
-                          
-                          // Enable Pushover notifications when credentials are saved
-                          updates.pushoverEnabled = true;
-                          
-                          updateSettings(updates);
-                          toast({
-                            title: "Credentials saved",
-                            description: "Your Pushover credentials have been saved.",
-                          });
-                          
-                          // Clear input fields after saving
-                          setPushoverAppToken("");
-                          setPushoverUserKey("");
-                        }}
-                        disabled={isUpdating || (!pushoverAppToken && !pushoverUserKey)}
-                      >
-                        {isUpdating ? (
-                          <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                        ) : (
-                          <SaveIcon className="h-4 w-4 mr-2" />
-                        )}
-                        Save Credentials
-                      </Button>
-                      
-                      <Button 
-                        variant="outline"
-                        onClick={() => {
-                          testNotification();
-                          toast({
-                            title: "Sending test notification",
-                            description: "Check your device for the test notification.",
-                          });
-                        }}
-                        disabled={isTesting || !notificationSettings?.pushoverAppToken || !notificationSettings?.pushoverUserKey || !notificationSettings?.enabled}
-                      >
-                        {isTesting ? (
-                          <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                        ) : (
-                          <BellRing className="h-4 w-4 mr-2" />
-                        )}
-                        Test Notification
-                      </Button>
-                    </div>
-                    
-                    {notificationSettings?.enabled && (!notificationSettings.pushoverAppToken || !notificationSettings.pushoverUserKey) && !notificationSettings.emailEnabled && (
-                      <div className="bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-md p-3 mt-2">
-                        <div className="flex items-start">
-                          <AlertCircle className="h-5 w-5 text-amber-500 mt-0.5 mr-2" />
-                          <div>
-                            <h4 className="font-medium text-amber-800 dark:text-amber-300">Credentials Required</h4>
-                            <p className="text-sm text-amber-700 dark:text-amber-400">
-                              Please enter your Pushover credentials to receive notifications, or set up Email notifications below.
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-                
                 <div className="mt-8 border-t pt-6">
                   <div className="flex items-center justify-between py-2 mb-3">
                     <div>
@@ -1098,7 +975,7 @@ export default function Settings() {
                         Email Notifications
                       </h4>
                       <p className="text-sm text-muted-foreground">
-                        Receive watering reminders via email instead of Pushover.
+                        Receive watering reminders via email.
                       </p>
                     </div>
                     <Switch
