@@ -118,7 +118,8 @@ struct PlantCardView: View {
         lastWatered: Date().addingTimeInterval(-6 * 24 * 60 * 60),
         notes: "Loves indirect sunlight",
         imageUrl: nil,
-        userId: 1
+        userId: 1,
+        snoozedUntil: nil
     ))
     .padding()
 }
