@@ -29,7 +29,22 @@ class APIClient: NSObject {
 
     private override init() {
         self.decoder = JSONDecoder()
-        self.decoder.dateDecodingStrategy = .iso8601
+        self.decoder.dateDecodingStrategy = .custom { decoder in
+            let container = try decoder.singleValueContainer()
+            let dateString = try container.decode(String.self)
+
+            // Try ISO 8601 with fractional seconds first (JavaScript's Date.toISOString() format)
+            if let date = DateFormatter.iso8601Full.date(from: dateString) {
+                return date
+            }
+
+            // Fall back to standard ISO 8601 without fractional seconds
+            if let date = ISO8601DateFormatter().date(from: dateString) {
+                return date
+            }
+
+            throw DecodingError.dataCorruptedError(in: container, debugDescription: "Cannot decode date: \(dateString)")
+        }
 
         self.encoder = JSONEncoder()
         self.encoder.dateEncodingStrategy = .iso8601
