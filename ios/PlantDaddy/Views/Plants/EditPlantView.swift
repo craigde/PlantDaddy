@@ -219,7 +219,8 @@ struct EditPlantView: View {
             lastWatered: Date(),
             notes: "Loves humidity",
             imageUrl: nil,
-            userId: 1
+            userId: 1,
+            snoozedUntil: nil
         )
     ) { _ in }
 }
