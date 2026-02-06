@@ -49,6 +49,9 @@ struct PlantDetailView: View {
     @State private var storyCaption: String = ""
     @State private var isUploadingStoryPhoto = false
     @State private var selectedStoryPhoto: StoryPhoto?
+    @State private var showingSnoozeSheet = false
+    @State private var showingSnoozeConfirmation = false
+    @State private var snoozeConfirmationMessage = ""
     @Environment(\.dismiss) private var dismiss
 
     private let imageUploadService = ImageUploadService.shared
@@ -127,6 +130,21 @@ struct PlantDetailView: View {
                     self.plant = updatedPlant
                 }
             }
+        }
+        .sheet(isPresented: $showingSnoozeSheet) {
+            if let plant = plant {
+                SnoozeSheet(plantId: plant.id, plantName: plant.name) { updatedPlant, message in
+                    self.plant = updatedPlant
+                    snoozeConfirmationMessage = message
+                    showingSnoozeConfirmation = true
+                    Task { await loadCareData() }
+                }
+            }
+        }
+        .alert("Reminder Snoozed", isPresented: $showingSnoozeConfirmation) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(snoozeConfirmationMessage)
         }
         .task {
             await loadPlant()
@@ -293,6 +311,34 @@ struct PlantDetailView: View {
                     .foregroundColor(.white)
                     .cornerRadius(12)
                 }
+            }
+
+            // Snooze button - show when plant is due or overdue
+            if plant.daysUntilWatering <= 0 || plant.isSnoozed {
+                Button(action: {
+                    if plant.isSnoozed {
+                        clearSnooze()
+                    } else {
+                        showingSnoozeSheet = true
+                    }
+                }) {
+                    HStack {
+                        Image(systemName: plant.isSnoozed ? "bell.fill" : "bell.slash.fill")
+                        if plant.isSnoozed, let snoozedUntil = plant.snoozedUntil {
+                            Text("Snoozed until \(snoozedUntil, format: .dateTime.month(.abbreviated).day())")
+                                .fontWeight(.semibold)
+                        } else {
+                            Text("Snooze")
+                                .fontWeight(.semibold)
+                        }
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(plant.isSnoozed ? Color.gray : Color.purple.opacity(0.8))
+                    .foregroundColor(.white)
+                    .cornerRadius(12)
+                }
+                .disabled(isLoading)
             }
         }
     }
@@ -768,6 +814,19 @@ struct PlantDetailView: View {
         }
     }
 
+    private func clearSnooze() {
+        isLoading = true
+        Task {
+            do {
+                plant = try await plantService.clearSnooze(id: plantId)
+                await loadCareData()
+            } catch {
+                print("Error clearing snooze: \(error)")
+            }
+            isLoading = false
+        }
+    }
+
     private func deletePlant() {
         Task {
             do {
@@ -1120,6 +1179,102 @@ struct StoryPhotoDetailSheet: View {
                     Button("Done") { dismiss() }
                 }
             }
+        }
+    }
+}
+
+// MARK: - Snooze Sheet
+
+struct SnoozeSheet: View {
+    let plantId: Int
+    let plantName: String
+    let onSnooze: (Plant, String) -> Void
+
+    @Environment(\.dismiss) private var dismiss
+    @ObservedObject private var plantService = PlantService.shared
+    @State private var isLoading = false
+    @State private var errorMessage: String?
+
+    private let snoozeOptions: [(label: String, days: Int)] = [
+        ("Tomorrow", 1),
+        ("2 Days", 2),
+        ("3 Days", 3),
+        ("1 Week", 7)
+    ]
+
+    var body: some View {
+        NavigationStack {
+            List {
+                Section {
+                    ForEach(snoozeOptions, id: \.days) { option in
+                        Button {
+                            snooze(days: option.days)
+                        } label: {
+                            HStack {
+                                Text(option.label)
+                                    .foregroundColor(.primary)
+                                Spacer()
+                                Text(snoozeDate(days: option.days), format: .dateTime.weekday(.abbreviated).month(.abbreviated).day())
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                        .disabled(isLoading)
+                    }
+                } header: {
+                    Text("Snooze \(plantName)")
+                } footer: {
+                    Text("The plant will be marked as checked, and you won't receive reminders until the selected date.")
+                }
+
+                if let errorMessage = errorMessage {
+                    Section {
+                        Text(errorMessage)
+                            .foregroundColor(.red)
+                            .font(.caption)
+                    }
+                }
+            }
+            .navigationTitle("Snooze Reminder")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Cancel") { dismiss() }
+                }
+            }
+            .overlay {
+                if isLoading {
+                    ProgressView()
+                        .scaleEffect(1.5)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .background(Color.black.opacity(0.1))
+                }
+            }
+        }
+    }
+
+    private func snoozeDate(days: Int) -> Date {
+        Calendar.current.date(byAdding: .day, value: days, to: Date()) ?? Date()
+    }
+
+    private func snooze(days: Int) {
+        isLoading = true
+        errorMessage = nil
+
+        Task {
+            do {
+                let until = snoozeDate(days: days)
+                let updatedPlant = try await plantService.snoozePlant(id: plantId, until: until)
+
+                let formatter = DateFormatter()
+                formatter.dateStyle = .medium
+
+                let message = "\(plantName) reminder snoozed until \(formatter.string(from: until))."
+                onSnooze(updatedPlant, message)
+                dismiss()
+            } catch {
+                errorMessage = "Failed to snooze: \(error.localizedDescription)"
+            }
+            isLoading = false
         }
     }
 }

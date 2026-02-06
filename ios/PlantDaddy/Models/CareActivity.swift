@@ -14,6 +14,7 @@ enum ActivityType: String, Codable, CaseIterable {
     case pruning = "pruning"
     case misting = "misting"
     case rotating = "rotating"
+    case checked = "checked"
 
     var emoji: String {
         switch self {
@@ -23,11 +24,15 @@ enum ActivityType: String, Codable, CaseIterable {
         case .pruning: return "✂️"
         case .misting: return "💨"
         case .rotating: return "🔄"
+        case .checked: return "👀"
         }
     }
 
     var displayName: String {
-        rawValue.capitalized
+        switch self {
+        case .checked: return "Checked"
+        default: return rawValue.capitalized
+        }
     }
 }
 

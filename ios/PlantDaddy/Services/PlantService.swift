@@ -128,6 +128,47 @@ class PlantService: ObservableObject {
         return response.plant
     }
 
+    func snoozePlant(id: Int, until: Date, notes: String? = nil) async throws -> Plant {
+        let request = SnoozePlantRequest(snoozedUntil: until, notes: notes)
+
+        let response: SnoozePlantResponse = try await apiClient.request(
+            endpoint: .snoozePlant(id: id),
+            method: .post,
+            body: request
+        )
+
+        // Update local array
+        if let index = plants.firstIndex(where: { $0.id == id }) {
+            plants[index] = response.plant
+        }
+
+        // Update badge count (snoozed plants don't count as needing water)
+        if notificationService.isAuthorized {
+            notificationService.updateBadgeCount(plants.filter { $0.needsWatering }.count)
+        }
+
+        return response.plant
+    }
+
+    func clearSnooze(id: Int) async throws -> Plant {
+        let response: SnoozePlantResponse = try await apiClient.request(
+            endpoint: .snoozePlant(id: id),
+            method: .delete
+        )
+
+        // Update local array
+        if let index = plants.firstIndex(where: { $0.id == id }) {
+            plants[index] = response.plant
+        }
+
+        // Update badge count
+        if notificationService.isAuthorized {
+            notificationService.updateBadgeCount(plants.filter { $0.needsWatering }.count)
+        }
+
+        return response.plant
+    }
+
     // MARK: - Plant Species Operations
 
     func fetchPlantSpecies() async {

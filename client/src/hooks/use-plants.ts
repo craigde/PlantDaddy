@@ -127,7 +127,57 @@ export function usePlants() {
       console.error("Plant watering mutation error:", error);
     }
   });
-  
+
+  // Snooze a plant's watering reminder
+  const snoozePlant = useMutation({
+    mutationFn: async ({ id, snoozedUntil, notes }: { id: number; snoozedUntil: Date; notes?: string }) => {
+      try {
+        console.log("Snoozing plant with ID:", id, "until:", snoozedUntil);
+        const res = await apiRequest({
+          url: `/api/plants/${id}/snooze`,
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ snoozedUntil: snoozedUntil.toISOString(), notes })
+        });
+        return res;
+      } catch (error) {
+        console.error("Error snoozing plant:", error);
+        throw error;
+      }
+    },
+    onSuccess: (_, { id }) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/plants"] });
+      queryClient.invalidateQueries({ queryKey: [`/api/plants/${id}`] });
+    },
+    onError: (error) => {
+      console.error("Plant snooze mutation error:", error);
+    }
+  });
+
+  // Clear snooze for a plant
+  const clearSnooze = useMutation({
+    mutationFn: async (id: number) => {
+      try {
+        console.log("Clearing snooze for plant with ID:", id);
+        const res = await apiRequest({
+          url: `/api/plants/${id}/snooze`,
+          method: "DELETE"
+        });
+        return res;
+      } catch (error) {
+        console.error("Error clearing snooze:", error);
+        throw error;
+      }
+    },
+    onSuccess: (_, id) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/plants"] });
+      queryClient.invalidateQueries({ queryKey: [`/api/plants/${id}`] });
+    },
+    onError: (error) => {
+      console.error("Clear snooze mutation error:", error);
+    }
+  });
+
   return {
     plants,
     isLoading,
@@ -137,5 +187,7 @@ export function usePlants() {
     updatePlant,
     deletePlant,
     waterPlant,
+    snoozePlant,
+    clearSnooze,
   };
 }

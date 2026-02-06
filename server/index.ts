@@ -12,6 +12,7 @@ import { migrateHouseholds } from "./migrations/add-households";
 import { addHouseholdIdToSpecies } from "./migrations/add-household-id-to-species";
 import { addReminderColumnsToNotificationSettings } from "./migrations/add-reminder-columns";
 import { dropPushoverColumns } from "./migrations/drop-pushover-columns";
+import { addSnoozedUntilToPlants } from "./migrations/add-snoozed-until-to-plants";
 
 const app = express();
 app.use(express.json());
@@ -189,6 +190,7 @@ app.use((req, res, next) => {
   await addHouseholdIdToSpecies();
   await addReminderColumnsToNotificationSettings();
   await dropPushoverColumns();
+  await addSnoozedUntilToPlants();
 
   // Ensure admin user is set
   try {

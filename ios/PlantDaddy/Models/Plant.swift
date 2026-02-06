@@ -17,15 +17,23 @@ struct Plant: Codable, Identifiable {
     let notes: String?
     let imageUrl: String?
     let userId: Int
+    let snoozedUntil: Date?
 
     // Computed property for next watering date
     var nextWateringDate: Date {
         Calendar.current.date(byAdding: .day, value: wateringFrequency, to: lastWatered) ?? Date()
     }
 
-    // Check if plant needs watering
+    // Check if reminder is currently snoozed
+    var isSnoozed: Bool {
+        guard let snoozedUntil = snoozedUntil else { return false }
+        return snoozedUntil > Date()
+    }
+
+    // Check if plant needs watering (respects snooze)
     var needsWatering: Bool {
-        Date() >= nextWateringDate
+        if isSnoozed { return false }
+        return Date() >= nextWateringDate
     }
 
     // Days until next watering (can be negative if overdue)
@@ -74,4 +82,15 @@ struct WaterPlantResponse: Codable {
     let success: Bool
     let careActivity: CareActivity
     let plant: Plant
+}
+
+struct SnoozePlantRequest: Codable {
+    let snoozedUntil: Date
+    let notes: String?
+}
+
+struct SnoozePlantResponse: Codable {
+    let success: Bool
+    let plant: Plant
+    let message: String
 }

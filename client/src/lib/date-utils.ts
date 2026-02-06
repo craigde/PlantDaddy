@@ -1,4 +1,6 @@
-import { format, formatDistanceToNow as fdtn, isBefore, isToday, addDays } from "date-fns";
+import { format, formatDistanceToNow as fdtn, isBefore, isToday, addDays as addDaysFn } from "date-fns";
+
+export const addDays = addDaysFn;
 
 export const formatDate = (date: Date | null): string => {
   if (!date || isNaN(date.getTime())) {
@@ -46,7 +48,7 @@ export const daysUntilWatering = (lastWatered: Date | string, frequencyInDays: n
     return 0;
   }
   
-  const nextWateringDate = addDays(lastWateredDate, frequencyInDays);
+  const nextWateringDate = addDaysFn(lastWateredDate, frequencyInDays);
   const today = new Date();
   const diffInTime = nextWateringDate.getTime() - today.getTime();
   const diffInDays = Math.ceil(diffInTime / (1000 * 3600 * 24));
@@ -63,7 +65,7 @@ export const isOverdue = (lastWatered: Date | string, frequencyInDays: number): 
     return false;
   }
   
-  const nextWateringDate = addDays(lastWateredDate, frequencyInDays);
+  const nextWateringDate = addDaysFn(lastWateredDate, frequencyInDays);
   return isBefore(nextWateringDate, new Date());
 };
 

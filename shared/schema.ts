@@ -73,6 +73,7 @@ export const plants = pgTable("plants", {
   imageUrl: text("image_url"),
   userId: integer("user_id").references(() => users.id).notNull(),
   householdId: integer("household_id").references(() => households.id),
+  snoozedUntil: timestamp("snoozed_until"), // if set, skip watering notifications until this time
 });
 
 // Create base schema
@@ -202,7 +203,7 @@ export const insertCareActivitySchema = careActivitySchema
   .omit({ id: true })
   .extend({
     performedAt: z.date().or(z.string().transform((val) => new Date(val))),
-    activityType: z.enum(["watering", "fertilizing", "repotting", "pruning", "misting", "rotating"]),
+    activityType: z.enum(["watering", "fertilizing", "repotting", "pruning", "misting", "rotating", "checked"]),
   });
 
 export type CareActivity = typeof careActivities.$inferSelect;
