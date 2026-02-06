@@ -12,6 +12,10 @@ struct PlantCardView: View {
     var speciesImageUrl: String? = nil
 
     private var wateringStatus: (color: Color, text: String, icon: String) {
+        if plant.isSnoozed {
+            return (.purple, "Snoozed", "bell.slash.fill")
+        }
+
         let days = plant.daysUntilWatering
 
         if days < 0 {

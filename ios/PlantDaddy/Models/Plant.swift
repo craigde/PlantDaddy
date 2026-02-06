@@ -42,8 +42,12 @@ struct Plant: Codable, Identifiable {
     }
 
     // Days until next watering (can be negative if overdue)
+    // Uses calendar day comparison (start-of-day) rather than 24-hour periods
+    // so that "tomorrow" always shows as 1 day away regardless of time of day
     var daysUntilWatering: Int {
-        Calendar.current.dateComponents([.day], from: Date(), to: nextWateringDate).day ?? 0
+        let startOfToday = Calendar.current.startOfDay(for: Date())
+        let startOfWateringDay = Calendar.current.startOfDay(for: nextWateringDate)
+        return Calendar.current.dateComponents([.day], from: startOfToday, to: startOfWateringDay).day ?? 0
     }
 
     // Full URL for the image (handles relative URLs from backend)
