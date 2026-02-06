@@ -74,6 +74,13 @@ struct PlantListView: View {
                 await plantService.fetchPlantSpecies()
                 await loadCareStats()
             }
+            .onAppear {
+                // Re-fetch when navigating back from detail view
+                Task {
+                    await plantService.fetchPlants()
+                    await loadCareStats()
+                }
+            }
             .refreshable {
                 await plantService.fetchPlants()
                 await loadCareStats()
