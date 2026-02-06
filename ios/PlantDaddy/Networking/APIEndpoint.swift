@@ -25,6 +25,7 @@ enum APIEndpoint {
     case plants
     case plant(id: Int)
     case waterPlant(id: Int)
+    case snoozePlant(id: Int)
     case wateringHistory(plantId: Int)
 
     // Plant Species
@@ -95,6 +96,8 @@ enum APIEndpoint {
             return "/plants/\(id)"
         case .waterPlant(let id):
             return "/plants/\(id)/water"
+        case .snoozePlant(let id):
+            return "/plants/\(id)/snooze"
         case .wateringHistory(let plantId):
             return "/plants/\(plantId)/watering-history"
         case .plantSpecies:

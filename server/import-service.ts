@@ -54,7 +54,7 @@ const BackupPlantHealthRecordSchema = z.object({
 const BackupCareActivitySchema = z.object({
   id: z.number(),
   plantId: z.number(),
-  activityType: z.enum(['watering', 'fertilizing', 'repotting', 'pruning', 'misting', 'rotating']),
+  activityType: z.enum(['watering', 'fertilizing', 'repotting', 'pruning', 'misting', 'rotating', 'checked']),
   notes: z.string().nullable(),
   performedAt: z.string().transform(val => new Date(val)),
   userId: z.number(),

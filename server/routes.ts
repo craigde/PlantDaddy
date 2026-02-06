@@ -782,6 +782,73 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Snooze watering reminder for a plant
+  apiRouter.post("/plants/:id/snooze", async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid plant ID" });
+      }
+
+      const { snoozedUntil, notes } = req.body;
+      if (!snoozedUntil) {
+        return res.status(400).json({ message: "snoozedUntil date is required" });
+      }
+
+      const snoozeDate = new Date(snoozedUntil);
+      if (isNaN(snoozeDate.getTime())) {
+        return res.status(400).json({ message: "Invalid snoozedUntil date" });
+      }
+
+      // Create a "checked" care activity to log this inspection
+      await dbStorage.createCareActivity({
+        plantId: id,
+        activityType: 'checked',
+        notes: notes || `Checked plant, snoozed until ${snoozeDate.toLocaleDateString()}`,
+        performedAt: new Date(),
+      });
+
+      // Update the plant's snoozedUntil field
+      await dbStorage.updatePlant(id, {
+        snoozedUntil: snoozeDate,
+      });
+
+      const updatedPlant = await dbStorage.getPlant(id);
+
+      res.json({
+        success: true,
+        plant: updatedPlant,
+        message: `Reminder snoozed until ${snoozeDate.toLocaleDateString()}`,
+      });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to snooze plant reminder" });
+    }
+  });
+
+  // Clear snooze for a plant (resume normal notifications)
+  apiRouter.delete("/plants/:id/snooze", async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid plant ID" });
+      }
+
+      await dbStorage.updatePlant(id, {
+        snoozedUntil: null,
+      });
+
+      const updatedPlant = await dbStorage.getPlant(id);
+
+      res.json({
+        success: true,
+        plant: updatedPlant,
+        message: "Snooze cleared",
+      });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to clear snooze" });
+    }
+  });
+
   // ---- Household Management ----
 
   // Get current user's households

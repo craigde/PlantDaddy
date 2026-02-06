@@ -1,11 +1,11 @@
-import React from "react";
+import React, { useState } from "react";
 import { useLocation, useParams } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { StatusDot } from "@/components/ui/status-dot";
 import { usePlants } from "@/hooks/use-plants";
 import { getPlantStatus, getStatusText } from "@/lib/plant-utils";
-import { formatDate, formatTime, formatDistanceToNow } from "@/lib/date-utils";
+import { formatDate, formatTime, formatDistanceToNow, addDays } from "@/lib/date-utils";
 import { Plant } from "@shared/schema";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -20,8 +20,15 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Image } from "lucide-react";
+import { Loader2, Image, BellOff, Bell } from "lucide-react";
 import { PlantCareTimeline } from "@/components/ui/plant-care-timeline";
 import { PlantStory } from "@/components/ui/plant-story";
 
@@ -30,9 +37,10 @@ export default function PlantDetails() {
   const id = params?.id || "";
   const [_, navigate] = useLocation();
   const { toast } = useToast();
-  
+  const [showSnoozeDialog, setShowSnoozeDialog] = useState(false);
+
   const plantId = parseInt(id) || 0;
-  const { useGetPlant, deletePlant, waterPlant } = usePlants();
+  const { useGetPlant, deletePlant, waterPlant, snoozePlant, clearSnooze } = usePlants();
   const { data: plantData, isLoading } = useGetPlant(plantId);
 
   const handleWaterPlant = () => {
@@ -46,6 +54,44 @@ export default function PlantDetails() {
       onError: () => {
         toast({
           title: "Failed to water plant",
+          description: "Please try again.",
+          variant: "destructive",
+        });
+      },
+    });
+  };
+
+  const handleSnooze = (days: number) => {
+    const snoozedUntil = addDays(new Date(), days);
+    snoozePlant.mutate({ id: plantId, snoozedUntil }, {
+      onSuccess: () => {
+        toast({
+          title: "Reminder snoozed",
+          description: `You won't be reminded until ${formatDate(snoozedUntil)}.`,
+        });
+        setShowSnoozeDialog(false);
+      },
+      onError: () => {
+        toast({
+          title: "Failed to snooze",
+          description: "Please try again.",
+          variant: "destructive",
+        });
+      },
+    });
+  };
+
+  const handleClearSnooze = () => {
+    clearSnooze.mutate(plantId, {
+      onSuccess: () => {
+        toast({
+          title: "Snooze cleared",
+          description: "Normal reminders have resumed.",
+        });
+      },
+      onError: () => {
+        toast({
+          title: "Failed to clear snooze",
           description: "Please try again.",
           variant: "destructive",
         });
@@ -225,6 +271,38 @@ export default function PlantDetails() {
           </CardContent>
         </Card>
 
+        {/* Snooze Status Card */}
+        {plant.snoozedUntil && new Date(plant.snoozedUntil) > new Date() && (
+          <Card className="mb-6 border-purple-200 bg-purple-50">
+            <CardContent className="p-4">
+              <div className="flex justify-between items-center">
+                <div className="flex items-center gap-2">
+                  <BellOff className="h-5 w-5 text-purple-600" />
+                  <div>
+                    <h3 className="font-semibold text-purple-900">Reminder Snoozed</h3>
+                    <p className="text-sm text-purple-700">
+                      Until {formatDate(new Date(plant.snoozedUntil))}
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  onClick={handleClearSnooze}
+                  variant="outline"
+                  className="border-purple-300 text-purple-700 hover:bg-purple-100"
+                  disabled={clearSnooze.isPending}
+                >
+                  {clearSnooze.isPending ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Bell className="h-4 w-4 mr-1" />
+                  )}
+                  Resume Reminders
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Water Plant Action Card */}
         {status !== "watered" && (
           <Card className="mb-6">
@@ -234,24 +312,75 @@ export default function PlantDetails() {
                   <h3 className="font-semibold">Ready for Care</h3>
                   <p className="text-sm text-gray-500">Your plant is ready for watering</p>
                 </div>
-                <Button 
-                  onClick={handleWaterPlant} 
-                  variant="default" 
-                  className="bg-primary text-white"
-                  disabled={waterPlant.isPending}
-                  data-testid="button-water-plant"
-                >
-                  {waterPlant.isPending ? (
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  ) : (
-                    <span className="material-icons text-sm mr-1">opacity</span>
-                  )}
-                  Water Now
-                </Button>
+                <div className="flex gap-2">
+                  <Button
+                    onClick={() => setShowSnoozeDialog(true)}
+                    variant="outline"
+                    className="border-purple-300 text-purple-700 hover:bg-purple-50"
+                    disabled={snoozePlant.isPending}
+                  >
+                    {snoozePlant.isPending ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <BellOff className="h-4 w-4 mr-1" />
+                    )}
+                    Snooze
+                  </Button>
+                  <Button
+                    onClick={handleWaterPlant}
+                    variant="default"
+                    className="bg-primary text-white"
+                    disabled={waterPlant.isPending}
+                    data-testid="button-water-plant"
+                  >
+                    {waterPlant.isPending ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <span className="material-icons text-sm mr-1">opacity</span>
+                    )}
+                    Water Now
+                  </Button>
+                </div>
               </div>
             </CardContent>
           </Card>
         )}
+
+        {/* Snooze Dialog */}
+        <Dialog open={showSnoozeDialog} onOpenChange={setShowSnoozeDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Snooze Reminder</DialogTitle>
+              <DialogDescription>
+                Checked the plant and it doesn't need water yet? Snooze the reminder.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-2 py-4">
+              {[
+                { label: "Tomorrow", days: 1 },
+                { label: "2 Days", days: 2 },
+                { label: "3 Days", days: 3 },
+                { label: "1 Week", days: 7 },
+              ].map(({ label, days }) => (
+                <Button
+                  key={days}
+                  variant="outline"
+                  className="justify-between"
+                  onClick={() => handleSnooze(days)}
+                  disabled={snoozePlant.isPending}
+                >
+                  <span>{label}</span>
+                  <span className="text-muted-foreground text-sm">
+                    {formatDate(addDays(new Date(), days))}
+                  </span>
+                </Button>
+              ))}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              The plant will be marked as checked, and you won't receive reminders until the selected date.
+            </p>
+          </DialogContent>
+        </Dialog>
 
         {/* Plant Story - Photo Journal */}
         <PlantStory plantId={plantId} plantName={plant.name} />

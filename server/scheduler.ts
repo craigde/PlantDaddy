@@ -90,6 +90,11 @@ async function checkPlantsTask() {
           const plantsNeedingAttention: { plant: typeof plants.$inferSelect; daysUntil: number }[] = [];
 
           for (const plant of allPlantsList) {
+            // Skip snoozed plants
+            if (plant.snoozedUntil && new Date(plant.snoozedUntil) > now) {
+              continue;
+            }
+
             const daysUntil = daysUntilWatering(plant.lastWatered, plant.wateringFrequency);
             if (daysUntil <= threshold) {
               plantsNeedingAttention.push({ plant, daysUntil });
