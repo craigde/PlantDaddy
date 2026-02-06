@@ -47,7 +47,7 @@ export default function Notifications() {
   const upcomingWaterings = plants
     .map((plant) => ({
       plant,
-      daysUntil: daysUntilWatering(new Date(plant.lastWatered), plant.wateringFrequency),
+      daysUntil: daysUntilWatering(new Date(plant.lastWatered), plant.wateringFrequency, plant.snoozedUntil),
     }))
     .filter(({ daysUntil }) => daysUntil > 0 && daysUntil <= 3)
     .sort((a, b) => a.daysUntil - b.daysUntil);
@@ -87,7 +87,7 @@ export default function Notifications() {
               </h2>
               {plantsNeedingAttention.map((plant) => {
                 const status = getPlantStatus(plant);
-                const statusText = getDueText(new Date(plant.lastWatered), plant.wateringFrequency);
+                const statusText = getDueText(new Date(plant.lastWatered), plant.wateringFrequency, plant.snoozedUntil);
                 const lastWateredText = formatDistanceToNow(new Date(plant.lastWatered));
 
                 return (

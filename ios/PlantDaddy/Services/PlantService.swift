@@ -115,15 +115,8 @@ class PlantService: ObservableObject {
             method: .post
         )
 
-        // Update local array
-        if let index = plants.firstIndex(where: { $0.id == id }) {
-            plants[index] = response.plant
-        }
-
-        // Update badge count after watering
-        if notificationService.isAuthorized {
-            notificationService.updateBadgeCount(plants.filter { $0.needsWatering }.count)
-        }
+        // Refresh plants list so PlantListView updates
+        await fetchPlants()
 
         return response.plant
     }
@@ -137,15 +130,8 @@ class PlantService: ObservableObject {
             body: request
         )
 
-        // Update local array
-        if let index = plants.firstIndex(where: { $0.id == id }) {
-            plants[index] = response.plant
-        }
-
-        // Update badge count (snoozed plants don't count as needing water)
-        if notificationService.isAuthorized {
-            notificationService.updateBadgeCount(plants.filter { $0.needsWatering }.count)
-        }
+        // Refresh plants list so PlantListView updates
+        await fetchPlants()
 
         return response.plant
     }
@@ -156,15 +142,8 @@ class PlantService: ObservableObject {
             method: .delete
         )
 
-        // Update local array
-        if let index = plants.firstIndex(where: { $0.id == id }) {
-            plants[index] = response.plant
-        }
-
-        // Update badge count
-        if notificationService.isAuthorized {
-            notificationService.updateBadgeCount(plants.filter { $0.needsWatering }.count)
-        }
+        // Refresh plants list so PlantListView updates
+        await fetchPlants()
 
         return response.plant
     }

@@ -74,7 +74,7 @@ export function usePlants() {
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["/api/plants"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/plants", variables.id] });
+      queryClient.invalidateQueries({ queryKey: [`/api/plants/${variables.id}`] });
     },
     onError: (error) => {
       console.error("Plant update mutation error:", error);
@@ -121,7 +121,7 @@ export function usePlants() {
     },
     onSuccess: (_, id) => {
       queryClient.invalidateQueries({ queryKey: ["/api/plants"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/plants", id] });
+      queryClient.invalidateQueries({ queryKey: [`/api/plants/${id}`] });
     },
     onError: (error) => {
       console.error("Plant watering mutation error:", error);
