@@ -38,48 +38,63 @@ export const formatDistanceToNow = (date: Date | null): string => {
   return `${fdtn(date, { addSuffix: true })}`;
 };
 
-export const daysUntilWatering = (lastWatered: Date | string, frequencyInDays: number): number => {
+// Compute the effective next watering date, respecting snooze
+export const getNextWateringDate = (lastWatered: Date | string, frequencyInDays: number, snoozedUntil?: Date | string | null): Date => {
+  const lastWateredDate = lastWatered instanceof Date ? lastWatered : new Date(lastWatered);
+  const scheduledDate = addDaysFn(lastWateredDate, frequencyInDays);
+
+  if (snoozedUntil) {
+    const snoozeDate = snoozedUntil instanceof Date ? snoozedUntil : new Date(snoozedUntil);
+    if (!isNaN(snoozeDate.getTime()) && snoozeDate > scheduledDate) {
+      return snoozeDate;
+    }
+  }
+
+  return scheduledDate;
+};
+
+export const daysUntilWatering = (lastWatered: Date | string, frequencyInDays: number, snoozedUntil?: Date | string | null): number => {
   // Ensure we have a Date object
   const lastWateredDate = lastWatered instanceof Date ? lastWatered : new Date(lastWatered);
-  
+
   // Check if date is valid
   if (isNaN(lastWateredDate.getTime())) {
     console.error("Invalid date in daysUntilWatering:", lastWatered);
     return 0;
   }
-  
-  const nextWateringDate = addDaysFn(lastWateredDate, frequencyInDays);
+
+  const nextWateringDate = getNextWateringDate(lastWateredDate, frequencyInDays, snoozedUntil);
   const today = new Date();
   const diffInTime = nextWateringDate.getTime() - today.getTime();
   const diffInDays = Math.ceil(diffInTime / (1000 * 3600 * 24));
   return diffInDays;
 };
 
-export const isOverdue = (lastWatered: Date | string, frequencyInDays: number): boolean => {
+export const isOverdue = (lastWatered: Date | string, frequencyInDays: number, snoozedUntil?: Date | string | null): boolean => {
   // Ensure we have a Date object
   const lastWateredDate = lastWatered instanceof Date ? lastWatered : new Date(lastWatered);
-  
+
   // Check if date is valid
   if (isNaN(lastWateredDate.getTime())) {
     console.error("Invalid date in isOverdue:", lastWatered);
     return false;
   }
-  
-  const nextWateringDate = addDaysFn(lastWateredDate, frequencyInDays);
+
+  const nextWateringDate = getNextWateringDate(lastWateredDate, frequencyInDays, snoozedUntil);
   return isBefore(nextWateringDate, new Date());
 };
 
-export const getDueText = (lastWatered: Date | string, frequencyInDays: number): string => {
+export const getDueText = (lastWatered: Date | string, frequencyInDays: number, snoozedUntil?: Date | string | null): string => {
   // Ensure we have a Date object
   const lastWateredDate = lastWatered instanceof Date ? lastWatered : new Date(lastWatered);
-  
+
   // Check if date is valid
   if (isNaN(lastWateredDate.getTime())) {
     console.error("Invalid date in getDueText:", lastWatered);
     return "Unknown status";
   }
-  
-  const days = daysUntilWatering(lastWateredDate, frequencyInDays);
+
+  const days = daysUntilWatering(lastWateredDate, frequencyInDays, snoozedUntil);
   
   if (isToday(lastWateredDate)) {
     return "Watered today";

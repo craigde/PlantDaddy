@@ -19,9 +19,14 @@ struct Plant: Codable, Identifiable {
     let userId: Int
     let snoozedUntil: Date?
 
-    // Computed property for next watering date
+    // Computed property for next watering date (respects snooze)
     var nextWateringDate: Date {
-        Calendar.current.date(byAdding: .day, value: wateringFrequency, to: lastWatered) ?? Date()
+        let scheduledDate = Calendar.current.date(byAdding: .day, value: wateringFrequency, to: lastWatered) ?? Date()
+        // If snoozed past the scheduled date, push next watering to the snooze end
+        if let snoozedUntil = snoozedUntil, snoozedUntil > scheduledDate {
+            return snoozedUntil
+        }
+        return scheduledDate
     }
 
     // Check if reminder is currently snoozed

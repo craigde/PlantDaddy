@@ -8,37 +8,37 @@ export const getPlantStatus = (plant: Plant): PlantStatus => {
   if (isToday(plant.lastWatered)) {
     return "watered";
   }
-  
-  if (isOverdue(plant.lastWatered, plant.wateringFrequency)) {
+
+  if (isOverdue(plant.lastWatered, plant.wateringFrequency, plant.snoozedUntil)) {
     return "overdue";
   }
-  
-  const daysUntil = daysUntilWatering(plant.lastWatered, plant.wateringFrequency);
+
+  const daysUntil = daysUntilWatering(plant.lastWatered, plant.wateringFrequency, plant.snoozedUntil);
   if (daysUntil <= 3) {
     return "soon";
   }
-  
+
   return "watered";
 };
 
 // Get formatted status text for a plant
 export const getStatusText = (plant: Plant): string => {
   const status = getPlantStatus(plant);
-  
+
   if (status === "watered" && isToday(plant.lastWatered)) {
     return "Watered today";
   }
-  
+
   if (status === "overdue") {
-    const days = Math.abs(daysUntilWatering(plant.lastWatered, plant.wateringFrequency));
+    const days = Math.abs(daysUntilWatering(plant.lastWatered, plant.wateringFrequency, plant.snoozedUntil));
     if (days === 0) {
       return "Due today";
     }
     return `Overdue ${days} ${days === 1 ? 'day' : 'days'}`;
   }
-  
+
   if (status === "soon") {
-    const days = daysUntilWatering(plant.lastWatered, plant.wateringFrequency);
+    const days = daysUntilWatering(plant.lastWatered, plant.wateringFrequency, plant.snoozedUntil);
     if (days === 0) {
       return "Due today";
     }
@@ -47,7 +47,7 @@ export const getStatusText = (plant: Plant): string => {
     }
     return `Due in ${days} days`;
   }
-  
+
   return "";
 };
 
@@ -59,8 +59,8 @@ export const groupPlantsByStatus = (plants: Plant[]) => {
   
   plants.forEach(plant => {
     const status = getPlantStatus(plant);
-    
-    if (status === "overdue" || (status === "soon" && daysUntilWatering(plant.lastWatered, plant.wateringFrequency) === 0)) {
+
+    if (status === "overdue" || (status === "soon" && daysUntilWatering(plant.lastWatered, plant.wateringFrequency, plant.snoozedUntil) === 0)) {
       plantsToWaterToday.push(plant);
     } else if (status === "soon") {
       upcomingPlants.push(plant);
