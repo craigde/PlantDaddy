@@ -8,7 +8,7 @@
 import SwiftUI
 
 struct PlantListView: View {
-    @ObservedObject private var plantService = PlantService.shared
+    @StateObject private var plantService = PlantService.shared
     @ObservedObject private var authService = AuthService.shared
     @State private var showingAddPlant = false
     @State private var searchText = ""

@@ -28,7 +28,7 @@ struct DetectDiseaseRequest: Codable {
 struct PlantDetailView: View {
     let plantId: Int
 
-    @ObservedObject private var plantService = PlantService.shared
+    @StateObject private var plantService = PlantService.shared
     @State private var plant: Plant?
     @State private var careActivities: [CareActivity] = []
     @State private var healthRecords: [HealthRecord] = []
@@ -903,7 +903,7 @@ struct LogHealthView: View {
     let onSave: () -> Void
 
     @Environment(\.dismiss) private var dismiss
-    @ObservedObject private var plantService = PlantService.shared
+    @StateObject private var plantService = PlantService.shared
 
     @State private var selectedStatus: HealthStatus = .thriving
     @State private var notes: String = ""
@@ -1191,7 +1191,7 @@ struct SnoozeSheet: View {
     let onSnooze: (Plant, String) -> Void
 
     @Environment(\.dismiss) private var dismiss
-    @ObservedObject private var plantService = PlantService.shared
+    @StateObject private var plantService = PlantService.shared
     @State private var isLoading = false
     @State private var errorMessage: String?
 

@@ -115,10 +115,8 @@ class PlantService: ObservableObject {
             method: .post
         )
 
-        // Immediate local update so PlantListView updates right away
-        if let index = plants.firstIndex(where: { $0.id == id }) {
-            plants[index] = response.plant
-        }
+        // Create a new array so @Published fires reliably for all observers
+        plants = plants.map { $0.id == id ? response.plant : $0 }
 
         // Full refresh for consistency
         await fetchPlants()
@@ -135,10 +133,8 @@ class PlantService: ObservableObject {
             body: request
         )
 
-        // Immediate local update so PlantListView updates right away
-        if let index = plants.firstIndex(where: { $0.id == id }) {
-            plants[index] = response.plant
-        }
+        // Create a new array so @Published fires reliably for all observers
+        plants = plants.map { $0.id == id ? response.plant : $0 }
 
         // Full refresh for consistency
         await fetchPlants()
@@ -152,10 +148,8 @@ class PlantService: ObservableObject {
             method: .delete
         )
 
-        // Immediate local update so PlantListView updates right away
-        if let index = plants.firstIndex(where: { $0.id == id }) {
-            plants[index] = response.plant
-        }
+        // Create a new array so @Published fires reliably for all observers
+        plants = plants.map { $0.id == id ? response.plant : $0 }
 
         // Full refresh for consistency
         await fetchPlants()
