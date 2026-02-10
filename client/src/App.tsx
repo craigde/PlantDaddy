@@ -25,6 +25,7 @@ import { HouseholdProvider, useHouseholdContext } from "@/hooks/use-household-co
 import { ProtectedRoute } from "@/lib/protected-route";
 import { ViewModeProvider } from "@/hooks/use-view-mode";
 import { Loader2 } from "lucide-react";
+import { PWAReloadPrompt } from "@/components/pwa-reload-prompt";
 
 function AppNavBar() {
   const { plants, isLoading } = usePlants();
@@ -108,6 +109,7 @@ function App() {
               <ThemeConsumer>
                 <TooltipProvider>
                   <Toaster />
+                  <PWAReloadPrompt />
                   <Router />
                 </TooltipProvider>
               </ThemeConsumer>
