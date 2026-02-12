@@ -138,6 +138,26 @@ async function initializeDatabase() {
       performed_at TIMESTAMP NOT NULL DEFAULT NOW(),
       user_id INTEGER NOT NULL REFERENCES users(id)
     );
+
+    CREATE TABLE IF NOT EXISTS notification_log (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id),
+      plant_id INTEGER REFERENCES plants(id),
+      title TEXT NOT NULL,
+      message TEXT NOT NULL,
+      channel TEXT NOT NULL,
+      success BOOLEAN NOT NULL,
+      sent_at TIMESTAMP NOT NULL DEFAULT NOW()
+    );
+
+    CREATE TABLE IF NOT EXISTS plant_journal_entries (
+      id SERIAL PRIMARY KEY,
+      plant_id INTEGER NOT NULL REFERENCES plants(id),
+      image_url TEXT NOT NULL,
+      caption TEXT,
+      created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+      user_id INTEGER NOT NULL REFERENCES users(id)
+    );
   `;
 
   try {
