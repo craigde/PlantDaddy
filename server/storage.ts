@@ -1,19 +1,16 @@
-import { 
-  plants, 
-  wateringHistory, 
+import {
+  plants,
   locations,
   plantSpecies,
   notificationSettings,
   plantHealthRecords,
   careActivities,
-  type Plant, 
-  type InsertPlant, 
-  type WateringHistory, 
-  type InsertWateringHistory,
+  type Plant,
+  type InsertPlant,
   type Location,
   type InsertLocation,
-  users, 
-  type User, 
+  users,
+  type User,
   type InsertUser,
   type PlantSpecies,
   type InsertPlantSpecies,
@@ -40,11 +37,6 @@ export interface IStorage {
   createPlant(plant: InsertPlant): Promise<Plant>;
   updatePlant(id: number, plant: Partial<InsertPlant>): Promise<Plant | undefined>;
   deletePlant(id: number): Promise<boolean>;
-  
-  // Watering methods
-  waterPlant(plantId: number): Promise<WateringHistory>;
-  getWateringHistory(plantId: number): Promise<WateringHistory[]>;
-  getAllWateringHistoryForUser(): Promise<WateringHistory[]>;
 
   // Location methods
   getAllLocations(): Promise<Location[]>;
@@ -88,7 +80,6 @@ export interface IStorage {
 
   // Import/restore methods
   deleteAllUserData(): Promise<void>;
-  createWateringHistory(entry: InsertWateringHistory): Promise<WateringHistory>;
   upsertLocationByName(name: string, isDefault?: boolean): Promise<Location>;
   findPlantByDetails(name: string, species: string | null, location: string): Promise<Plant | undefined>;
 }
@@ -96,27 +87,23 @@ export interface IStorage {
 export class MemStorage implements IStorage {
   private users: Map<number, User>;
   private plants: Map<number, Plant>;
-  private wateringHistory: Map<number, WateringHistory>;
   private locations: Map<number, Location>;
   private plantSpeciesCatalog: Map<number, PlantSpecies>;
   private notificationSettingsData: NotificationSettings | undefined;
-  
+
   private userIdCounter: number;
   private plantIdCounter: number;
-  private wateringHistoryIdCounter: number;
   private locationIdCounter: number;
   private plantSpeciesIdCounter: number;
 
   constructor() {
     this.users = new Map();
     this.plants = new Map();
-    this.wateringHistory = new Map();
     this.locations = new Map();
     this.plantSpeciesCatalog = new Map();
-    
+
     this.userIdCounter = 1;
     this.plantIdCounter = 1;
-    this.wateringHistoryIdCounter = 1;
     this.locationIdCounter = 1;
     this.plantSpeciesIdCounter = 1;
     
@@ -208,41 +195,6 @@ export class MemStorage implements IStorage {
     return this.plants.delete(id);
   }
 
-  // Watering methods
-  async waterPlant(plantId: number): Promise<WateringHistory> {
-    const plant = this.plants.get(plantId);
-    if (!plant) {
-      throw new Error(`Plant with ID ${plantId} not found`);
-    }
-
-    // Update plant's last watered date
-    const now = new Date();
-    this.plants.set(plantId, { ...plant, lastWatered: now });
-
-    // Add watering entry to history
-    const id = this.wateringHistoryIdCounter++;
-    const wateringEntry: WateringHistory = {
-      id,
-      plantId,
-      wateredAt: now
-    };
-    
-    this.wateringHistory.set(id, wateringEntry);
-    return wateringEntry;
-  }
-
-  async getWateringHistory(plantId: number): Promise<WateringHistory[]> {
-    return Array.from(this.wateringHistory.values())
-      .filter((entry) => entry.plantId === plantId)
-      .sort((a, b) => b.wateredAt.getTime() - a.wateredAt.getTime()); // Most recent first
-  }
-
-  async getAllWateringHistoryForUser(): Promise<WateringHistory[]> {
-    // For MemStorage, we don't have user filtering, so return all watering history
-    return Array.from(this.wateringHistory.values())
-      .sort((a, b) => b.wateredAt.getTime() - a.wateredAt.getTime()); // Most recent first
-  }
-  
   // Location methods
   async getAllLocations(): Promise<Location[]> {
     return Array.from(this.locations.values());
@@ -1039,8 +991,7 @@ export class MemStorage implements IStorage {
   async deleteAllUserData(): Promise<void> {
     // For MemStorage, clear all user data but keep default locations and plant species
     this.plants.clear();
-    this.wateringHistory.clear();
-    
+
     // Keep default locations but remove user-created ones
     const defaultLocations = Array.from(this.locations.values()).filter(loc => loc.isDefault);
     this.locations.clear();
@@ -1050,18 +1001,6 @@ export class MemStorage implements IStorage {
     
     // Reset notification settings
     this.notificationSettingsData = undefined;
-  }
-
-  async createWateringHistory(entry: InsertWateringHistory): Promise<WateringHistory> {
-    const id = this.wateringHistoryIdCounter++;
-    const wateringEntry: WateringHistory = {
-      id,
-      plantId: entry.plantId,
-      wateredAt: entry.wateredAt
-    };
-    
-    this.wateringHistory.set(id, wateringEntry);
-    return wateringEntry;
   }
 
   async upsertLocationByName(name: string, isDefault: boolean = false): Promise<Location> {
