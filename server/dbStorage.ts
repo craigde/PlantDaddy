@@ -2,7 +2,6 @@ import { eq } from "drizzle-orm";
 import {
   users, type User, type InsertUser,
   plants, type Plant, type InsertPlant,
-  wateringHistory, type WateringHistory, type InsertWateringHistory,
   locations, type Location, type InsertLocation,
   plantSpecies, type PlantSpecies, type InsertPlantSpecies,
   notificationSettings, type NotificationSettings, type InsertNotificationSettings,
@@ -10,7 +9,8 @@ import {
   households, type Household,
   householdMembers, type HouseholdMember,
   plantHealthRecords,
-  careActivities
+  careActivities,
+  plantJournalEntries, type PlantJournalEntry, type InsertPlantJournalEntry
 } from "@shared/schema";
 import { db } from "./db";
 
@@ -19,17 +19,13 @@ export interface IStorage {
   getUser(id: number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
-  
+
   // Plant methods
   getAllPlants(): Promise<Plant[]>;
   getPlant(id: number): Promise<Plant | undefined>;
   createPlant(plant: InsertPlant): Promise<Plant>;
   updatePlant(id: number, plant: Partial<InsertPlant>): Promise<Plant | undefined>;
   deletePlant(id: number): Promise<boolean>;
-  
-  // Watering methods
-  waterPlant(plantId: number): Promise<WateringHistory>;
-  getWateringHistory(plantId: number): Promise<WateringHistory[]>;
 
   // Location methods
   getAllLocations(): Promise<Location[]>;
@@ -37,7 +33,7 @@ export interface IStorage {
   createLocation(location: InsertLocation): Promise<Location>;
   updateLocation(id: number, location: Partial<InsertLocation>): Promise<Location | undefined>;
   deleteLocation(id: number): Promise<boolean>;
-  
+
   // Plant species catalog methods
   getAllPlantSpecies(): Promise<PlantSpecies[]>;
   getPlantSpecies(id: number): Promise<PlantSpecies | undefined>;
@@ -46,7 +42,7 @@ export interface IStorage {
   updatePlantSpecies(id: number, species: Partial<InsertPlantSpecies>): Promise<PlantSpecies | undefined>;
   deletePlantSpecies(id: number): Promise<boolean>;
   searchPlantSpecies(query: string): Promise<PlantSpecies[]>;
-  
+
   // Notification settings methods
   getNotificationSettings(): Promise<NotificationSettings | undefined>;
   updateNotificationSettings(settings: Partial<InsertNotificationSettings>): Promise<NotificationSettings>;
@@ -67,6 +63,11 @@ export interface IStorage {
   updateHouseholdMemberRole(householdId: number, userId: number, role: string): Promise<HouseholdMember | undefined>;
   removeHouseholdMember(householdId: number, userId: number): Promise<boolean>;
   regenerateInviteCode(householdId: number): Promise<Household>;
+
+  // Journal methods
+  getPlantJournalEntries(plantId: number): Promise<PlantJournalEntry[]>;
+  createJournalEntry(entry: InsertPlantJournalEntry): Promise<PlantJournalEntry>;
+  deleteJournalEntry(id: number): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -112,37 +113,11 @@ export class DatabaseStorage implements IStorage {
 
   async deletePlant(id: number): Promise<boolean> {
     // Delete child records first to avoid foreign key constraint violations
+    await db.delete(plantJournalEntries).where(eq(plantJournalEntries.plantId, id));
     await db.delete(plantHealthRecords).where(eq(plantHealthRecords.plantId, id));
     await db.delete(careActivities).where(eq(careActivities.plantId, id));
     const result = await db.delete(plants).where(eq(plants.id, id)).returning();
     return result.length > 0;
-  }
-
-  // Watering methods
-  async waterPlant(plantId: number): Promise<WateringHistory> {
-    // Create watering history entry
-    const wateringEntry: InsertWateringHistory = {
-      plantId,
-      wateredAt: new Date(),
-    };
-    
-    const [entry] = await db.insert(wateringHistory).values(wateringEntry).returning();
-    
-    // Update the plant's last watered date
-    await db
-      .update(plants)
-      .set({ lastWatered: new Date() })
-      .where(eq(plants.id, plantId));
-    
-    return entry;
-  }
-
-  async getWateringHistory(plantId: number): Promise<WateringHistory[]> {
-    return await db
-      .select()
-      .from(wateringHistory)
-      .where(eq(wateringHistory.plantId, plantId))
-      .orderBy(wateringHistory.wateredAt);
   }
 
   // Location methods

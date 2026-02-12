@@ -183,10 +183,9 @@ export class MultiUserStorage implements IStorage {
     if (!existing) return false;
 
     // Delete child records first to avoid foreign key constraint violations
+    await db.delete(plantJournalEntries).where(eq(plantJournalEntries.plantId, id));
     await db.delete(plantHealthRecords).where(eq(plantHealthRecords.plantId, id));
     await db.delete(careActivities).where(eq(careActivities.plantId, id));
-    // Handle legacy watering_history table if it still exists
-    await db.execute(sql`DELETE FROM watering_history WHERE plant_id = ${id}`).catch(() => {});
 
     const result = await db
       .delete(plants)
@@ -559,35 +558,32 @@ export class MultiUserStorage implements IStorage {
   // Import/restore methods
   async deleteAllUserData(): Promise<void> {
     const userId = requireAuth();
-    
+
     // Delete all user data in proper order to respect foreign key constraints
-    // 1. Delete watering history first
-    await db.delete(wateringHistory).where(
-      eq(wateringHistory.plantId, sql`(SELECT id FROM plants WHERE user_id = ${userId})`)
+    // 1. Delete journal entries, health records, and care activities first
+    await db.delete(plantJournalEntries).where(
+      eq(plantJournalEntries.userId, userId)
     );
-    
+    await db.delete(plantHealthRecords).where(
+      eq(plantHealthRecords.userId, userId)
+    );
+    await db.delete(careActivities).where(
+      eq(careActivities.userId, userId)
+    );
+
     // 2. Delete plants
     await db.delete(plants).where(eq(plants.userId, userId));
-    
+
     // 3. Delete non-default locations
     await db.delete(locations).where(
       and(eq(locations.userId, userId), eq(locations.isDefault, false))
     );
-    
+
     // 4. Reset notification settings to defaults
     await db.delete(notificationSettings).where(eq(notificationSettings.userId, userId));
-    
+
     // Recreate default notification settings
     await this.createDefaultNotificationSettingsForUser(userId);
-  }
-
-  async createWateringHistory(entry: InsertWateringHistory): Promise<WateringHistory> {
-    const [wateringEntry] = await db
-      .insert(wateringHistory)
-      .values(entry)
-      .returning();
-    
-    return wateringEntry;
   }
 
   async upsertLocationByName(name: string, isDefault: boolean = false): Promise<Location> {
