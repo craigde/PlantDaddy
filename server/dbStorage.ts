@@ -275,6 +275,21 @@ export class DatabaseStorage implements IStorage {
     return settings || undefined;
   }
 
+  // Journal methods
+  async getPlantJournalEntries(plantId: number): Promise<PlantJournalEntry[]> {
+    return await db.select().from(plantJournalEntries).where(eq(plantJournalEntries.plantId, plantId));
+  }
+
+  async createJournalEntry(entry: InsertPlantJournalEntry): Promise<PlantJournalEntry> {
+    const [journalEntry] = await db.insert(plantJournalEntries).values(entry).returning();
+    return journalEntry;
+  }
+
+  async deleteJournalEntry(id: number): Promise<boolean> {
+    const result = await db.delete(plantJournalEntries).where(eq(plantJournalEntries.id, id)).returning();
+    return result.length > 0;
+  }
+
   async updateNotificationSettings(settings: Partial<InsertNotificationSettings>): Promise<NotificationSettings> {
     // Check if settings exist
     const existingSettings = await this.getNotificationSettings();

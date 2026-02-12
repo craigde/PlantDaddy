@@ -58,7 +58,7 @@ const BackupCareActivitySchema = z.object({
   notes: z.string().nullable(),
   performedAt: z.string().transform(val => new Date(val)),
   userId: z.number(),
-  originalWateringId: z.number().nullable()
+  originalWateringId: z.number().nullable().optional() // Deprecated: kept for backward compatibility with old backups
 });
 
 const BackupNotificationSettingsSchema = z.object({
@@ -481,34 +481,6 @@ export class ImportService {
     }
   }
   
-  private async restoreWateringHistory(
-    wateringHistory: Array<z.infer<typeof BackupWateringHistorySchema>>,
-    plantIdMapping: Map<number, number>,
-    summary: ImportSummary
-  ): Promise<void> {
-    for (const entry of wateringHistory) {
-      try {
-        const newPlantId = plantIdMapping.get(entry.plantId);
-        if (!newPlantId) {
-          summary.warnings.push(`Skipping watering history entry: plant ID ${entry.plantId} not found`);
-          continue;
-        }
-        
-        const wateringData: InsertWateringHistory = {
-          plantId: newPlantId,
-          wateredAt: entry.wateredAt,
-          userId: 0 // Will be set by storage layer based on current user context
-        };
-        
-        await this.storage.createWateringHistory(wateringData);
-        summary.wateringHistoryImported++;
-        
-      } catch (error) {
-        summary.warnings.push(`Failed to restore watering history entry: ${error instanceof Error ? error.message : 'Unknown error'}`);
-      }
-    }
-  }
-  
   private async restoreNotificationSettings(
     settings: z.infer<typeof BackupNotificationSettingsSchema>,
     summary: ImportSummary
@@ -578,8 +550,7 @@ export class ImportService {
           activityType: activity.activityType,
           notes: activity.notes,
           performedAt: activity.performedAt,
-          userId: 0, // Will be set by storage layer based on current user context
-          originalWateringId: activity.originalWateringId // Preserve migration link if exists
+          userId: 0 // Will be set by storage layer based on current user context
         };
         
         await this.storage.createCareActivity(careData);
