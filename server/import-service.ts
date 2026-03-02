@@ -58,7 +58,7 @@ const BackupCareActivitySchema = z.object({
   notes: z.string().nullable(),
   performedAt: z.string().transform(val => new Date(val)),
   userId: z.number(),
-  originalWateringId: z.number().nullable()
+  originalWateringId: z.number().nullable().optional() // Deprecated: kept for backward compatibility with old backups
 });
 
 const BackupNotificationSettingsSchema = z.object({
@@ -550,8 +550,7 @@ export class ImportService {
           activityType: activity.activityType,
           notes: activity.notes,
           performedAt: activity.performedAt,
-          userId: 0, // Will be set by storage layer based on current user context
-          originalWateringId: activity.originalWateringId // Preserve migration link if exists
+          userId: 0 // Will be set by storage layer based on current user context
         };
         
         await this.storage.createCareActivity(careData);

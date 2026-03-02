@@ -90,7 +90,7 @@ export class MemStorage implements IStorage {
   private locations: Map<number, Location>;
   private plantSpeciesCatalog: Map<number, PlantSpecies>;
   private notificationSettingsData: NotificationSettings | undefined;
-  
+
   private userIdCounter: number;
   private plantIdCounter: number;
   private locationIdCounter: number;
@@ -101,7 +101,7 @@ export class MemStorage implements IStorage {
     this.plants = new Map();
     this.locations = new Map();
     this.plantSpeciesCatalog = new Map();
-    
+
     this.userIdCounter = 1;
     this.plantIdCounter = 1;
     this.locationIdCounter = 1;

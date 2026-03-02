@@ -1,7 +1,4 @@
-import { eq, isNotNull, and, count, sql } from "drizzle-orm";
-import { db } from "./db";
-import { careActivities, type InsertCareActivity } from "@shared/schema";
-import { getCurrentUserId, requireAuth } from "./user-context";
+import { requireAuth } from "./user-context";
 
 export interface MigrationResults {
   migrated: number;
@@ -49,30 +46,10 @@ export class MigrationService {
 
   /**
    * Rollback migration for the current user.
-   * Only removes migrated care activities (those with originalWateringId).
+   * The watering_history table has been dropped, so this is a no-op now.
    */
   async rollbackMigration(userId?: number): Promise<{ removed: number }> {
-    const targetUserId = userId || requireAuth();
-
-    try {
-      const result = await db
-        .delete(careActivities)
-        .where(
-          and(
-            eq(careActivities.userId, targetUserId),
-            isNotNull(careActivities.originalWateringId)
-          )
-        );
-
-      const removed = result.rowCount || 0;
-      console.log(`Rollback complete for user ${targetUserId}: ${removed} care activities removed`);
-
-      return { removed };
-
-    } catch (error) {
-      console.error(`Rollback failed for user ${targetUserId}:`, error);
-      return { removed: 0 };
-    }
+    return { removed: 0 };
   }
 
   /**
