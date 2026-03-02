@@ -482,30 +482,14 @@ export class ImportService {
   }
   
   private async restoreWateringHistory(
-    wateringHistory: Array<z.infer<typeof BackupWateringHistorySchema>>,
-    plantIdMapping: Map<number, number>,
+    _wateringHistory: Array<z.infer<typeof BackupWateringHistorySchema>>,
+    _plantIdMapping: Map<number, number>,
     summary: ImportSummary
   ): Promise<void> {
-    for (const entry of wateringHistory) {
-      try {
-        const newPlantId = plantIdMapping.get(entry.plantId);
-        if (!newPlantId) {
-          summary.warnings.push(`Skipping watering history entry: plant ID ${entry.plantId} not found`);
-          continue;
-        }
-        
-        const wateringData: InsertWateringHistory = {
-          plantId: newPlantId,
-          wateredAt: entry.wateredAt,
-          userId: 0 // Will be set by storage layer based on current user context
-        };
-        
-        await this.storage.createWateringHistory(wateringData);
-        summary.wateringHistoryImported++;
-        
-      } catch (error) {
-        summary.warnings.push(`Failed to restore watering history entry: ${error instanceof Error ? error.message : 'Unknown error'}`);
-      }
+    // watering_history table has been dropped — watering is now tracked via care_activities.
+    // Old backup files may still contain wateringHistory entries; skip them silently.
+    if (_wateringHistory.length > 0) {
+      summary.warnings.push(`Skipped ${_wateringHistory.length} legacy watering history entries (now tracked as care activities)`);
     }
   }
   
