@@ -481,18 +481,6 @@ export class ImportService {
     }
   }
   
-  private async restoreWateringHistory(
-    _wateringHistory: Array<z.infer<typeof BackupWateringHistorySchema>>,
-    _plantIdMapping: Map<number, number>,
-    summary: ImportSummary
-  ): Promise<void> {
-    // watering_history table has been dropped — watering is now tracked via care_activities.
-    // Old backup files may still contain wateringHistory entries; skip them silently.
-    if (_wateringHistory.length > 0) {
-      summary.warnings.push(`Skipped ${_wateringHistory.length} legacy watering history entries (now tracked as care activities)`);
-    }
-  }
-  
   private async restoreNotificationSettings(
     settings: z.infer<typeof BackupNotificationSettingsSchema>,
     summary: ImportSummary
