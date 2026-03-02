@@ -37,7 +37,7 @@ export interface IStorage {
   createPlant(plant: InsertPlant): Promise<Plant>;
   updatePlant(id: number, plant: Partial<InsertPlant>): Promise<Plant | undefined>;
   deletePlant(id: number): Promise<boolean>;
-
+  
   // Location methods
   getAllLocations(): Promise<Location[]>;
   getLocation(id: number): Promise<Location | undefined>;

@@ -21,9 +21,19 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Trash2, ShieldAlert, ArrowLeft } from "lucide-react";
+import { Loader2, Trash2, ShieldAlert, ArrowLeft, KeyRound } from "lucide-react";
 import { Link } from "wouter";
 
 interface AdminUser {
@@ -39,6 +49,8 @@ export default function AdminPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [userToDelete, setUserToDelete] = useState<AdminUser | null>(null);
+  const [userToReset, setUserToReset] = useState<AdminUser | null>(null);
+  const [newPassword, setNewPassword] = useState("");
 
   const { data: users, isLoading, error } = useQuery<AdminUser[]>({
     queryKey: ["/api/admin/users"],
@@ -56,6 +68,24 @@ export default function AdminPage() {
     onError: (error: Error) => {
       toast({
         title: "Failed to delete user",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const resetPasswordMutation = useMutation({
+    mutationFn: async ({ userId, newPassword }: { userId: number; newPassword: string }) => {
+      return await apiRequest("POST", `/api/admin/users/${userId}/reset-password`, { newPassword });
+    },
+    onSuccess: (data) => {
+      toast({ title: "Password reset", description: data.message });
+      setUserToReset(null);
+      setNewPassword("");
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Failed to reset password",
         description: error.message,
         variant: "destructive",
       });
@@ -108,9 +138,7 @@ export default function AdminPage() {
         <CardHeader>
           <CardTitle>Users ({users?.length ?? 0})</CardTitle>
           <CardDescription>
-            Delete orphan or test accounts. All related data (plants, locations,
-            households, health records, care activities, notification settings,
-            device tokens) will be permanently removed.
+            Manage user accounts. You can reset passwords or delete orphan/test accounts.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -127,7 +155,7 @@ export default function AdminPage() {
                   <TableHead className="text-center">Plants</TableHead>
                   <TableHead className="text-center">Households</TableHead>
                   <TableHead className="text-center">Locations</TableHead>
-                  <TableHead className="w-24"></TableHead>
+                  <TableHead className="w-28"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -148,15 +176,28 @@ export default function AdminPage() {
                     <TableCell className="text-center">{user.householdCount}</TableCell>
                     <TableCell className="text-center">{user.locationCount}</TableCell>
                     <TableCell>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-destructive hover:text-destructive"
-                        disabled={!!user.isAdmin}
-                        onClick={() => setUserToDelete(user)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      <div className="flex gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          title="Reset password"
+                          onClick={() => {
+                            setUserToReset(user);
+                            setNewPassword("");
+                          }}
+                        >
+                          <KeyRound className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-destructive hover:text-destructive"
+                          disabled={!!user.isAdmin}
+                          onClick={() => setUserToDelete(user)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -173,6 +214,7 @@ export default function AdminPage() {
         </CardContent>
       </Card>
 
+      {/* Delete User Dialog */}
       <AlertDialog open={!!userToDelete} onOpenChange={(open) => !open && setUserToDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -211,6 +253,54 @@ export default function AdminPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Reset Password Dialog */}
+      <Dialog open={!!userToReset} onOpenChange={(open) => { if (!open) { setUserToReset(null); setNewPassword(""); } }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reset password for "{userToReset?.username}"</DialogTitle>
+            <DialogDescription>
+              Enter a new password for this user. They will need to use this password on their next login.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <Label htmlFor="new-password">New password</Label>
+            <Input
+              id="new-password"
+              type="password"
+              placeholder="Enter new password"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              className="mt-2"
+              autoFocus
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => { setUserToReset(null); setNewPassword(""); }}
+              disabled={resetPasswordMutation.isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              disabled={!newPassword || newPassword.length < 4 || resetPasswordMutation.isPending}
+              onClick={() => {
+                if (userToReset && newPassword) {
+                  resetPasswordMutation.mutate({ userId: userToReset.id, newPassword });
+                }
+              }}
+            >
+              {resetPasswordMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                <KeyRound className="h-4 w-4 mr-2" />
+              )}
+              Reset Password
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
