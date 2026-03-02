@@ -2702,6 +2702,33 @@ Return this exact JSON structure:
     }
   });
 
+  apiRouter.post("/admin/users/:id/reset-password", isAuthenticated, isAdmin, async (req: Request, res: Response) => {
+    const userId = parseInt(req.params.id);
+    if (isNaN(userId)) {
+      return res.status(400).json({ error: "Invalid user ID" });
+    }
+
+    const { newPassword } = req.body;
+    if (!newPassword || newPassword.length < 4) {
+      return res.status(400).json({ error: "Password must be at least 4 characters" });
+    }
+
+    try {
+      const user = await dbStorage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      const hashedPassword = await hashPassword(newPassword);
+      await dbStorage.updateUserPassword(userId, hashedPassword);
+
+      res.json({ message: `Password reset for user "${user.username}"` });
+    } catch (error) {
+      console.error("Admin reset password error:", error);
+      res.status(500).json({ error: "Failed to reset password" });
+    }
+  });
+
   // Add API router to app
   // Apply user context middleware before API routes to make user data available
   app.use(setUserContext);

@@ -984,6 +984,12 @@ export class MultiUserStorage implements IStorage {
     };
   }
 
+  async updateUserPassword(userId: number, hashedPassword: string): Promise<void> {
+    await db.update(users)
+      .set({ password: hashedPassword })
+      .where(eq(users.id, userId));
+  }
+
   async deleteUserCompletely(userId: number): Promise<void> {
     // Delete all user data in proper order to respect foreign key constraints
 
