@@ -52,6 +52,8 @@ struct PlantDetailView: View {
     @State private var showingSnoozeSheet = false
     @State private var showingSnoozeConfirmation = false
     @State private var snoozeConfirmationMessage = ""
+    @State private var showingDeleteError = false
+    @State private var deleteErrorMessage = ""
     @Environment(\.dismiss) private var dismiss
 
     private let imageUploadService = ImageUploadService.shared
@@ -109,6 +111,11 @@ struct PlantDetailView: View {
             Button("Delete", role: .destructive, action: deletePlant)
         } message: {
             Text("Are you sure you want to delete \(plant?.name ?? "this plant")? This action cannot be undone.")
+        }
+        .alert("Delete Failed", isPresented: $showingDeleteError) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(deleteErrorMessage)
         }
         .alert("Plant Watered! 💧", isPresented: $showingWaterConfirmation) {
             Button("OK", role: .cancel) {}
@@ -833,7 +840,8 @@ struct PlantDetailView: View {
                 try await plantService.deletePlant(id: plantId)
                 dismiss()
             } catch {
-                print("Error deleting plant: \(error)")
+                deleteErrorMessage = "Could not delete plant. Please try again."
+                showingDeleteError = true
             }
         }
     }

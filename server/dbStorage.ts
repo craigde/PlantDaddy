@@ -10,7 +10,8 @@ import {
   householdMembers, type HouseholdMember,
   plantHealthRecords,
   careActivities,
-  plantJournalEntries, type PlantJournalEntry, type InsertPlantJournalEntry
+  plantJournalEntries, type PlantJournalEntry, type InsertPlantJournalEntry,
+  notificationLog
 } from "@shared/schema";
 import { db } from "./db";
 
@@ -113,6 +114,7 @@ export class DatabaseStorage implements IStorage {
 
   async deletePlant(id: number): Promise<boolean> {
     // Delete child records first to avoid foreign key constraint violations
+    await db.delete(notificationLog).where(eq(notificationLog.plantId, id));
     await db.delete(plantJournalEntries).where(eq(plantJournalEntries.plantId, id));
     await db.delete(plantHealthRecords).where(eq(plantHealthRecords.plantId, id));
     await db.delete(careActivities).where(eq(careActivities.plantId, id));
