@@ -135,7 +135,8 @@ class APIClient: NSObject {
     ) async throws {
         struct EmptyResponse: Codable {}
 
-        let _: EmptyResponse? = try? await request(
+        // Use `try` (not `try?`) so server errors propagate to callers
+        let _: EmptyResponse = try await request(
             endpoint: endpoint,
             method: method,
             body: body,

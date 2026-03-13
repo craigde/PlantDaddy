@@ -10,7 +10,8 @@ import {
   householdMembers, type HouseholdMember,
   plantHealthRecords, type PlantHealthRecord, type InsertPlantHealthRecord,
   careActivities, type CareActivity, type InsertCareActivity,
-  plantJournalEntries, type PlantJournalEntry, type InsertPlantJournalEntry
+  plantJournalEntries, type PlantJournalEntry, type InsertPlantJournalEntry,
+  notificationLog
 } from "@shared/schema";
 import { db } from "./db";
 import { getCurrentUserId, requireAuth, getHouseholdId } from "./user-context";
@@ -183,6 +184,7 @@ export class MultiUserStorage implements IStorage {
     if (!existing) return false;
 
     // Delete child records first to avoid foreign key constraint violations
+    await db.delete(notificationLog).where(eq(notificationLog.plantId, id));
     await db.delete(plantJournalEntries).where(eq(plantJournalEntries.plantId, id));
     await db.delete(plantHealthRecords).where(eq(plantHealthRecords.plantId, id));
     await db.delete(careActivities).where(eq(careActivities.plantId, id));
